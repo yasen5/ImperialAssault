@@ -1,7 +1,5 @@
 package src.game;
 
-import javax.swing.JOptionPane;
-
 import src.Constants;
 import src.game.Die.DefenseDieType;
 import src.game.Die.OffenseDieType;
@@ -37,12 +35,7 @@ public class DialaPassil extends Hero {
 
     @Override
     public Die.DefenseDieResult[] getDefense(Personnel other) {
-        int response = JOptionPane.showConfirmDialog(
-                null,
-                "Ability",
-                "Remove a die from defense pool? (2 Strain)",
-                JOptionPane.YES_NO_OPTION);
-        if (response == JOptionPane.YES_OPTION) {
+        if (InputUtils.getYesNo("Ability", "Remove a die from defense pool? (2 Strain)")) {
             ApplyStrain(2);
             Die.DefenseDieResult[] defense = other.getDefense();
             Die.DefenseDieResult[] modifiedDefense = new Die.DefenseDieResult[defense.length - 1];
