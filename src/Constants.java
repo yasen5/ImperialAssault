@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 
 import javax.imageio.ImageIO;
+import javax.swing.JFrame;
 
 import src.game.Game.MapTile;
 
@@ -28,4 +29,5 @@ public class Constants {
             new int[] { 0, 0, 0, 0, 1, 1, 1, 1, 1, 1 },
             new int[] { 0, 0, 0, 0, 1, 1, 1, 1, 1, 1 }
     };
+    public static JFrame frame;
 }

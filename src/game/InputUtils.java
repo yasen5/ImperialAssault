@@ -2,12 +2,14 @@ package src.game;
 
 import javax.swing.JOptionPane;
 
+import src.Constants;
+
 public class InputUtils {
     public static int getMultipleChoice(String name, String explanation, Object[] options) {
         int selectedIndex;
         do {
             selectedIndex = JOptionPane.showOptionDialog(
-                    null,
+                    Constants.frame,
                     name,
                     explanation,
                     JOptionPane.DEFAULT_OPTION,
@@ -21,7 +23,7 @@ public class InputUtils {
 
     public static boolean getYesNo(String name, String explanation) {
         int response = JOptionPane.showConfirmDialog(
-                null,
+                Constants.frame,
                 name,
                 explanation,
                 JOptionPane.YES_NO_OPTION);
