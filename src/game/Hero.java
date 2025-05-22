@@ -14,9 +14,16 @@ public abstract class Hero extends Personnel {
     protected Equipment.Weapon weapon;
     private boolean exhausted = false;
     private DeploymentCard deploymentCard;
+    private boolean hasSpecial;
+
+    public static enum Actions {
+        ATTACK,
+        RECOVER,
+        SPECIAL
+    }
 
     public Hero(String name, int startingHealth, int speed, int endurance, Equipment.Weapon weapon, Pos pos,
-            int deploymentX, int deploymentY) {
+            int deploymentX, int deploymentY, boolean hasSpecial) {
         super(name, startingHealth, speed, pos);
         this.endurance = endurance;
         this.weapon = weapon;
@@ -24,7 +31,7 @@ public abstract class Hero extends Personnel {
         this.strain = 0;
         this.deploymentCard = new DeploymentCard(Constants.baseImgFilePath + name + "Deployment.jpg", deploymentX,
                 deploymentY);
-        
+        this.hasSpecial = hasSpecial;
     }
 
     public void ApplyStrain(int strain) {
@@ -43,5 +50,10 @@ public abstract class Hero extends Personnel {
     public void draw(Graphics g) {
         super.draw(g);
         deploymentCard.draw(g);
+    }
+
+    public Actions[] getActions() {
+        return hasSpecial ? new Actions[] {Actions.ATTACK,
+                Actions.RECOVER, Actions.SPECIAL} : new Actions[] {Actions.ATTACK, Actions.RECOVER};
     }
 }

@@ -4,7 +4,7 @@ import src.Constants;
 
 public class StormTrooper extends Imperial {
     public StormTrooper(Pos pos) {
-        super("StormTrooper", 3, 3, pos, false,
+        super("StormTrooper", 3, 3, pos,
                 ImperialType.TROOPER);
     }
 

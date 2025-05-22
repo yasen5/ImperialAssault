@@ -1,6 +1,5 @@
 package src.game;
 
-import src.Constants;
 import src.game.Die.DefenseDieType;
 import src.game.Die.OffenseDieType;
 
@@ -10,7 +9,7 @@ public class DialaPassil extends Hero {
                 new OffenseDieType[] { OffenseDieType.GREEN, OffenseDieType.BLUE }, new Equipment.SurgeOptions[] {
                         Equipment.SurgeOptions.STUN,
                         Equipment.SurgeOptions.DAMAGE1 }),
-                pos, deploymentX, deploymentY);
+                pos, deploymentX, deploymentY, false);
     }
 
     @Override

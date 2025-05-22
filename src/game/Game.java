@@ -7,12 +7,15 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
+
+import javax.swing.JButton;
 import javax.swing.SwingUtilities;
 
 import javax.imageio.ImageIO;
 
 import src.Constants;
 import src.Screen;
+import src.game.Hero.Actions;
 import src.game.Personnel.Directions;
 
 public class Game {
@@ -99,8 +102,13 @@ public class Game {
                 for (int i = 0; i < movesUsedFirst; i++) {
                     handleMove(activeFigure);
                 }
-                ui.deactiveateButtons();
+                ui.deactiveateMovementButtons();
                 // Player chooses from a list of available actions: attack, recover, special
+                Actions[] availableActions = activeFigure.getActions();
+                selectedIndex = InputUtils.getMultipleChoice("Action Selection", "Choose an action to take", availableActions);
+                if (availableActions[selectedIndex] == Actions.ATTACK) {
+                    handleAttack(activeFigure);
+                }
                 // action
                 // Player uses the rest of their moves (if any)
             }
@@ -145,11 +153,9 @@ public class Game {
         return true;
     }
 
-    
-
     public void handleMove(Hero activeFigure) {
         CompletableFuture<Directions> dir = new CompletableFuture<>();
-        ui.setButtonOutput(dir);
+        ui.setMovementButtonOutput(dir);
         double[] angleRads = { Math.PI / 4.0 };
         SwingUtilities.invokeLater(() -> {
             for (Directions direction : Directions.values()) {
@@ -160,12 +166,59 @@ public class Game {
                             activeFigure.getPos().getX(), activeFigure.getPos().getY(),
                             angleRads[0]);
                 } else {
-                    ui.deactivateButton(direction);
+                    ui.deactivateMovementButton(direction);
                 }
             }
         });
         Directions chosenDir = dir.join();
         activeFigure.move(chosenDir);
         ui.repaint();
+    }
+
+    public void handleAttack(Personnel activeFigure) {
+        CompletableFuture<Personnel> other = new CompletableFuture<>();
+        ui.setSelectionButtonOutput(other, activeFigure instanceof Hero);
+        Personnel chosenDefender = other.join();
+        activeFigure.performAttack(chosenDefender);
+    }
+
+    public ArrayList<JButton> getSelectionButtons() {
+        ArrayList<JButton> buttonList = new ArrayList<>();
+        for (DeploymentGroup<? extends Imperial> depGroup : imperialDeployments) {
+            for (Imperial imperial : depGroup.getMembers()) {
+                buttonList.add(imperial.getSelectionButton());
+            }
+        }
+        for (Hero hero : heroDeployments) {
+            buttonList.add(hero.getSelectionButton());
+        }
+        return buttonList;
+    }
+
+    public ArrayList<Imperial> getImperials() {
+        ArrayList<Imperial> imperials = new ArrayList<>();
+        for (DeploymentGroup<? extends Imperial> depGroup : imperialDeployments) {
+            for (Imperial imperial : depGroup.getMembers()) {
+                imperials.add(imperial);
+            }
+        }
+        return imperials;
+    }
+
+    public ArrayList<Hero> getHeroes() {
+        return heroDeployments;
+    }
+
+    public void reset() {
+        while (!heroDeployments.isEmpty()) {
+            heroDeployments.remove(0);
+        }
+        while (!imperialDeployments.isEmpty()) {
+            imperialDeployments.remove(0);
+        }
+        heroDeployments.add(new DialaPassil(new Pos(6, 5), 50, 50));
+        imperialDeployments.add(new DeploymentGroup<StormTrooper>(
+                new Pos[] { new Pos(4, 11), new Pos(4, 12), new Pos(5, 11) }, new Pos(500, 500), StormTrooper::new));
+        turn = Turn.REBELS;
     }
 }

@@ -13,18 +13,18 @@ import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import javax.imageio.ImageIO;
-import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JPanel;
 
 import src.game.BiMap;
 import src.game.Game;
-import static src.game.Personnel.Directions;
+import src.game.Imperial;
+import src.game.Personnel;
+
 import src.game.Personnel.Directions;
 
 public class Screen extends JPanel implements ActionListener, MouseListener, KeyListener {
@@ -32,7 +32,11 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 	private boolean gameStarted = false; // Turn to false when submitting
 	private BufferedImage startScreenimage;
 	private static int buttonSize = 20;
-	private CompletableFuture<Directions> buttonOutput;
+	private CompletableFuture<Directions> movementButtonOutput;
+	private CompletableFuture<Personnel> selectionButtonOutput;
+	private boolean selectingImperials;
+	private boolean gameEnd = false;
+	private Thread mainGameLoop;
 
 	public BiMap<Directions, JButton> movementButtons = new BiMap<Directions, JButton>();
 
@@ -91,6 +95,10 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 		} catch (IOException e) {
 			System.out.println("Haha l no cover art");
 		}
+		for (JButton button : game.getSelectionButtons()) {
+			add(button);
+			button.addActionListener(this);
+		}
 	}
 
 	@Override
@@ -102,9 +110,17 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 	@Override
 	public void paintComponent(Graphics g) {
 		super.paintComponent(g);
-		if (gameStarted) {
+		if (gameEnd) {
+			System.out.println("SO THEN WHY ISN'T THIS GETTING DRAWN");
+			g.setColor(new Color(0, 0, 0));
+			g.drawRect(0, 0, 1920, 1080);
+			g.setColor(new Color(255, 255, 255));
+			g.drawString("Game over", 100, 100);
+		}
+		else if (gameStarted) {
 			game.drawGame(g);
-		} else {
+		}  
+		else {
 			g.drawImage(startScreenimage, 0,
 					0,
 					getPreferredSize().width,
@@ -116,8 +132,16 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 	public void actionPerformed(ActionEvent e) {
 		Object source = e.getSource();
 		for (Directions direction : Directions.values()) {
-			if (e.getSource().equals(movementButtons.get(direction))) {
-				buttonOutput.complete(direction);
+			if (source.equals(movementButtons.get(direction))) {
+				movementButtonOutput.complete(direction);
+				continue;
+			}
+		}
+		if (selectingImperials) {
+			for (Imperial imperial : game.getImperials()) {
+				if (source.equals(imperial.getSelectionButton())) {
+					selectionButtonOutput.complete(imperial);
+				}
 			}
 		}
 	}
@@ -130,7 +154,8 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 		if (!gameStarted) {
 			gameStarted = true;
 			repaint();
-			new Thread(() -> game.playRound()).start();
+			mainGameLoop = new Thread(() -> game.playRound());
+			mainGameLoop.start();
 		}
 		repaint();
 	}
@@ -145,15 +170,21 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 	}
 
 	public void keyPressed(KeyEvent e) {
-
+		
 	}
 
 	public void keyReleased(KeyEvent e) {
 		game.handleKeyboardInput(e.getKeyCode());
+		if (e.getKeyCode() == KeyEvent.VK_F1) {
+			gameEnd = true;
+		} else if (e.getKeyCode() == KeyEvent.VK_R) {
+			reset();
+		}
 		repaint();
 	}
 
 	public void keyTyped(KeyEvent e) {
+		
 	}
 
 	public void Repaint() {
@@ -177,19 +208,33 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 		return movementButtons;
 	}
 
-	public void setButtonOutput(CompletableFuture<Directions> output) {
-		buttonOutput = output;
+	public void setMovementButtonOutput(CompletableFuture<Directions> output) {
+		movementButtonOutput = output;
 	}
 
-	public void deactivateButton(Directions dir) {
+	public void deactivateMovementButton(Directions dir) {
 		movementButtons.get(dir).setVisible(false);
 		movementButtons.get(dir).setEnabled(false);
 	}
 
-	public void deactiveateButtons() {
+	public void setSelectionButtonOutput(CompletableFuture<Personnel> output, boolean selectingImperials) {
+		this.selectionButtonOutput = output;
+		this.selectingImperials = selectingImperials;
+	}
+
+	public void deactiveateMovementButtons() {
 		for (Directions direction : Directions.values()) {
-			deactivateButton(direction);
+			deactivateMovementButton(direction);
 		}
 		repaint();
+	}
+
+	public void reset() {
+		gameEnd = false;
+		deactiveateMovementButtons();
+		game.reset();
+		repaint();
+		mainGameLoop = new Thread(() -> game.playRound());
+		mainGameLoop.start();
 	}
 }

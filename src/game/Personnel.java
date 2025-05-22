@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import javax.imageio.ImageIO;
+import javax.swing.JButton;
 
 import src.Constants;
 
@@ -17,6 +18,7 @@ public abstract class Personnel {
     private boolean stunned, bleeding;
     private BufferedImage image;
     private String name;
+    private JButton selectionButton;
 
     public static enum Directions {
         UP,
@@ -47,6 +49,11 @@ public abstract class Personnel {
             }
         }
         this.pos = pos;
+        this.selectionButton = new JButton();
+        this.selectionButton.setOpaque(false);
+        this.selectionButton.setContentAreaFilled(false);
+        this.selectionButton.setBorderPainted(false);
+        moveButtonToCurrentLocation();
     }
 
     public void performAttack(Personnel other) {
@@ -122,6 +129,7 @@ public abstract class Personnel {
                 incrementY(1);
             }
         }
+        moveButtonToCurrentLocation();
     }
 
     public void incrementX(int amt) {
@@ -209,5 +217,14 @@ public abstract class Personnel {
 
     public Pos getPos() {
         return pos;
+    }
+
+    public JButton getSelectionButton() {
+        return selectionButton;
+    }
+
+    public void moveButtonToCurrentLocation() {
+        this.selectionButton.setBounds(pos.getX() * Constants.tileSize, pos.getY() * Constants.tileSize,
+                Constants.tileSize, Constants.tileSize);
     }
 }
