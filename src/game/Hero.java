@@ -7,11 +7,14 @@ import java.io.IOException;
 import javax.imageio.ImageIO;
 
 import src.Constants;
+import src.game.Die.DefenseDieType;
+import src.game.Die.OffenseDieType;
+import src.game.Die.OffenseRoll;
 
 public abstract class Hero extends Personnel {
     private int endurance, strain;
     protected boolean wounded;
-    protected Equipment.Weapon weapon;
+    private Equipment.Weapon weapon;
     private boolean exhausted = false;
     private DeploymentCard deploymentCard;
     private boolean hasSpecial;
@@ -23,8 +26,8 @@ public abstract class Hero extends Personnel {
     }
 
     public Hero(String name, int startingHealth, int speed, int endurance, Equipment.Weapon weapon, Pos pos,
-            int deploymentX, int deploymentY, boolean hasSpecial) {
-        super(name, startingHealth, speed, pos);
+            int deploymentX, int deploymentY, boolean hasSpecial, DefenseDieType[] defenseDice) {
+        super(name, startingHealth, speed, pos, defenseDice);
         this.endurance = endurance;
         this.weapon = weapon;
         this.wounded = false;
@@ -55,5 +58,19 @@ public abstract class Hero extends Personnel {
     public Actions[] getActions() {
         return hasSpecial ? new Actions[] {Actions.ATTACK,
                 Actions.RECOVER, Actions.SPECIAL} : new Actions[] {Actions.ATTACK, Actions.RECOVER};
+    }
+
+    @Override
+    public OffenseRoll[] getOffense() {
+        OffenseDieType[] attackDice = weapon.attackDice();
+        OffenseRoll[] result = new OffenseRoll[attackDice.length];
+        for (int i = 0; i < attackDice.length; i++) {
+            result[i] = attackDice[i].roll();
+        }
+        return result;
+    }
+
+    public Equipment.SurgeOptions[] getSurgeOptions() {
+        return weapon.surgeOptions();
     }
 }

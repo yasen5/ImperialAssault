@@ -1,7 +1,6 @@
 package src.game;
 
-import src.game.Die.DefenseDieType;
-import src.game.Die.OffenseDieType;
+import src.game.Die.*;
 
 public class DialaPassil extends Hero {
     public DialaPassil(Pos pos, int deploymentX, int deploymentY) {
@@ -9,45 +8,30 @@ public class DialaPassil extends Hero {
                 new OffenseDieType[] { OffenseDieType.GREEN, OffenseDieType.BLUE }, new Equipment.SurgeOptions[] {
                         Equipment.SurgeOptions.STUN,
                         Equipment.SurgeOptions.DAMAGE1 }),
-                pos, deploymentX, deploymentY, false);
+                pos, deploymentX, deploymentY, false, new DefenseDieType[] {DefenseDieType.WHITE});
     }
 
     @Override
-    public Die.DefenseDieResult[] getDefense() {
-        Die.DefenseDieResult[] result = new Die.DefenseDieResult[] { Die.rollDefense(DefenseDieType.WHITE) };
+    public DefenseRoll[] getDefense() {
+        DefenseRoll[] result = super.getDefense();
         if (InputUtils.getYesNo("You rolled: " + result.toString(), "Would you like to reroll?")) {
             ApplyStrain(1);
-            result = new Die.DefenseDieResult[] { Die.rollDefense(DefenseDieType.WHITE) };
+            result = super.getDefense();
         }
         return result;
     }
 
     @Override
-    public Die.OffenseDieResult[] getOffense() {
-        Die.OffenseDieType[] attackDice = weapon.attackDice();
-        Die.OffenseDieResult[] result = new Die.OffenseDieResult[attackDice.length];
-        for (int i = 0; i < attackDice.length; i++) {
-            result[i] = Die.rollOffense(attackDice[i]);
-        }
-        return result;
-    }
-
-    @Override
-    public Die.DefenseDieResult[] getDefense(Personnel other) {
+    public DefenseRoll[] getDefense(Personnel other) {
         if (InputUtils.getYesNo("Ability", "Remove a die from defense pool? (2 Strain)")) {
             ApplyStrain(2);
-            Die.DefenseDieResult[] defense = other.getDefense();
-            Die.DefenseDieResult[] modifiedDefense = new Die.DefenseDieResult[defense.length - 1];
+            DefenseRoll[] defense = other.getDefense();
+            DefenseRoll[] modifiedDefense = new DefenseRoll[defense.length - 1];
             for (int i = 1; i < defense.length; i++) {
                 modifiedDefense[i - 1] = defense[i];
             }
             return modifiedDefense;
         }
         return other.getDefense();
-    }
-
-    @Override
-    public Equipment.SurgeOptions[] getSurgeOptions() {
-        return weapon.surgeOptions();
     }
 }

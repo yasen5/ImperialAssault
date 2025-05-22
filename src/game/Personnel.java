@@ -10,6 +10,7 @@ import javax.imageio.ImageIO;
 import javax.swing.JButton;
 
 import src.Constants;
+import src.game.Die.*;
 
 public abstract class Personnel {
     private int startingHealth, health, speed;
@@ -19,6 +20,7 @@ public abstract class Personnel {
     private BufferedImage image;
     private String name;
     private JButton selectionButton;
+    private DefenseDieType[] defenseDice;
 
     public static enum Directions {
         UP,
@@ -31,13 +33,14 @@ public abstract class Personnel {
         UPRIGHT
     }
 
-    public Personnel(String name, int startingHealth, int speed, Pos pos) {
+    public Personnel(String name, int startingHealth, int speed, Pos pos, DefenseDieType[] defenseDice) {
         this.name = name;
         this.startingHealth = startingHealth;
         this.health = startingHealth;
         this.speed = speed;
         this.stunned = false;
         this.bleeding = false;
+        this.defenseDice = defenseDice;
         try {
             this.image = ImageIO.read(new File(Constants.baseImgFilePath + name + ".jpg"));
         } catch (IOException ex) {
@@ -59,7 +62,8 @@ public abstract class Personnel {
     public void performAttack(Personnel other) {
         int surges = 0;
         TotalAttackResult totalResults = new TotalAttackResult();
-        for (Die.OffenseDieResult result : getOffense()) {
+        for (OffenseRoll roll : getOffense()) {
+            OffenseDieResult result = roll.result();
             totalResults.addDamage(result.damage());
             surges += result.surge();
             totalResults.addAccuracy(result.accuracy());
@@ -77,7 +81,8 @@ public abstract class Personnel {
             Equipment.surgeEffects.get(surgeOptions.remove(selectedIndex)).accept(new Personnel[] { this, other },
                     totalResults);
         }
-        for (Die.DefenseDieResult result : getDefense(other)) {
+        for (DefenseRoll roll : getDefense(other)) {
+            DefenseDieResult result = roll.result();
             if (result.dodge()) {
                 return;
             }
@@ -89,9 +94,15 @@ public abstract class Personnel {
         }
     }
 
-    public abstract Die.DefenseDieResult[] getDefense();
+    public DefenseRoll[] getDefense() {
+        DefenseRoll[] results = new DefenseRoll[defenseDice.length];
+        for (int i = 0; i < defenseDice.length; i++) {
+            results[0] = defenseDice[i].roll();
+        }
+        return results;
+    }
 
-    public abstract Die.OffenseDieResult[] getOffense();
+    public abstract OffenseRoll[] getOffense();
 
     public abstract Equipment.SurgeOptions[] getSurgeOptions();
 
@@ -158,7 +169,7 @@ public abstract class Personnel {
         bleeding = value;
     }
 
-    public Die.DefenseDieResult[] getDefense(Personnel other) {
+    public DefenseRoll[] getDefense(Personnel other) {
         return other.getDefense();
     }
 
