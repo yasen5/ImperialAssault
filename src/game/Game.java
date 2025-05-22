@@ -10,7 +10,6 @@ import java.util.concurrent.CompletableFuture;
 import javax.swing.SwingUtilities;
 
 import javax.imageio.ImageIO;
-import javax.swing.JOptionPane;
 
 import src.Constants;
 import src.Screen;
@@ -91,10 +90,11 @@ public class Game {
             if (rebelsExhausted) {
                 turn = Turn.IMPERIALS;
             } else {
-                int selectedIndex = getDeploymentChoice();
+                int selectedIndex = InputUtils.getMultipleChoice("Deployment Selection", "Choose deployment card to exhaust", getExhaustOptions());
                 Hero activeFigure = heroDeployments.get(selectedIndex);
                 int totalAvailableMoves = activeFigure.getSpeed();
-                int movesUsedFirst = displayMovementOptions(totalAvailableMoves);
+                int movesUsedFirst = InputUtils.getNumericChoice(
+                        "Choose the number of moves you will use first", 0, totalAvailableMoves);
                 totalAvailableMoves -= movesUsedFirst;
                 for (int i = 0; i < movesUsedFirst; i++) {
                     handleMove(activeFigure);
@@ -109,15 +109,6 @@ public class Game {
             // Same as for rebels but for imperials
         }
         // playRound();
-    }
-
-    public int displayMovementOptions(int maxMoves) {
-        int numMovesUsed;
-        do {
-            numMovesUsed = Integer
-                    .valueOf(JOptionPane.showInputDialog("Choose the number of moves you will use first"));
-        } while (numMovesUsed < 0 || numMovesUsed > maxMoves);
-        return numMovesUsed;
     }
 
     public String[] getExhaustOptions() {
@@ -154,21 +145,7 @@ public class Game {
         return true;
     }
 
-    public int getDeploymentChoice() {
-        int selectedIndex;
-        do {
-            selectedIndex = JOptionPane.showOptionDialog(
-                    null,
-                    "Deployment Selection",
-                    "Choose deployment card to exhaust",
-                    JOptionPane.DEFAULT_OPTION,
-                    JOptionPane.QUESTION_MESSAGE,
-                    null,
-                    getExhaustOptions(),
-                    null);
-        } while (selectedIndex < 0 || selectedIndex >= heroDeployments.size());
-        return selectedIndex;
-    }
+    
 
     public void handleMove(Hero activeFigure) {
         CompletableFuture<Directions> dir = new CompletableFuture<>();

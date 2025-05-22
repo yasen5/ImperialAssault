@@ -18,12 +18,7 @@ public class DialaPassil extends Hero {
     @Override
     public Die.DefenseDieResult[] getDefense() {
         Die.DefenseDieResult[] result = new Die.DefenseDieResult[] { Die.rollDefense(DefenseDieType.WHITE) };
-        int response = JOptionPane.showConfirmDialog(
-                null,
-                "You rolled: " + result.toString(),
-                "Would you like to reroll?",
-                JOptionPane.YES_NO_OPTION);
-        if (response == JOptionPane.YES_OPTION) {
+        if (InputUtils.getYesNo("You rolled: " + result.toString(), "Would you like to reroll?")) {
             ApplyStrain(1);
             result = new Die.DefenseDieResult[] { Die.rollDefense(DefenseDieType.WHITE) };
         }

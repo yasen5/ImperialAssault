@@ -7,7 +7,6 @@ import java.io.File;
 import java.io.IOException;
 
 import javax.imageio.ImageIO;
-import javax.swing.JOptionPane;
 
 public class DeploymentCard {
     private BufferedImage image;
@@ -24,20 +23,6 @@ public class DeploymentCard {
             System.exit(0);
         }
         exhausted = false;
-    }
-
-    public boolean exhaust(int mouseX, int mouseY) {
-        if ((mouseX >= x && mouseX <= x + xSize && mouseY >= y && mouseY <= y + ySize)) {
-            int response = JOptionPane.showConfirmDialog(
-                    null,
-                    "Use Deployment Card",
-                    "Use this deployment card?",
-                    JOptionPane.YES_NO_OPTION);
-            if (response == JOptionPane.YES_OPTION) {
-                exhausted = true;
-            }
-        }
-        return exhausted;
     }
 
     public void draw(Graphics g) {

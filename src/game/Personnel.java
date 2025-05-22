@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import javax.imageio.ImageIO;
-import javax.swing.JOptionPane;
 
 import src.Constants;
 
@@ -64,15 +63,7 @@ public abstract class Personnel {
             surgeOptions.add(option);
         }
         while (surges > 0) {
-            int selectedIndex = JOptionPane.showOptionDialog(
-                    null,
-                    "Surge Selection",
-                    "Spend surges: " + surges,
-                    JOptionPane.DEFAULT_OPTION,
-                    JOptionPane.QUESTION_MESSAGE,
-                    null,
-                    surgeOptions.toArray(),
-                    null);
+            int selectedIndex = InputUtils.getMultipleChoice("Surge Selection", "Spend Surges: " + surges, surgeOptions.toArray());
             if (selectedIndex < 0 || selectedIndex >= surgeOptions.size()) {
                 break;
             }
