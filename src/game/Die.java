@@ -22,9 +22,11 @@ public class Die {
     public static record DefenseRoll(int face, DefenseDieResult result) {
     }
 
-    public static record GraphicOffenseDieResult(int face, OffenseDieType die) {}
+    public static record GraphicOffenseDieResult(int face, OffenseDieType die) {
+    }
 
-    public static record GraphicDefenseDieResult(int face, DefenseDieType die) {}
+    public static record GraphicDefenseDieResult(int face, DefenseDieType die) {
+    }
 
     public enum OffenseDieType {
         BLUE(new OffenseDieResult[] {

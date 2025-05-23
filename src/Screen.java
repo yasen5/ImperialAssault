@@ -117,13 +117,12 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 			g.drawRect(0, 0, 1920, 1080);
 			g.setColor(new Color(255, 255, 255));
 			g.drawString("Game over", 100, 100);
-		}
-		else if (gameStarted) {
+		} else if (gameStarted) {
 			g.setColor(new Color(25, 25, 25));
-			g.fillRect(getPreferredSize().width/2 - 200, 0, getPreferredSize().width/2 + 200, getPreferredSize().height);
+			g.fillRect(getPreferredSize().width / 2 - 200, 0, getPreferredSize().width / 2 + 200,
+					getPreferredSize().height);
 			game.drawGame(g);
-		}  
-		else {
+		} else {
 			g.drawImage(startScreenimage, 0,
 					0,
 					getPreferredSize().width,
@@ -153,8 +152,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 			repaint();
 			mainGameLoop = new Thread(() -> game.playRound());
 			mainGameLoop.start();
-		}
-		else {
+		} else {
 			if (selectingCombat) {
 				Personnel personnel = game
 						.getPersonnelAtPos(new Pos(e.getX() / Constants.tileSize, e.getY() / Constants.tileSize));
@@ -162,10 +160,10 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 					selectionButtonOutput.complete(personnel);
 					selectingCombat = false;
 				}
-			}
-			else {
+			} else {
 				previousSelectedCard.setVisible(false);
-				DeploymentCard newDeploymentCard = game.getDeploymentCard(new Pos(e.getX() / Constants.tileSize, e.getY() / Constants.tileSize));
+				DeploymentCard newDeploymentCard = game
+						.getDeploymentCard(new Pos(e.getX() / Constants.tileSize, e.getY() / Constants.tileSize));
 				if (newDeploymentCard != null) {
 					previousSelectedCard = newDeploymentCard;
 				}
@@ -185,7 +183,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 	}
 
 	public void keyPressed(KeyEvent e) {
-		
+
 	}
 
 	public void keyReleased(KeyEvent e) {
@@ -199,7 +197,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 	}
 
 	public void keyTyped(KeyEvent e) {
-		
+
 	}
 
 	public JButton moveAndActivateButton(Directions direction, int x, int y, double angleRads) {

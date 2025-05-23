@@ -179,15 +179,19 @@ public abstract class Personnel {
                 Constants.tileSize * (pos.getY() + ySize), 0, 0, image.getWidth(null), image.getHeight(null),
                 null);
         g.setColor(new Color(255, 255, 255));
-        g.fillRect(pos.getX() * Constants.tileSize, pos.getY() * Constants.tileSize, Constants.tileSize, (int)(Constants.tileSize * 0.1));
-        g.fillRect(pos.getX() * Constants.tileSize, pos.getY() * Constants.tileSize + (int)(Constants.tileSize * 0.9), Constants.tileSize,
+        g.fillRect(pos.getX() * Constants.tileSize, pos.getY() * Constants.tileSize, Constants.tileSize,
+                (int) (Constants.tileSize * 0.1));
+        g.fillRect(pos.getX() * Constants.tileSize, pos.getY() * Constants.tileSize + (int) (Constants.tileSize * 0.9),
+                Constants.tileSize,
                 (int) (Constants.tileSize * 0.1));
         g.fillRect(pos.getX() * Constants.tileSize, pos.getY() * Constants.tileSize, (int) (Constants.tileSize * 0.1),
                 Constants.tileSize);
-                g.fillRect(pos.getX() * Constants.tileSize + (int) (Constants.tileSize * 0.9), pos.getY() * Constants.tileSize, (int) (Constants.tileSize * 0.1),
+        g.fillRect(pos.getX() * Constants.tileSize + (int) (Constants.tileSize * 0.9), pos.getY() * Constants.tileSize,
+                (int) (Constants.tileSize * 0.1),
                 Constants.tileSize);
         g.setColor(new Color(0, 0, 0));
-        g.drawRect(pos.getX() * Constants.tileSize, pos.getY() * Constants.tileSize, Constants.tileSize, Constants.tileSize);
+        g.drawRect(pos.getX() * Constants.tileSize, pos.getY() * Constants.tileSize, Constants.tileSize,
+                Constants.tileSize);
         g.setFont(new Font("Bookman Old Style", Font.BOLD, 11));
         g.setColor(new Color(140, 0, 0));
         g.drawString("" + health, pos.getX() * Constants.tileSize, (pos.getY() + 1) * Constants.tileSize);

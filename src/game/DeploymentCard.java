@@ -14,7 +14,7 @@ public class DeploymentCard {
     private boolean visible = false;
     private static int heroXSize = 600, heroYSize = 472, imperialXSize = 380, imperialYSize = 600;
     private static int x = 1000, y = 10;
-    
+
     private final boolean rebel;
 
     public DeploymentCard(String imgFilePath, boolean rebel) {
@@ -31,7 +31,9 @@ public class DeploymentCard {
     public void draw(Graphics g) {
         int xSize = rebel ? heroXSize : imperialXSize;
         int ySize = rebel ? heroYSize : imperialYSize;
-        if (!visible) {return;}
+        if (!visible) {
+            return;
+        }
         g.drawImage(image, x, y, x + xSize, y + ySize, 0, 0, image.getWidth(null), image.getHeight(null),
                 null);
         if (exhausted) {

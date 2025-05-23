@@ -41,7 +41,9 @@ public class Game {
     public Game(Screen ui) {
         this.ui = ui;
         heroes.add(new DialaPassil(new Pos(6, 5)));
-        imperialDeployments.add(new DeploymentGroup<StormTrooper>(new Pos[] {new Pos(4, 11), new Pos(4, 12), new Pos(5, 11)}, new Pos(500, 500), StormTrooper::new, "StormTrooper"));
+        imperialDeployments
+                .add(new DeploymentGroup<StormTrooper>(new Pos[] { new Pos(4, 11), new Pos(4, 12), new Pos(5, 11) },
+                        new Pos(500, 500), StormTrooper::new, "StormTrooper"));
         turn = Turn.REBELS;
         BufferedImage mapImg = null;
         try {
@@ -54,8 +56,10 @@ public class Game {
     }
 
     public void drawGame(Graphics g) {
-        g.drawImage(mapTile.img(), 0, 0, Constants.tileSize * mapTile.tileArray()[0].length, Constants.tileSize * mapTile
-                .tileArray().length, 0, 0, mapTile.img().getWidth(null), mapTile.img().getHeight(null),
+        g.drawImage(mapTile.img(), 0, 0, Constants.tileSize * mapTile.tileArray()[0].length,
+                Constants.tileSize * mapTile
+                        .tileArray().length,
+                0, 0, mapTile.img().getWidth(null), mapTile.img().getHeight(null),
                 null);
         if (Constants.debug) {
             for (int i = 0; i < mapTile.tileArray().length; i++) {
@@ -72,17 +76,16 @@ public class Game {
             deployment.draw(g);
         }
         g.setColor(new Color(255, 255, 255));
-        g.drawString("Offense Results:", 960, 1080/2);
+        g.drawString("Offense Results:", 960, 1080 / 2);
         g.drawString("Defense Results:", 960, 810);
         for (int i = 0; i < offenseResults.size(); i++) {
             BufferedImage image = Die.offenseDieFaces.get(offenseResults.get(i));
             int startX = 960 + i * (Constants.tileSize + 10);
-            int startY = 1080/2 + 20;
-            g.drawImage(image, startX,startY
-					,
-					startX + Constants.tileSize,
-					startY + Constants.tileSize, 0, 0, image.getWidth(null), image.getHeight(null),
-					null);
+            int startY = 1080 / 2 + 20;
+            g.drawImage(image, startX, startY,
+                    startX + Constants.tileSize,
+                    startY + Constants.tileSize, 0, 0, image.getWidth(null), image.getHeight(null),
+                    null);
         }
         for (int i = 0; i < defenseResults.size(); i++) {
             BufferedImage image = Die.defenseDieFaces.get(defenseResults.get(i));
@@ -120,8 +123,8 @@ public class Game {
             if (rebelsExhausted) {
                 turn = Turn.IMPERIALS;
             } else {
-                int selectedIndex = InputUtils.getMultipleChoice("Deployment Selection", "Choose deployment card to exhaust", getExhaustOptions());
-                Hero activeFigure = heroes.get(selectedIndex);
+                Hero activeFigure = heroes.get(InputUtils.getMultipleChoice("Deployment Selection",
+                        "Choose deployment card to exhaust", getExhaustOptions()));
                 int totalAvailableMoves = activeFigure.getSpeed();
                 int movesUsedFirst = InputUtils.getNumericChoice(
                         "Choose the number of moves you will use first", 0, totalAvailableMoves);
@@ -132,8 +135,8 @@ public class Game {
                 ui.deactiveateMovementButtons();
                 // Player chooses from a list of available actions: attack, recover, special
                 Actions[] availableActions = activeFigure.getActions();
-                selectedIndex = InputUtils.getMultipleChoice("Action Selection", "Choose an action to take", availableActions);
-                if (availableActions[selectedIndex] == Actions.ATTACK) {
+                if (availableActions[InputUtils.getMultipleChoice("Action Selection", "Choose an action to take",
+                        availableActions)] == Actions.ATTACK) {
                     handleAttack(activeFigure);
                 }
                 // action
@@ -233,14 +236,15 @@ public class Game {
         }
         heroes.add(new DialaPassil(new Pos(6, 5)));
         imperialDeployments.add(new DeploymentGroup<StormTrooper>(
-                new Pos[] { new Pos(4, 11), new Pos(4, 12), new Pos(5, 11) }, new Pos(500, 500), StormTrooper::new, "StormTrooper"));
+                new Pos[] { new Pos(4, 11), new Pos(4, 12), new Pos(5, 11) }, new Pos(500, 500), StormTrooper::new,
+                "StormTrooper"));
         turn = Turn.REBELS;
     }
 
     public static void addOffenseResult(GraphicOffenseDieResult offenseResults) {
         Game.offenseResults.add(offenseResults);
     }
-    
+
     public static void addDefenseResult(GraphicDefenseDieResult defenseResults) {
         Game.defenseResults.add(defenseResults);
     }

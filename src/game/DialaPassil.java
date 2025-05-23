@@ -8,7 +8,7 @@ public class DialaPassil extends Hero {
                 new OffenseDieType[] { OffenseDieType.GREEN, OffenseDieType.YELLOW }, new Equipment.SurgeOptions[] {
                         Equipment.SurgeOptions.STUN,
                         Equipment.SurgeOptions.DAMAGE1 }),
-                pos, false, new DefenseDieType[] {DefenseDieType.WHITE});
+                pos, false, new DefenseDieType[] { DefenseDieType.WHITE });
     }
 
     @Override

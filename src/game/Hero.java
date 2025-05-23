@@ -21,7 +21,8 @@ public abstract class Hero extends Personnel implements FullDeployment {
         SPECIAL
     }
 
-    public Hero(String name, int startingHealth, int speed, int endurance, Equipment.Weapon weapon, Pos pos, boolean hasSpecial, DefenseDieType[] defenseDice) {
+    public Hero(String name, int startingHealth, int speed, int endurance, Equipment.Weapon weapon, Pos pos,
+            boolean hasSpecial, DefenseDieType[] defenseDice) {
         super(name, startingHealth, speed, pos, defenseDice);
         this.endurance = endurance;
         this.weapon = weapon;
@@ -50,8 +51,8 @@ public abstract class Hero extends Personnel implements FullDeployment {
     }
 
     public Actions[] getActions() {
-        return hasSpecial ? new Actions[] {Actions.ATTACK,
-                Actions.RECOVER, Actions.SPECIAL} : new Actions[] {Actions.ATTACK, Actions.RECOVER};
+        return hasSpecial ? new Actions[] { Actions.ATTACK,
+                Actions.RECOVER, Actions.SPECIAL } : new Actions[] { Actions.ATTACK, Actions.RECOVER };
     }
 
     @Override
