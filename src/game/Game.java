@@ -24,7 +24,7 @@ public class Game {
     private static Turn turn;
     private static MapTile mapTile;
     private static ArrayList<DeploymentGroup<? extends Imperial>> imperialDeployments = new ArrayList<>();
-    private static ArrayList<Hero> heroDeployments = new ArrayList<>();
+    private static ArrayList<Hero> heroes = new ArrayList<>();
     private static Screen ui;
     private static ArrayList<GraphicOffenseDieResult> offenseResults = new ArrayList<>();
     private static ArrayList<GraphicDefenseDieResult> defenseResults = new ArrayList<>();
@@ -40,8 +40,8 @@ public class Game {
 
     public Game(Screen ui) {
         this.ui = ui;
-        heroDeployments.add(new DialaPassil(new Pos(6, 5), 50, 50));
-        imperialDeployments.add(new DeploymentGroup<StormTrooper>(new Pos[] {new Pos(4, 11), new Pos(4, 12), new Pos(5, 11)}, new Pos(500, 500), StormTrooper::new));
+        heroes.add(new DialaPassil(new Pos(6, 5)));
+        imperialDeployments.add(new DeploymentGroup<StormTrooper>(new Pos[] {new Pos(4, 11), new Pos(4, 12), new Pos(5, 11)}, new Pos(500, 500), StormTrooper::new, "StormTrooper"));
         turn = Turn.REBELS;
         BufferedImage mapImg = null;
         try {
@@ -65,7 +65,7 @@ public class Game {
                 }
             }
         }
-        for (Hero hero : heroDeployments) {
+        for (Hero hero : heroes) {
             hero.draw(g);
         }
         for (DeploymentGroup<? extends Imperial> deployment : imperialDeployments) {
@@ -73,44 +73,46 @@ public class Game {
         }
         g.setColor(new Color(255, 255, 255));
         g.drawString("Offense Results:", 960, 1080/2);
-        g.drawString("Defense Results:", 960, (int)(1080 * 3.0/4.0));
+        g.drawString("Defense Results:", 960, 810);
         for (int i = 0; i < offenseResults.size(); i++) {
             BufferedImage image = Die.offenseDieFaces.get(offenseResults.get(i));
-            g.drawImage(image, 1200 + i * (Constants.tileSize + 10),
-					1080/2 + 20,
-					Constants.tileSize,
-					Constants.tileSize, 0, 0, image.getWidth(null), image.getHeight(null),
+            int startX = 960 + i * (Constants.tileSize + 10);
+            int startY = 1080/2 + 20;
+            g.drawImage(image, startX,startY
+					,
+					startX + Constants.tileSize,
+					startY + Constants.tileSize, 0, 0, image.getWidth(null), image.getHeight(null),
 					null);
-            System.out.println("Drawing an offense die: " + offenseResults);
         }
         for (int i = 0; i < defenseResults.size(); i++) {
             BufferedImage image = Die.defenseDieFaces.get(defenseResults.get(i));
-            g.drawImage(image, 960 + i * (Constants.tileSize + 10),
-                    1080 / 5 * 6,
-                    Constants.tileSize,
-                    Constants.tileSize, 0, 0, image.getWidth(null), image.getHeight(null),
+            int startX = 960 + i * (Constants.tileSize + 10);
+            int startY = 820;
+            g.drawImage(image, startX,
+                    startY,
+                    startX + Constants.tileSize,
+                    startY + Constants.tileSize, 0, 0, image.getWidth(null), image.getHeight(null),
                     null);
-            System.out.println("Drawing a defense die: " + offenseResults);
         }
     }
 
     public void handleKeyboardInput(int keyCode) {
         switch (keyCode) {
-            case 81 -> heroDeployments.get(0).move(Directions.UPLEFT);
-            case 87 -> heroDeployments.get(0).move(Directions.UP);
-            case 69 -> heroDeployments.get(0).move(Directions.UPRIGHT);
-            case 65 -> heroDeployments.get(0).move(Directions.LEFT);
-            case 68 -> heroDeployments.get(0).move(Directions.RIGHT);
-            case 90 -> heroDeployments.get(0).move(Directions.DOWNLEFT);
-            case 88 -> heroDeployments.get(0).move(Directions.DOWN);
-            case 67 -> heroDeployments.get(0).move(Directions.DOWNRIGHT);
+            case 81 -> heroes.get(0).move(Directions.UPLEFT);
+            case 87 -> heroes.get(0).move(Directions.UP);
+            case 69 -> heroes.get(0).move(Directions.UPRIGHT);
+            case 65 -> heroes.get(0).move(Directions.LEFT);
+            case 68 -> heroes.get(0).move(Directions.RIGHT);
+            case 90 -> heroes.get(0).move(Directions.DOWNLEFT);
+            case 88 -> heroes.get(0).move(Directions.DOWN);
+            case 67 -> heroes.get(0).move(Directions.DOWNRIGHT);
         }
     }
 
     public void playRound() {
         if (turn == Turn.REBELS) {
             boolean rebelsExhausted = true;
-            for (Hero hero : heroDeployments) {
+            for (Hero hero : heroes) {
                 if (!hero.getExhausted()) {
                     rebelsExhausted = false;
                 }
@@ -119,7 +121,7 @@ public class Game {
                 turn = Turn.IMPERIALS;
             } else {
                 int selectedIndex = InputUtils.getMultipleChoice("Deployment Selection", "Choose deployment card to exhaust", getExhaustOptions());
-                Hero activeFigure = heroDeployments.get(selectedIndex);
+                Hero activeFigure = heroes.get(selectedIndex);
                 int totalAvailableMoves = activeFigure.getSpeed();
                 int movesUsedFirst = InputUtils.getNumericChoice(
                         "Choose the number of moves you will use first", 0, totalAvailableMoves);
@@ -142,12 +144,13 @@ public class Game {
             // Same as for rebels but for imperials
         }
         // playRound();
+        ui.repaint();
     }
 
     public String[] getExhaustOptions() {
         ArrayList<String> readyDeployments = new ArrayList<String>();
         if (turn == Turn.REBELS) {
-            for (Hero hero : heroDeployments) {
+            for (Hero hero : heroes) {
                 if (!hero.getExhausted()) {
                     readyDeployments.add(hero.getName());
                 }
@@ -163,7 +166,7 @@ public class Game {
     }
 
     public static boolean isSpaceAvailable(Pos pos) {
-        for (Hero hero : heroDeployments) {
+        for (Hero hero : heroes) {
             if (hero.getPos().equalTo(pos)) {
                 return false;
             }
@@ -207,19 +210,6 @@ public class Game {
         activeFigure.performAttack(chosenDefender);
     }
 
-    public ArrayList<JButton> getSelectionButtons() {
-        ArrayList<JButton> buttonList = new ArrayList<>();
-        for (DeploymentGroup<? extends Imperial> depGroup : imperialDeployments) {
-            for (Imperial imperial : depGroup.getMembers()) {
-                buttonList.add(imperial.getSelectionButton());
-            }
-        }
-        for (Hero hero : heroDeployments) {
-            buttonList.add(hero.getSelectionButton());
-        }
-        return buttonList;
-    }
-
     public ArrayList<Imperial> getImperials() {
         ArrayList<Imperial> imperials = new ArrayList<>();
         for (DeploymentGroup<? extends Imperial> depGroup : imperialDeployments) {
@@ -231,19 +221,19 @@ public class Game {
     }
 
     public ArrayList<Hero> getHeroes() {
-        return heroDeployments;
+        return heroes;
     }
 
     public void reset() {
-        while (!heroDeployments.isEmpty()) {
-            heroDeployments.remove(0);
+        while (!heroes.isEmpty()) {
+            heroes.remove(0);
         }
         while (!imperialDeployments.isEmpty()) {
             imperialDeployments.remove(0);
         }
-        heroDeployments.add(new DialaPassil(new Pos(6, 5), 50, 50));
+        heroes.add(new DialaPassil(new Pos(6, 5)));
         imperialDeployments.add(new DeploymentGroup<StormTrooper>(
-                new Pos[] { new Pos(4, 11), new Pos(4, 12), new Pos(5, 11) }, new Pos(500, 500), StormTrooper::new));
+                new Pos[] { new Pos(4, 11), new Pos(4, 12), new Pos(5, 11) }, new Pos(500, 500), StormTrooper::new, "StormTrooper"));
         turn = Turn.REBELS;
     }
 
@@ -253,5 +243,41 @@ public class Game {
     
     public static void addDefenseResult(GraphicDefenseDieResult defenseResults) {
         Game.defenseResults.add(defenseResults);
+    }
+
+    public Personnel getPersonnelAtPos(Pos pos) {
+        for (DeploymentGroup<? extends Imperial> deployment : imperialDeployments) {
+            for (Imperial imperial : deployment.getMembers()) {
+                if (imperial.getPos().equalTo(pos)) {
+                    return imperial;
+                }
+            }
+        }
+        for (Hero hero : heroes) {
+            if (hero.getPos().equalTo(pos)) {
+                return hero;
+            }
+        }
+        return null;
+    }
+
+    public DeploymentCard getDeploymentCard(Pos pos) {
+        for (DeploymentGroup<? extends Imperial> deployment : imperialDeployments) {
+            for (Imperial imperial : deployment.getMembers()) {
+                if (imperial.getPos().equalTo(pos)) {
+                    return deployment.getDeploymentCard();
+                }
+            }
+        }
+        for (Hero hero : heroes) {
+            if (hero.getPos().equalTo(pos)) {
+                return hero.getDeploymentCard();
+            }
+        }
+        return null;
+    }
+
+    public static void repaintScreen() {
+        ui.repaint();
     }
 }

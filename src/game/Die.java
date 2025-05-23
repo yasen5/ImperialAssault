@@ -61,6 +61,7 @@ public class Die {
         }
 
         public OffenseDieResult getResult(int face) {
+            System.out.println("Dice rolled");
             return results[face];
         }
     }

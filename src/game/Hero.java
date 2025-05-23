@@ -7,7 +7,7 @@ import src.game.Die.DefenseDieType;
 import src.game.Die.OffenseDieType;
 import src.game.Die.OffenseRoll;
 
-public abstract class Hero extends Personnel {
+public abstract class Hero extends Personnel implements FullDeployment {
     private int endurance, strain;
     protected boolean wounded;
     private Equipment.Weapon weapon;
@@ -21,15 +21,13 @@ public abstract class Hero extends Personnel {
         SPECIAL
     }
 
-    public Hero(String name, int startingHealth, int speed, int endurance, Equipment.Weapon weapon, Pos pos,
-            int deploymentX, int deploymentY, boolean hasSpecial, DefenseDieType[] defenseDice) {
+    public Hero(String name, int startingHealth, int speed, int endurance, Equipment.Weapon weapon, Pos pos, boolean hasSpecial, DefenseDieType[] defenseDice) {
         super(name, startingHealth, speed, pos, defenseDice);
         this.endurance = endurance;
         this.weapon = weapon;
         this.wounded = false;
         this.strain = 0;
-        this.deploymentCard = new DeploymentCard(Constants.baseImgFilePath + name + "Deployment.jpg", deploymentX,
-                deploymentY);
+        this.deploymentCard = new DeploymentCard(Constants.baseImgFilePath + name + "Deployment.jpg", true);
         this.hasSpecial = hasSpecial;
     }
 
@@ -68,5 +66,9 @@ public abstract class Hero extends Personnel {
 
     public Equipment.SurgeOptions[] getSurgeOptions() {
         return weapon.surgeOptions();
+    }
+
+    public DeploymentCard getDeploymentCard() {
+        return deploymentCard;
     }
 }

@@ -21,11 +21,13 @@ import javax.swing.JButton;
 import javax.swing.JPanel;
 
 import src.game.BiMap;
+import src.game.DeploymentCard;
 import src.game.Game;
 import src.game.Imperial;
 import src.game.Personnel;
 
 import src.game.Personnel.Directions;
+import src.game.Pos;
 
 public class Screen extends JPanel implements ActionListener, MouseListener, KeyListener {
 	private Game game;
@@ -37,6 +39,8 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 	private boolean selectingImperials;
 	private boolean gameEnd = false;
 	private Thread mainGameLoop;
+	private boolean selectingCombat = false;
+	private DeploymentCard previousSelectedCard;
 
 	public BiMap<Directions, JButton> movementButtons = new BiMap<Directions, JButton>();
 
@@ -94,10 +98,8 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 		} catch (IOException e) {
 			System.out.println("Haha l no cover art");
 		}
-		for (JButton button : game.getSelectionButtons()) {
-			add(button);
-			button.addActionListener(this);
-		}
+		previousSelectedCard = game.getHeroes().get(0).getDeploymentCard();
+		previousSelectedCard.setVisible(true);
 	}
 
 	@Override
@@ -117,6 +119,8 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 			g.drawString("Game over", 100, 100);
 		}
 		else if (gameStarted) {
+			g.setColor(new Color(25, 25, 25));
+			g.fillRect(getPreferredSize().width/2 - 200, 0, getPreferredSize().width/2 + 200, getPreferredSize().height);
 			game.drawGame(g);
 		}  
 		else {
@@ -136,13 +140,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 				continue;
 			}
 		}
-		if (selectingImperials) {
-			for (Imperial imperial : game.getImperials()) {
-				if (source.equals(imperial.getSelectionButton())) {
-					selectionButtonOutput.complete(imperial);
-				}
-			}
-		}
+
 	}
 
 	public void mousePressed(MouseEvent e) {
@@ -155,6 +153,24 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 			repaint();
 			mainGameLoop = new Thread(() -> game.playRound());
 			mainGameLoop.start();
+		}
+		else {
+			if (selectingCombat) {
+				Personnel personnel = game
+						.getPersonnelAtPos(new Pos(e.getX() / Constants.tileSize, e.getY() / Constants.tileSize));
+				if (personnel != null && ((personnel instanceof Imperial) == selectingImperials)) {
+					selectionButtonOutput.complete(personnel);
+					selectingCombat = false;
+				}
+			}
+			else {
+				previousSelectedCard.setVisible(false);
+				DeploymentCard newDeploymentCard = game.getDeploymentCard(new Pos(e.getX() / Constants.tileSize, e.getY() / Constants.tileSize));
+				if (newDeploymentCard != null) {
+					previousSelectedCard = newDeploymentCard;
+				}
+				previousSelectedCard.setVisible(true);
+			}
 		}
 		repaint();
 	}
@@ -186,10 +202,6 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 		
 	}
 
-	public void Repaint() {
-		repaint();
-	}
-
 	public JButton moveAndActivateButton(Directions direction, int x, int y, double angleRads) {
 		int xDiff = (int) (Constants.tileSize *
 				Math.cos(angleRads));
@@ -219,6 +231,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 	public void setSelectionButtonOutput(CompletableFuture<Personnel> output, boolean selectingImperials) {
 		this.selectionButtonOutput = output;
 		this.selectingImperials = selectingImperials;
+		this.selectingCombat = true;
 	}
 
 	public void deactiveateMovementButtons() {

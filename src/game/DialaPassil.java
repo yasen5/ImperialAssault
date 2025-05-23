@@ -3,12 +3,12 @@ package src.game;
 import src.game.Die.*;
 
 public class DialaPassil extends Hero {
-    public DialaPassil(Pos pos, int deploymentX, int deploymentY) {
+    public DialaPassil(Pos pos) {
         super("DialaPassil", 12, 300, 5, new Equipment.Weapon("Plasteel Staff",
-                new OffenseDieType[] { OffenseDieType.GREEN, OffenseDieType.BLUE }, new Equipment.SurgeOptions[] {
+                new OffenseDieType[] { OffenseDieType.GREEN, OffenseDieType.YELLOW }, new Equipment.SurgeOptions[] {
                         Equipment.SurgeOptions.STUN,
                         Equipment.SurgeOptions.DAMAGE1 }),
-                pos, deploymentX, deploymentY, false, new DefenseDieType[] {DefenseDieType.WHITE});
+                pos, false, new DefenseDieType[] {DefenseDieType.WHITE});
     }
 
     @Override

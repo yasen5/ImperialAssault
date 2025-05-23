@@ -4,15 +4,19 @@ import java.awt.Graphics;
 import java.util.ArrayList;
 import java.util.function.Function;
 
-public class DeploymentGroup<T extends Imperial> {
+import src.Constants;
+
+public class DeploymentGroup<T extends Imperial> implements FullDeployment {
     private ArrayList<T> members = new ArrayList<T>();
     private Pos infoCardPos;
     private Function<Pos, T> constructor;
     private boolean exhausted = false;
+    private DeploymentCard deploymentCard;
 
-    public DeploymentGroup(Pos[] poses, Pos infoCardPos, Function<Pos, T> constructor) {
+    public DeploymentGroup(Pos[] poses, Pos infoCardPos, Function<Pos, T> constructor, String name) {
         this.infoCardPos = infoCardPos;
         this.constructor = constructor;
+        this.deploymentCard = new DeploymentCard(Constants.baseImgFilePath + name + "Deployment.jpg", false);
         addMembers(poses);
     }
 
@@ -48,9 +52,14 @@ public class DeploymentGroup<T extends Imperial> {
         for (T member : members) {
             member.draw(g);
         }
+        deploymentCard.draw(g);
     }
 
     public ArrayList<T> getMembers() {
         return members;
+    }
+
+    public DeploymentCard getDeploymentCard() {
+        return deploymentCard;
     }
 }

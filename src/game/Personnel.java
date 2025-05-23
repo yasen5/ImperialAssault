@@ -1,5 +1,7 @@
 package src.game;
 
+import java.awt.Color;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -19,7 +21,6 @@ public abstract class Personnel {
     private boolean stunned, bleeding;
     private BufferedImage image;
     private String name;
-    private JButton selectionButton;
     private DefenseDieType[] defenseDice;
 
     public static enum Directions {
@@ -52,11 +53,6 @@ public abstract class Personnel {
             }
         }
         this.pos = pos;
-        this.selectionButton = new JButton();
-        this.selectionButton.setOpaque(false);
-        this.selectionButton.setContentAreaFilled(false);
-        this.selectionButton.setBorderPainted(false);
-        moveButtonToCurrentLocation();
     }
 
     public void performAttack(Personnel other) {
@@ -68,13 +64,15 @@ public abstract class Personnel {
             surges += result.surge();
             totalResults.addAccuracy(result.accuracy());
         }
+        Game.repaintScreen();
         ArrayList<Equipment.SurgeOptions> surgeOptions = new ArrayList<Equipment.SurgeOptions>();
         Equipment.SurgeOptions[] possibleActions = getSurgeOptions();
         for (Equipment.SurgeOptions option : possibleActions) {
             surgeOptions.add(option);
         }
         while (surges > 0 && !surgeOptions.isEmpty()) {
-            int selectedIndex = InputUtils.getMultipleChoice("Surge Selection", "Spend Surges: " + surges, surgeOptions.toArray());
+            int selectedIndex = InputUtils.getMultipleChoice("Surge Selection", "Spend Surges: " + surges,
+                    surgeOptions.toArray());
             if (selectedIndex < 0 || selectedIndex >= surgeOptions.size()) {
                 break;
             }
@@ -179,7 +177,21 @@ public abstract class Personnel {
                 Constants.tileSize * pos.getY(),
                 Constants.tileSize * (pos.getX() + xSize),
                 Constants.tileSize * (pos.getY() + ySize), 0, 0, image.getWidth(null), image.getHeight(null),
-                null);    }
+                null);
+        g.setColor(new Color(255, 255, 255));
+        g.fillRect(pos.getX() * Constants.tileSize, pos.getY() * Constants.tileSize, Constants.tileSize, (int)(Constants.tileSize * 0.1));
+        g.fillRect(pos.getX() * Constants.tileSize, pos.getY() * Constants.tileSize + (int)(Constants.tileSize * 0.9), Constants.tileSize,
+                (int) (Constants.tileSize * 0.1));
+        g.fillRect(pos.getX() * Constants.tileSize, pos.getY() * Constants.tileSize, (int) (Constants.tileSize * 0.1),
+                Constants.tileSize);
+                g.fillRect(pos.getX() * Constants.tileSize + (int) (Constants.tileSize * 0.9), pos.getY() * Constants.tileSize, (int) (Constants.tileSize * 0.1),
+                Constants.tileSize);
+        g.setColor(new Color(0, 0, 0));
+        g.drawRect(pos.getX() * Constants.tileSize, pos.getY() * Constants.tileSize, Constants.tileSize, Constants.tileSize);
+        g.setFont(new Font("Bookman Old Style", Font.BOLD, 11));
+        g.setColor(new Color(140, 0, 0));
+        g.drawString("" + health, pos.getX() * Constants.tileSize, (pos.getY() + 1) * Constants.tileSize);
+    }
 
     public String getName() {
         return name;
@@ -229,14 +241,5 @@ public abstract class Personnel {
 
     public Pos getPos() {
         return pos;
-    }
-
-    public JButton getSelectionButton() {
-        return selectionButton;
-    }
-
-    public void moveButtonToCurrentLocation() {
-        this.selectionButton.setBounds(pos.getX() * Constants.tileSize, pos.getY() * Constants.tileSize,
-                Constants.tileSize, Constants.tileSize);
     }
 }
