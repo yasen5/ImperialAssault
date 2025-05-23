@@ -1,9 +1,6 @@
 package src.game;
 
-import javax.swing.JButton;
-
 import src.game.Die.DefenseDieType;
-import src.game.Die.DefenseRoll;
 import src.game.Die.OffenseDieType;
 import src.game.Die.OffenseRoll;
 

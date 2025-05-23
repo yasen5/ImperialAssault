@@ -15,6 +15,8 @@ import javax.imageio.ImageIO;
 
 import src.Constants;
 import src.Screen;
+import src.game.Die.GraphicDefenseDieResult;
+import src.game.Die.GraphicOffenseDieResult;
 import src.game.Hero.Actions;
 import src.game.Personnel.Directions;
 
@@ -24,6 +26,8 @@ public class Game {
     private static ArrayList<DeploymentGroup<? extends Imperial>> imperialDeployments = new ArrayList<>();
     private static ArrayList<Hero> heroDeployments = new ArrayList<>();
     private static Screen ui;
+    private static ArrayList<GraphicOffenseDieResult> offenseResults = new ArrayList<>();
+    private static ArrayList<GraphicDefenseDieResult> defenseResults = new ArrayList<>();
 
     private static enum Turn {
         REBELS,
@@ -66,6 +70,27 @@ public class Game {
         }
         for (DeploymentGroup<? extends Imperial> deployment : imperialDeployments) {
             deployment.draw(g);
+        }
+        g.setColor(new Color(255, 255, 255));
+        g.drawString("Offense Results:", 960, 1080/2);
+        g.drawString("Defense Results:", 960, (int)(1080 * 3.0/4.0));
+        for (int i = 0; i < offenseResults.size(); i++) {
+            BufferedImage image = Die.offenseDieFaces.get(offenseResults.get(i));
+            g.drawImage(image, 1200 + i * (Constants.tileSize + 10),
+					1080/2 + 20,
+					Constants.tileSize,
+					Constants.tileSize, 0, 0, image.getWidth(null), image.getHeight(null),
+					null);
+            System.out.println("Drawing an offense die: " + offenseResults);
+        }
+        for (int i = 0; i < defenseResults.size(); i++) {
+            BufferedImage image = Die.defenseDieFaces.get(defenseResults.get(i));
+            g.drawImage(image, 960 + i * (Constants.tileSize + 10),
+                    1080 / 5 * 6,
+                    Constants.tileSize,
+                    Constants.tileSize, 0, 0, image.getWidth(null), image.getHeight(null),
+                    null);
+            System.out.println("Drawing a defense die: " + offenseResults);
         }
     }
 
@@ -220,5 +245,13 @@ public class Game {
         imperialDeployments.add(new DeploymentGroup<StormTrooper>(
                 new Pos[] { new Pos(4, 11), new Pos(4, 12), new Pos(5, 11) }, new Pos(500, 500), StormTrooper::new));
         turn = Turn.REBELS;
+    }
+
+    public static void addOffenseResult(GraphicOffenseDieResult offenseResults) {
+        Game.offenseResults.add(offenseResults);
+    }
+    
+    public static void addDefenseResult(GraphicDefenseDieResult defenseResults) {
+        Game.defenseResults.add(defenseResults);
     }
 }

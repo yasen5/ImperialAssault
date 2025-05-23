@@ -73,13 +73,14 @@ public abstract class Personnel {
         for (Equipment.SurgeOptions option : possibleActions) {
             surgeOptions.add(option);
         }
-        while (surges > 0) {
+        while (surges > 0 && !surgeOptions.isEmpty()) {
             int selectedIndex = InputUtils.getMultipleChoice("Surge Selection", "Spend Surges: " + surges, surgeOptions.toArray());
             if (selectedIndex < 0 || selectedIndex >= surgeOptions.size()) {
                 break;
             }
             Equipment.surgeEffects.get(surgeOptions.remove(selectedIndex)).accept(new Personnel[] { this, other },
                     totalResults);
+            surges--;
         }
         for (DefenseRoll roll : getDefense(other)) {
             DefenseDieResult result = roll.result();
@@ -140,7 +141,7 @@ public abstract class Personnel {
                 incrementY(1);
             }
         }
-        moveButtonToCurrentLocation();
+        // moveButtonToCurrentLocation();
     }
 
     public void incrementX(int amt) {

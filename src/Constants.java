@@ -1,13 +1,6 @@
 package src;
 
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-
-import javax.imageio.ImageIO;
 import javax.swing.JFrame;
-
-import src.game.Game.MapTile;
 
 public class Constants {
 

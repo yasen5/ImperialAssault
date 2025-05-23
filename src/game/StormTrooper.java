@@ -1,6 +1,5 @@
 package src.game;
 
-import src.Constants;
 import src.game.Die.DefenseDieType;
 import src.game.Die.OffenseDieType;
 

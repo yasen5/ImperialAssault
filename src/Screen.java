@@ -43,7 +43,6 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 	public Screen() {
 		setFocusable(true);
 		setLayout(null);
-		ImageIcon originalIcon = new ImageIcon("path/to/image.png");
 		movementButtons.put(Directions.UP,
 				new JButton(new ImageIcon(new ImageIcon(Constants.baseImgFilePath + "ArrowButtonUp.png").getImage()
 						.getScaledInstance(buttonSize,
