@@ -8,20 +8,17 @@ import src.Constants;
 
 public class DeploymentGroup<T extends Imperial> implements FullDeployment {
     private ArrayList<T> members = new ArrayList<T>();
-    private Pos infoCardPos;
     private Function<Pos, T> constructor;
     private boolean exhausted = false;
     private DeploymentCard deploymentCard;
 
-    public DeploymentGroup(Pos[] poses, Pos infoCardPos, Function<Pos, T> constructor, String name) {
-        this.infoCardPos = infoCardPos;
+    public DeploymentGroup(Pos[] poses, Function<Pos, T> constructor, String name) {
         this.constructor = constructor;
         this.deploymentCard = new DeploymentCard(Constants.baseImgFilePath + name + "Deployment.jpg", false);
         addMembers(poses);
     }
 
-    public DeploymentGroup(Pos pos, Pos infoCardPos, Function<Pos, T> constructor) {
-        this.infoCardPos = infoCardPos;
+    public DeploymentGroup(Pos pos, Function<Pos, T> constructor) {
         this.constructor = constructor;
         addMember(pos);
     }

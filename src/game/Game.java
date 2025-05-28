@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 
-import javax.swing.JButton;
 import javax.swing.SwingUtilities;
 
 import javax.imageio.ImageIO;
@@ -17,11 +16,11 @@ import src.Constants;
 import src.Screen;
 import src.game.Die.GraphicDefenseDieResult;
 import src.game.Die.GraphicOffenseDieResult;
-import src.game.Hero.Actions;
+import src.game.Hero.HeroActions;
+import src.game.Imperial.ImperialActions;
 import src.game.Personnel.Directions;
 
 public class Game {
-    private static Turn turn;
     private static MapTile mapTile;
     private static ArrayList<DeploymentGroup<? extends Imperial>> imperialDeployments = new ArrayList<>();
     private static ArrayList<Hero> heroes = new ArrayList<>();
@@ -29,22 +28,12 @@ public class Game {
     private static ArrayList<GraphicOffenseDieResult> offenseResults = new ArrayList<>();
     private static ArrayList<GraphicDefenseDieResult> defenseResults = new ArrayList<>();
 
-    private static enum Turn {
-        REBELS,
-        IMPERIALS
-    }
-
     public static record MapTile(BufferedImage img, int[][] tileArray) {
-
     }
 
     public Game(Screen ui) {
         this.ui = ui;
-        heroes.add(new DialaPassil(new Pos(6, 5)));
-        imperialDeployments
-                .add(new DeploymentGroup<StormTrooper>(new Pos[] { new Pos(4, 11), new Pos(4, 12), new Pos(5, 11) },
-                        new Pos(500, 500), StormTrooper::new, "StormTrooper"));
-        turn = Turn.REBELS;
+        setup();
         BufferedImage mapImg = null;
         try {
             mapImg = ImageIO.read(new File(Constants.baseImgFilePath + "TutorialTile.png"));
@@ -113,46 +102,71 @@ public class Game {
     }
 
     public void playRound() {
-        if (turn == Turn.REBELS) {
-            boolean rebelsExhausted = true;
-            for (Hero hero : heroes) {
-                if (!hero.getExhausted()) {
-                    rebelsExhausted = false;
-                }
-            }
-            if (rebelsExhausted) {
-                turn = Turn.IMPERIALS;
-            } else {
-                Hero activeFigure = heroes.get(InputUtils.getMultipleChoice("Deployment Selection",
-                        "Choose deployment card to exhaust", getExhaustOptions()));
-                int totalAvailableMoves = activeFigure.getSpeed();
-                int movesUsedFirst = InputUtils.getNumericChoice(
-                        "Choose the number of moves you will use first", 0, totalAvailableMoves);
-                totalAvailableMoves -= movesUsedFirst;
-                for (int i = 0; i < movesUsedFirst; i++) {
-                    handleMove(activeFigure);
-                }
-                ui.deactiveateMovementButtons();
+        String[] heroExhaustOptions = new String[0];// getExhaustOptions(true);
+        String[] imperialExhaustOptions = getExhaustOptions(false);
+        if (heroExhaustOptions.length > 0) {
+            Hero activeFigure = heroes.get(InputUtils.getMultipleChoice("Deployment Selection",
+                    "Choose deployment card to exhaust", heroExhaustOptions));
+            int totalAvailableMoves = 0;
+            for (int i = 0; i < 2; i++) {
+                HeroActions[] availableActions = activeFigure.getActions();
+                HeroActions chosenAction = availableActions[InputUtils.getMultipleChoice("Action Selection",
+                        "Choose an action to take",
+                        availableActions)];
                 // Player chooses from a list of available actions: attack, recover, special
-                Actions[] availableActions = activeFigure.getActions();
-                if (availableActions[InputUtils.getMultipleChoice("Action Selection", "Choose an action to take",
-                        availableActions)] == Actions.ATTACK) {
-                    handleAttack(activeFigure);
-                }
                 // action
-                // Player uses the rest of their moves (if any)
+                switch (chosenAction) {
+                    case MOVE -> {
+                        totalAvailableMoves += activeFigure.getSpeed();
+                        int movesUsed = InputUtils.getNumericChoice(
+                                "Choose the number of moves you will use first", 0, totalAvailableMoves);
+                        totalAvailableMoves -= movesUsed;
+                        handleMoves(activeFigure, movesUsed);
+                    }
+                    case ATTACK -> handleAttack(activeFigure);
+                    case RECOVER -> activeFigure.dealDamage(-1 * activeFigure.getEndurance());
+                    case SPECIAL -> activeFigure.performSpecial();
+                }
             }
+            // Player uses the rest of their moves (if any)
+            handleMoves(activeFigure, totalAvailableMoves);
         }
-        if (turn == Turn.IMPERIALS) {
-            // Same as for rebels but for imperials
+        if (imperialExhaustOptions.length > 0) {
+            DeploymentGroup<? extends Imperial> deploymentGroup = imperialDeployments
+                    .get(InputUtils.getMultipleChoice("Deployment Selection",
+                            "Choose deployment card to exhaust", imperialExhaustOptions));
+            for (Imperial imperial : deploymentGroup.getMembers()) {
+                int totalAvailableMoves = 0;
+                totalAvailableMoves += imperial.getSpeed();
+                int movesUsed = InputUtils.getNumericChoice(
+                        "Choose the number of moves you will use first", 0, totalAvailableMoves);
+                totalAvailableMoves -= movesUsed;
+                handleMoves(imperial, movesUsed);
+                ImperialActions[] availableActions = imperial.getActions();
+                ImperialActions chosenAction = availableActions[InputUtils.getMultipleChoice("Action Selection",
+                        "Choose an action to take",
+                        availableActions)];
+                switch (chosenAction) {
+                    case MOVE -> {
+                        totalAvailableMoves += imperial.getSpeed();
+                        movesUsed = InputUtils.getNumericChoice(
+                                "Choose the number of moves you will use", 0, totalAvailableMoves);
+                        totalAvailableMoves -= movesUsed;
+                        handleMoves(imperial, movesUsed);
+                    }
+                    case ATTACK -> handleAttack(imperial);
+                    case SPECIAL -> imperial.performSpecial();
+                }
+                handleMoves(imperial, totalAvailableMoves);
+            }
         }
         // playRound();
         ui.repaint();
     }
 
-    public String[] getExhaustOptions() {
+    public String[] getExhaustOptions(boolean rebels) {
         ArrayList<String> readyDeployments = new ArrayList<String>();
-        if (turn == Turn.REBELS) {
+        if (rebels) {
             for (Hero hero : heroes) {
                 if (!hero.getExhausted()) {
                     readyDeployments.add(hero.getName());
@@ -160,7 +174,7 @@ public class Game {
             }
         } else {
             for (DeploymentGroup<? extends Imperial> deploymentCard : imperialDeployments) {
-                if (deploymentCard.getExhausted()) {
+                if (!deploymentCard.getExhausted()) {
                     readyDeployments.add(deploymentCard.getName());
                 }
             }
@@ -184,7 +198,14 @@ public class Game {
         return true;
     }
 
-    public void handleMove(Hero activeFigure) {
+    public static void handleMoves(Personnel activeFigure, int numMoves) {
+        for (int j = 0; j < numMoves; j++) {
+            handleMove(activeFigure);
+        }
+        ui.deactiveateMovementButtons();
+    }
+
+    public static void handleMove(Personnel activeFigure) {
         CompletableFuture<Directions> dir = new CompletableFuture<>();
         ui.setMovementButtonOutput(dir);
         double[] angleRads = { Math.PI / 4.0 };
@@ -206,7 +227,7 @@ public class Game {
         ui.repaint();
     }
 
-    public void handleAttack(Personnel activeFigure) {
+    public static void handleAttack(Personnel activeFigure) {
         CompletableFuture<Personnel> other = new CompletableFuture<>();
         ui.setSelectionButtonOutput(other, activeFigure instanceof Hero);
         Personnel chosenDefender = other.join();
@@ -234,11 +255,21 @@ public class Game {
         while (!imperialDeployments.isEmpty()) {
             imperialDeployments.remove(0);
         }
+        while (!offenseResults.isEmpty()) {
+            offenseResults.remove(0);
+        }
+        while (!defenseResults.isEmpty()) {
+            defenseResults.remove(0);
+        }
+        setup();
+    }
+
+    public void setup() {
         heroes.add(new DialaPassil(new Pos(6, 5)));
-        imperialDeployments.add(new DeploymentGroup<StormTrooper>(
-                new Pos[] { new Pos(4, 11), new Pos(4, 12), new Pos(5, 11) }, new Pos(500, 500), StormTrooper::new,
-                "StormTrooper"));
-        turn = Turn.REBELS;
+        heroes.add(new Gaarkhan(new Pos(1, 4)));
+        imperialDeployments
+                .add(new DeploymentGroup<StormTrooper>(new Pos[] { new Pos(4, 11), new Pos(4, 12), new Pos(5, 11) },
+                        StormTrooper::new, "StormTrooper"));
     }
 
     public static void addOffenseResult(GraphicOffenseDieResult offenseResults) {

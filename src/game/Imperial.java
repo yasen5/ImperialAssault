@@ -8,6 +8,12 @@ public abstract class Imperial extends Personnel {
     private ImperialType type;
     private OffenseDieType[] offenseDice;
 
+    public static enum ImperialActions {
+        MOVE,
+        ATTACK,
+        SPECIAL
+    }
+
     public static enum ImperialType {
         TROOPER,
         DROID,
@@ -15,8 +21,8 @@ public abstract class Imperial extends Personnel {
     }
 
     public Imperial(String name, int startingHealth, int speed, Pos pos,
-            ImperialType type, DefenseDieType[] defenseDice, OffenseDieType[] offenseDice) {
-        super(name, startingHealth, speed, pos, defenseDice);
+            ImperialType type, DefenseDieType[] defenseDice, OffenseDieType[] offenseDice, boolean hasSpecial) {
+        super(name, startingHealth, speed, pos, defenseDice, hasSpecial);
         this.type = type;
         this.offenseDice = offenseDice;
     }
@@ -28,5 +34,11 @@ public abstract class Imperial extends Personnel {
             results[0] = offenseDice[i].roll();
         }
         return results;
+    }
+
+    public ImperialActions[] getActions() {
+        return hasSpecial
+                ? new ImperialActions[] { ImperialActions.MOVE, ImperialActions.ATTACK, ImperialActions.SPECIAL }
+                : new ImperialActions[] { ImperialActions.MOVE, ImperialActions.ATTACK };
     }
 }

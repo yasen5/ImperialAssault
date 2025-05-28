@@ -8,7 +8,8 @@ public class StormTrooper extends Imperial {
         super("StormTrooper", 3, 3, pos,
                 ImperialType.TROOPER, new DefenseDieType[] { DefenseDieType.BLACK },
                 new OffenseDieType[] { OffenseDieType.BLUE,
-                        OffenseDieType.GREEN });
+                        OffenseDieType.GREEN },
+                false);
     }
 
     @Override

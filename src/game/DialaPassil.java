@@ -4,7 +4,7 @@ import src.game.Die.*;
 
 public class DialaPassil extends Hero {
     public DialaPassil(Pos pos) {
-        super("DialaPassil", 12, 300, 5, new Equipment.Weapon("Plasteel Staff",
+        super("DialaPassil", 12, 4, 5, new Equipment.Weapon("Plasteel Staff",
                 new OffenseDieType[] { OffenseDieType.GREEN, OffenseDieType.YELLOW }, new Equipment.SurgeOptions[] {
                         Equipment.SurgeOptions.STUN,
                         Equipment.SurgeOptions.DAMAGE1 }),
@@ -14,7 +14,7 @@ public class DialaPassil extends Hero {
     @Override
     public DefenseRoll[] getDefense() {
         DefenseRoll[] result = super.getDefense();
-        if (InputUtils.getYesNo("You rolled: " + result.toString(), "Would you like to reroll?")) {
+        if (InputUtils.getYesNo("You rolled: " + result[0].toString(), "Would you like to reroll?")) {
             ApplyStrain(1);
             result = super.getDefense();
         }

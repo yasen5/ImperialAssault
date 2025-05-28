@@ -13,9 +13,9 @@ public abstract class Hero extends Personnel implements FullDeployment {
     private Equipment.Weapon weapon;
     private boolean exhausted = false;
     private DeploymentCard deploymentCard;
-    private boolean hasSpecial;
 
-    public static enum Actions {
+    public static enum HeroActions {
+        MOVE,
         ATTACK,
         RECOVER,
         SPECIAL
@@ -23,7 +23,7 @@ public abstract class Hero extends Personnel implements FullDeployment {
 
     public Hero(String name, int startingHealth, int speed, int endurance, Equipment.Weapon weapon, Pos pos,
             boolean hasSpecial, DefenseDieType[] defenseDice) {
-        super(name, startingHealth, speed, pos, defenseDice);
+        super(name, startingHealth, speed, pos, defenseDice, hasSpecial);
         this.endurance = endurance;
         this.weapon = weapon;
         this.wounded = false;
@@ -50,9 +50,10 @@ public abstract class Hero extends Personnel implements FullDeployment {
         deploymentCard.draw(g);
     }
 
-    public Actions[] getActions() {
-        return hasSpecial ? new Actions[] { Actions.ATTACK,
-                Actions.RECOVER, Actions.SPECIAL } : new Actions[] { Actions.ATTACK, Actions.RECOVER };
+    public HeroActions[] getActions() {
+        return hasSpecial ? new HeroActions[] { HeroActions.MOVE, HeroActions.ATTACK,
+                HeroActions.RECOVER, HeroActions.SPECIAL }
+                : new HeroActions[] { HeroActions.MOVE, HeroActions.ATTACK, HeroActions.RECOVER };
     }
 
     @Override
@@ -71,5 +72,9 @@ public abstract class Hero extends Personnel implements FullDeployment {
 
     public DeploymentCard getDeploymentCard() {
         return deploymentCard;
+    }
+
+    public int getEndurance() {
+        return endurance;
     }
 }

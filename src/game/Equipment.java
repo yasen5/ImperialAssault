@@ -15,6 +15,8 @@ public class Equipment {
         RECOVER2,
         ACCURACY1,
         ACCURACY2,
+        PIERCE1,
+        PIERCE2,
         STUN
     }
 
@@ -44,5 +46,19 @@ public class Equipment {
             SurgeOptions.ACCURACY2,
             (Personnel[] combatants, TotalAttackResult totalResults) -> {
                 totalResults.addAccuracy(2);
+            },
+            SurgeOptions.PIERCE1,
+            (Personnel[] combatants, TotalAttackResult totalResults) -> {
+                if (totalResults.getDamage() < 0) {
+                    totalResults.addDamage(1);
+                }
+            },
+            SurgeOptions.PIERCE2,
+            (Personnel[] combatants, TotalAttackResult totalResults) -> {
+                for (int i = 0; i < 2; i++) {
+                    if (totalResults.getDamage() < 0) {
+                        totalResults.addDamage(1);
+                    }
+                }
             });
 }
