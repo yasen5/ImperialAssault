@@ -8,7 +8,7 @@ public class GideonArgus extends Hero {
         super("GideonArgus", 10, 4, 5, new Equipment.Weapon("Plasteel Staff",
                 new OffenseDieType[] { OffenseDieType.BLUE, OffenseDieType.YELLOW }, new Equipment.SurgeOptions[] {
                         Equipment.SurgeOptions.STUN,
-                        Equipment.SurgeOptions.DAMAGE1 }),
+                        Equipment.SurgeOptions.DAMAGE1 }, false, false),
                 pos, false, new DefenseDieType[] { DefenseDieType.WHITE });
     }
 }

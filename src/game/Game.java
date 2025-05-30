@@ -102,7 +102,7 @@ public class Game {
     }
 
     public void playRound() {
-        String[] heroExhaustOptions = new String[0];// getExhaustOptions(true);
+        String[] heroExhaustOptions = getExhaustOptions(true);
         String[] imperialExhaustOptions = getExhaustOptions(false);
         if (heroExhaustOptions.length > 0) {
             Hero activeFigure = heroes.get(InputUtils.getMultipleChoice("Deployment Selection",
@@ -160,8 +160,8 @@ public class Game {
                 handleMoves(imperial, totalAvailableMoves);
             }
         }
-        // playRound();
         ui.repaint();
+        playRound();
     }
 
     public String[] getExhaustOptions(boolean rebels) {
@@ -255,12 +255,6 @@ public class Game {
         while (!imperialDeployments.isEmpty()) {
             imperialDeployments.remove(0);
         }
-        while (!offenseResults.isEmpty()) {
-            offenseResults.remove(0);
-        }
-        while (!defenseResults.isEmpty()) {
-            defenseResults.remove(0);
-        }
         setup();
     }
 
@@ -314,5 +308,14 @@ public class Game {
 
     public static void repaintScreen() {
         ui.repaint();
+    }
+
+    public static void clearDice() {
+        while (!offenseResults.isEmpty()) {
+            offenseResults.remove(0);
+        }
+        while (!defenseResults.isEmpty()) {
+            defenseResults.remove(0);
+        }
     }
 }

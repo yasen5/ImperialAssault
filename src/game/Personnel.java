@@ -58,6 +58,7 @@ public abstract class Personnel {
     }
 
     public void performAttack(Personnel other) {
+        Game.clearDice();
         int surges = 0;
         TotalAttackResult totalResults = new TotalAttackResult();
         for (DefenseRoll roll : getDefense(other)) {
@@ -121,29 +122,7 @@ public abstract class Personnel {
     }
 
     public void move(Directions dir) {
-        switch (dir) {
-            case UP -> incrementY(-1);
-            case DOWN -> incrementY(1);
-            case LEFT -> incrementX(-1);
-            case RIGHT -> incrementX(1);
-            case UPLEFT -> {
-                incrementX(-1);
-                incrementY(-1);
-            }
-            case UPRIGHT -> {
-                incrementX(1);
-                incrementY(-1);
-            }
-            case DOWNLEFT -> {
-                incrementX(-1);
-                incrementY(1);
-            }
-            case DOWNRIGHT -> {
-                incrementX(1);
-                incrementY(1);
-            }
-        }
-        // moveButtonToCurrentLocation();
+        pos.move(dir);
     }
 
     public void incrementX(int amt) {
@@ -183,22 +162,22 @@ public abstract class Personnel {
                 Constants.tileSize * (pos.getY() + ySize), 0, 0, image.getWidth(null), image.getHeight(null),
                 null);
         g.setColor(new Color(255, 255, 255));
-        g.fillRect(pos.getX() * Constants.tileSize, pos.getY() * Constants.tileSize, Constants.tileSize,
+        g.fillRect(pos.getFullX(), pos.getFullY(), Constants.tileSize,
                 (int) (Constants.tileSize * 0.1));
-        g.fillRect(pos.getX() * Constants.tileSize, pos.getY() * Constants.tileSize + (int) (Constants.tileSize * 0.9),
+        g.fillRect(pos.getFullX(), pos.getFullY() + (int) (Constants.tileSize * 0.9),
                 Constants.tileSize,
                 (int) (Constants.tileSize * 0.1));
-        g.fillRect(pos.getX() * Constants.tileSize, pos.getY() * Constants.tileSize, (int) (Constants.tileSize * 0.1),
+        g.fillRect(pos.getFullX(), pos.getFullY(), (int) (Constants.tileSize * 0.1),
                 Constants.tileSize);
-        g.fillRect(pos.getX() * Constants.tileSize + (int) (Constants.tileSize * 0.9), pos.getY() * Constants.tileSize,
+        g.fillRect(pos.getFullX() + (int) (Constants.tileSize * 0.9), pos.getFullY(),
                 (int) (Constants.tileSize * 0.1),
                 Constants.tileSize);
         g.setColor(new Color(0, 0, 0));
-        g.drawRect(pos.getX() * Constants.tileSize, pos.getY() * Constants.tileSize, Constants.tileSize,
+        g.drawRect(pos.getFullX(), pos.getFullY(), Constants.tileSize,
                 Constants.tileSize);
         g.setFont(new Font("Bookman Old Style", Font.BOLD, 11));
         g.setColor(new Color(140, 0, 0));
-        g.drawString("" + health, pos.getX() * Constants.tileSize, (pos.getY() + 1) * Constants.tileSize);
+        g.drawString("" + health, pos.getFullX(), (pos.getY() + 1) * Constants.tileSize);
     }
 
     public String getName() {
@@ -210,41 +189,7 @@ public abstract class Personnel {
     }
 
     public boolean canMove(Directions dir) {
-        int newX = pos.getX();
-        int newY = pos.getY();
-        switch (dir) {
-            case UP -> {
-                newY -= 1;
-            }
-            case DOWN -> {
-                newY += 1;
-            }
-            case LEFT -> {
-                newX -= 1;
-            }
-            case RIGHT -> {
-                newX += 1;
-            }
-            case UPLEFT -> {
-                newX -= 1;
-                newY -= 1;
-            }
-            case UPRIGHT -> {
-                newX += 1;
-                newY -= 1;
-            }
-            case DOWNLEFT -> {
-                newX -= 1;
-                newY += 1;
-            }
-            case DOWNRIGHT -> {
-                newX += 1;
-                newY += 1;
-            }
-        }
-        boolean inBounds = newX >= 0 && newY >= 0 && newX < Constants.tileMatrix[0].length
-                && newY < Constants.tileMatrix.length;
-        return (inBounds && Constants.tileMatrix[newY][newX] == 1 && Game.isSpaceAvailable(new Pos(newX, newY)));
+        return pos.canMove(dir);
     }
 
     public Pos getPos() {

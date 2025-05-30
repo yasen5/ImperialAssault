@@ -24,6 +24,7 @@ import src.game.BiMap;
 import src.game.DeploymentCard;
 import src.game.Game;
 import src.game.Imperial;
+import src.game.Pathfinder.FullPos;
 import src.game.Personnel;
 
 import src.game.Personnel.Directions;
@@ -41,6 +42,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 	private Thread mainGameLoop;
 	private boolean selectingCombat = false;
 	private DeploymentCard previousSelectedCard;
+	FullPos startPoint, endPoint;
 
 	public BiMap<Directions, JButton> movementButtons = new BiMap<Directions, JButton>();
 
@@ -118,6 +120,10 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 			g.setColor(new Color(255, 255, 255));
 			g.drawString("Game over", 100, 100);
 		} else if (gameStarted) {
+			if (startPoint != null) {
+				g.setColor(new Color(255, 0, 0));
+				g.drawLine((int)(startPoint.x()), (int)(startPoint.y()), (int)(endPoint.x()), (int)(endPoint.y()));
+			}
 			g.setColor(new Color(25, 25, 25));
 			g.fillRect(getPreferredSize().width / 2 - 200, 0, getPreferredSize().width / 2 + 200,
 					getPreferredSize().height);
@@ -153,6 +159,8 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 			mainGameLoop = new Thread(() -> game.playRound());
 			mainGameLoop.start();
 		} else {
+			startPoint = new FullPos(1 * Constants.tileSize, 5 * Constants.tileSize);
+			endPoint = new FullPos(e.getX(), e.getY());
 			if (selectingCombat) {
 				Personnel personnel = game
 						.getPersonnelAtPos(new Pos(e.getX() / Constants.tileSize, e.getY() / Constants.tileSize));
@@ -244,7 +252,5 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 		deactiveateMovementButtons();
 		game.reset();
 		repaint();
-		mainGameLoop = new Thread(() -> game.playRound());
-		mainGameLoop.start();
 	}
 }

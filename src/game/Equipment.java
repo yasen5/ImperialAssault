@@ -5,7 +5,7 @@ import java.util.function.BiConsumer;
 
 public class Equipment {
     public static record Weapon(String name, Die.OffenseDieType[] attackDice,
-            SurgeOptions[] surgeOptions) {
+            SurgeOptions[] surgeOptions, boolean melee, boolean reach) {
     };
 
     public static enum SurgeOptions {

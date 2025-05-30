@@ -7,7 +7,7 @@ public class DialaPassil extends Hero {
         super("DialaPassil", 12, 4, 5, new Equipment.Weapon("Plasteel Staff",
                 new OffenseDieType[] { OffenseDieType.GREEN, OffenseDieType.YELLOW }, new Equipment.SurgeOptions[] {
                         Equipment.SurgeOptions.STUN,
-                        Equipment.SurgeOptions.DAMAGE1 }),
+                        Equipment.SurgeOptions.DAMAGE1 }, true, true),
                 pos, false, new DefenseDieType[] { DefenseDieType.WHITE });
     }
 

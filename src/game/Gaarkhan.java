@@ -8,7 +8,7 @@ public class Gaarkhan extends Hero {
         super("Gaarkhan", 12, 4, 4, new Equipment.Weapon("Vibro-Ax",
                 new OffenseDieType[] { OffenseDieType.YELLOW, OffenseDieType.YELLOW }, new Equipment.SurgeOptions[] {
                         Equipment.SurgeOptions.PIERCE1,
-                        Equipment.SurgeOptions.DAMAGE1 }),
+                        Equipment.SurgeOptions.DAMAGE1 }, true, true),
                 pos, true, new DefenseDieType[] { DefenseDieType.WHITE });
     }
 
