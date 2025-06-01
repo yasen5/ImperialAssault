@@ -1,5 +1,8 @@
 package src.game;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+
 import src.game.Die.DefenseDieType;
 import src.game.Die.OffenseDieType;
 import src.game.Die.OffenseRoll;
@@ -7,12 +10,6 @@ import src.game.Die.OffenseRoll;
 public abstract class Imperial extends Personnel {
     private ImperialType type;
     private OffenseDieType[] offenseDice;
-
-    public static enum ImperialActions {
-        MOVE,
-        ATTACK,
-        SPECIAL
-    }
 
     public static enum ImperialType {
         TROOPER,
@@ -34,11 +31,5 @@ public abstract class Imperial extends Personnel {
             results[0] = offenseDice[i].roll();
         }
         return results;
-    }
-
-    public ImperialActions[] getActions() {
-        return hasSpecial
-                ? new ImperialActions[] { ImperialActions.MOVE, ImperialActions.ATTACK, ImperialActions.SPECIAL }
-                : new ImperialActions[] { ImperialActions.MOVE, ImperialActions.ATTACK };
     }
 }

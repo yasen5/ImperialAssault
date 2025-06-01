@@ -36,11 +36,9 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 	private BufferedImage startScreenimage;
 	private static int buttonSize = 20;
 	private CompletableFuture<Directions> movementButtonOutput;
-	private CompletableFuture<Personnel> selectionButtonOutput;
-	private boolean selectingImperials;
 	private boolean gameEnd = false;
 	private Thread mainGameLoop;
-	private boolean selectingCombat = false;
+	private static boolean selectingCombat = false;
 	private DeploymentCard previousSelectedCard;
 	FullPos startPoint, endPoint;
 
@@ -164,8 +162,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 			if (selectingCombat) {
 				Personnel personnel = game
 						.getPersonnelAtPos(new Pos(e.getX() / Constants.tileSize, e.getY() / Constants.tileSize));
-				if (personnel != null && ((personnel instanceof Imperial) == selectingImperials)) {
-					selectionButtonOutput.complete(personnel);
+				if (personnel != null && game.setDefender(personnel)) {
 					selectingCombat = false;
 				}
 			} else {
@@ -195,7 +192,6 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 	}
 
 	public void keyReleased(KeyEvent e) {
-		game.handleKeyboardInput(e.getKeyCode());
 		if (e.getKeyCode() == KeyEvent.VK_F1) {
 			gameEnd = true;
 		} else if (e.getKeyCode() == KeyEvent.VK_R) {
@@ -234,12 +230,6 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 		movementButtons.get(dir).setEnabled(false);
 	}
 
-	public void setSelectionButtonOutput(CompletableFuture<Personnel> output, boolean selectingImperials) {
-		this.selectionButtonOutput = output;
-		this.selectingImperials = selectingImperials;
-		this.selectingCombat = true;
-	}
-
 	public void deactiveateMovementButtons() {
 		for (Directions direction : Directions.values()) {
 			deactivateMovementButton(direction);
@@ -252,5 +242,13 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 		deactiveateMovementButtons();
 		game.reset();
 		repaint();
+	}
+
+	public void setSelectingCombat(boolean value) {
+		selectingCombat = value;
+	}
+
+	public static boolean getSelectingCombat() {
+		return selectingCombat;
 	}
 }

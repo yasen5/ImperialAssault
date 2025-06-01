@@ -14,13 +14,6 @@ public abstract class Hero extends Personnel implements FullDeployment {
     private boolean exhausted = false;
     private DeploymentCard deploymentCard;
 
-    public static enum HeroActions {
-        MOVE,
-        ATTACK,
-        RECOVER,
-        SPECIAL
-    }
-
     public Hero(String name, int startingHealth, int speed, int endurance, Equipment.Weapon weapon, Pos pos,
             boolean hasSpecial, DefenseDieType[] defenseDice) {
         super(name, startingHealth, speed, pos, defenseDice, hasSpecial);
@@ -29,7 +22,7 @@ public abstract class Hero extends Personnel implements FullDeployment {
         this.wounded = false;
         this.strain = 0;
         this.deploymentCard = new DeploymentCard(Constants.baseImgFilePath + name + "Deployment.jpg", true);
-        this.hasSpecial = hasSpecial;
+        this.actions.add(Actions.RECOVER);
     }
 
     public void ApplyStrain(int strain) {
@@ -48,12 +41,6 @@ public abstract class Hero extends Personnel implements FullDeployment {
     public void draw(Graphics g) {
         super.draw(g);
         deploymentCard.draw(g);
-    }
-
-    public HeroActions[] getActions() {
-        return hasSpecial ? new HeroActions[] { HeroActions.MOVE, HeroActions.ATTACK,
-                HeroActions.RECOVER, HeroActions.SPECIAL }
-                : new HeroActions[] { HeroActions.MOVE, HeroActions.ATTACK, HeroActions.RECOVER };
     }
 
     @Override
@@ -76,5 +63,15 @@ public abstract class Hero extends Personnel implements FullDeployment {
 
     public int getEndurance() {
         return endurance;
+    }
+    
+    @Override
+    public int getRange() {
+        if (weapon.melee()) {
+            return weapon.reach() ? 2 : 1;
+        }
+        else {
+            return Integer.MAX_VALUE;
+        }
     }
 }

@@ -12,19 +12,19 @@ public class Pathfinder {
     public static double raySpeed = Constants.tileSize * 0.5;
     public static double closeRaySpeed = Constants.tileSize * 0.05;
     public static double closeDistance = raySpeed;
-    public static int maxIters = 15;
+    public static int maxIters = 50;
 
     public static record Point(Pos pos, Point parent) {
     }
 
     public static record FullPos(double x, double y) {}
 
-    public static boolean canReachPoint(Pos start, Pos end, int maxMoves) {
-        if (!start.isOnGrid() || !end.isOnGrid()) {
+    public static boolean canReachPoint(Pos start, Pos end, int maxMoves, boolean respectFigures) {
+        if (!start.isOnGrid()) {
             return false;
         }
         if (start.isEqualTo(end)) {
-            return false;
+            return true;
         }
         int[][] grid = Constants.tileMatrix;
         boolean[][] visited = new boolean[grid.length][grid[0].length];
@@ -32,10 +32,7 @@ public class Pathfinder {
         Point currentPoint;
         ArrayList<Directions> validDirections = new ArrayList<>();
         for (Directions dir : Directions.values()) {
-            Pos point = start.getNextPosition(dir);
-            if (point == null) {
-                continue;
-            }
+            Pos point = start.getNextPos(dir);
             boolean xCloser = Math.abs(point.getX() - end.getX()) <= Math.abs(start.getX() - end.getX());
             boolean yCloser = Math.abs(point.getY() - end.getY()) <= Math.abs(start.getY() - end.getY());
             if (xCloser
@@ -54,11 +51,14 @@ public class Pathfinder {
                     bestPath.add(currentPoint);
                     currentPoint = currentPoint.parent();
                 }
-                System.out.println("Best path size: " + bestPath.size());
-                return bestPath.size() <= maxMoves;
+                boolean reachableUnderMax = bestPath.size() <= maxMoves;
+                if (reachableUnderMax) {
+                    System.out.println("Yo");
+                }
+                return reachableUnderMax;
             } else {
                 for (Directions dir : validDirections) {
-                    Pos nextPos = currentPoint.pos().getNextPosition(dir);
+                    Pos nextPos = currentPoint.pos().getNextPosUnsafe(dir, respectFigures);
                     if (nextPos != null && !visited[nextPos.getY()][nextPos.getX()]) {
                         queue.add(new Point(nextPos, currentPoint));
                     }
@@ -78,13 +78,11 @@ public class Pathfinder {
         int g_x = endingLocation.getFullX();
         int g_y = endingLocation.getFullY();
         double angle = Math.atan2(g_y - c_y, g_x - c_x);
-        System.out.println("Initial pos: " + startingLocation);
-        while (!inTolerance(c_x, g_x) || !inTolerance(c_y, g_y)) {
+        while (!inTolerance(c_x, g_x, positionTolerance) || !inTolerance(c_y, g_y, positionTolerance)) {
             numIters++;
             boolean closeToFinish = pointDistance(c_x, c_y, g_x, g_y) < closeDistance;
             c_x += (closeToFinish ? closeRaySpeed : raySpeed) * Math.cos(angle);
             c_y += (closeToFinish ? closeRaySpeed : raySpeed) * Math.sin(angle);
-            System.out.println("New pos: (" + c_x + ", " + c_y + ")");
             if (Constants.tileMatrix[(int) (c_y / Constants.tileSize)][(int) (c_x / Constants.tileSize)] == 0) {
                 return false;
             }
@@ -96,8 +94,8 @@ public class Pathfinder {
         return true;
     }
 
-    public static boolean inTolerance(double currValue, double goalValue) {
-        return Math.abs(goalValue - currValue) < positionTolerance;
+    public static boolean inTolerance(double currValue, double goalValue, double tolerance) {
+        return Math.abs(goalValue - currValue) < tolerance;
     }
 
     public static double pointDistance(double x1, double y1, double x2, double y2) {

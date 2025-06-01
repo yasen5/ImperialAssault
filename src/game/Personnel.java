@@ -7,21 +7,26 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import javax.imageio.ImageIO;
 
 import src.Constants;
+import src.Screen;
 import src.game.Die.*;
 
 public abstract class Personnel {
     private int startingHealth, health, speed;
     private int xSize = 1, ySize = 1;
     private Pos pos;
+    private Pos[] corners;
     private boolean stunned, bleeding;
     private BufferedImage image;
     private String name;
     private DefenseDieType[] defenseDice;
-    protected boolean hasSpecial;
+    private static int imageSideSpace = 7;
+    private boolean possibleTarget = false, active = false;
+    protected ArrayList<Actions> actions;
 
     public static enum Directions {
         UP,
@@ -34,8 +39,14 @@ public abstract class Personnel {
         UPRIGHT
     }
 
-    public Personnel(String name, int startingHealth, int speed, Pos pos, DefenseDieType[] defenseDice,
-            boolean hasSpecial) {
+    public static enum Actions {
+        MOVE,
+        ATTACK,
+        RECOVER,
+        SPECIAL
+    }
+
+    public Personnel(String name, int startingHealth, int speed, Pos pos, DefenseDieType[] defenseDice, boolean hasSpecial) {
         this.name = name;
         this.startingHealth = startingHealth;
         this.health = startingHealth;
@@ -43,7 +54,6 @@ public abstract class Personnel {
         this.stunned = false;
         this.bleeding = false;
         this.defenseDice = defenseDice;
-        this.hasSpecial = hasSpecial;
         try {
             this.image = ImageIO.read(new File(Constants.baseImgFilePath + name + ".jpg"));
         } catch (IOException ex) {
@@ -55,6 +65,11 @@ public abstract class Personnel {
             }
         }
         this.pos = pos;
+        this.corners = new Pos[] {pos, pos.getNextPos(Directions.RIGHT), pos.getNextPos(Directions.DOWN), pos.getNextPos(Directions.DOWNRIGHT)};
+        this.actions = new ArrayList<>(Arrays.asList(Actions.MOVE, Actions.ATTACK));
+        if (hasSpecial) {
+            actions.add(Actions.SPECIAL);
+        }
     }
 
     public void performAttack(Personnel other) {
@@ -156,28 +171,39 @@ public abstract class Personnel {
     }
 
     public void draw(Graphics g) {
-        g.drawImage(image, Constants.tileSize * pos.getX(),
-                Constants.tileSize * pos.getY(),
-                Constants.tileSize * (pos.getX() + xSize),
-                Constants.tileSize * (pos.getY() + ySize), 0, 0, image.getWidth(null), image.getHeight(null),
+        g.drawImage(image, pos.getFullX() + imageSideSpace,
+                pos.getFullY() + imageSideSpace,
+                Constants.tileSize * (pos.getX() + xSize) - imageSideSpace,
+                Constants.tileSize * (pos.getY() + ySize) - imageSideSpace, 0, 0, image.getWidth(null), image.getHeight(null),
                 null);
-        g.setColor(new Color(255, 255, 255));
-        g.fillRect(pos.getFullX(), pos.getFullY(), Constants.tileSize,
-                (int) (Constants.tileSize * 0.1));
-        g.fillRect(pos.getFullX(), pos.getFullY() + (int) (Constants.tileSize * 0.9),
-                Constants.tileSize,
-                (int) (Constants.tileSize * 0.1));
-        g.fillRect(pos.getFullX(), pos.getFullY(), (int) (Constants.tileSize * 0.1),
-                Constants.tileSize);
-        g.fillRect(pos.getFullX() + (int) (Constants.tileSize * 0.9), pos.getFullY(),
-                (int) (Constants.tileSize * 0.1),
-                Constants.tileSize);
-        g.setColor(new Color(0, 0, 0));
-        g.drawRect(pos.getFullX(), pos.getFullY(), Constants.tileSize,
-                Constants.tileSize);
-        g.setFont(new Font("Bookman Old Style", Font.BOLD, 11));
-        g.setColor(new Color(140, 0, 0));
-        g.drawString("" + health, pos.getFullX(), (pos.getY() + 1) * Constants.tileSize);
+        if (Screen.getSelectingCombat() && !possibleTarget) {
+            g.setColor(new Color(0, 0, 0, 70));
+            g.fillRect(pos.getFullX() + imageSideSpace,
+                pos.getFullY() + imageSideSpace, Constants.tileSize * xSize - 2 * imageSideSpace, Constants.tileSize * ySize - 2 * imageSideSpace);
+        }
+        if (active) {
+            g.setColor(new Color(0, 255, 0, 70));
+            g.fillRect(pos.getFullX() + imageSideSpace,
+                    pos.getFullY() + imageSideSpace, Constants.tileSize * xSize - 2 * imageSideSpace,
+                    Constants.tileSize * ySize - 2 * imageSideSpace);
+        }
+        // g.setColor(new Color(255, 255, 255));
+        // g.fillRect(pos.getFullX(), pos.getFullY(), Constants.tileSize,
+        //         (int) (Constants.tileSize * 0.1));
+        // g.fillRect(pos.getFullX(), pos.getFullY() + (int) (Constants.tileSize * 0.9),
+        //         Constants.tileSize,
+        //         (int) (Constants.tileSize * 0.1));
+        // g.fillRect(pos.getFullX(), pos.getFullY(), (int) (Constants.tileSize * 0.1),
+        //         Constants.tileSize);
+        // g.fillRect(pos.getFullX() + (int) (Constants.tileSize * 0.9), pos.getFullY(),
+        //         (int) (Constants.tileSize * 0.1),
+        //         Constants.tileSize);
+        // g.setColor(new Color(0, 0, 0));
+        // g.drawRect(pos.getFullX(), pos.getFullY(), Constants.tileSize,
+        //         Constants.tileSize);
+        // g.setFont(new Font("Bookman Old Style", Font.BOLD, 11));
+        // g.setColor(new Color(140, 0, 0));
+        // g.drawString("" + health, pos.getFullX(), (pos.getY() + 1) * Constants.tileSize);
     }
 
     public String getName() {
@@ -189,7 +215,7 @@ public abstract class Personnel {
     }
 
     public boolean canMove(Directions dir) {
-        return pos.canMove(dir);
+        return pos.canMove(dir, true);
     }
 
     public Pos getPos() {
@@ -197,5 +223,58 @@ public abstract class Personnel {
     }
 
     public void performSpecial() {
+    }
+
+    public int getRange() {
+        return Integer.MAX_VALUE;
+    }
+
+    public boolean canAttack(Personnel other) {
+        int range = getRange();
+        if (range != Integer.MAX_VALUE && !Pathfinder.canReachPoint(pos, other.getPos(), range, false)) {
+            return false;
+        }
+        for (Pos corner : corners) {
+            int sightCount = 0;
+            for (Pos enemyCorner : other.getCorners()) {
+                if (Pathfinder.straightlineToPos(corner, enemyCorner)) {
+                    sightCount++;
+                    if (sightCount >= 2) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    public Pos[] getCorners() {
+        return corners;
+    }
+
+    public Pos getClosestCorner(Personnel other) {
+        double minDistance = Integer.MAX_VALUE;
+        Pos otherPos = other.getPos();
+        Pos closestCorner = null;
+        for (Pos corner : corners) {
+            double distance = Pos.getDistance(otherPos, corner);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestCorner = corner;
+            }
+        }
+        return closestCorner;
+    }
+
+    public void setPossibleTarget(boolean value) {
+        possibleTarget = value;
+    }
+
+    public void setActive(boolean value) {
+        active = value;
+    }
+
+    public ArrayList<Actions> getActions() {
+        return actions;
     }
 }

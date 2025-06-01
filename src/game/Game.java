@@ -16,8 +16,7 @@ import src.Constants;
 import src.Screen;
 import src.game.Die.GraphicDefenseDieResult;
 import src.game.Die.GraphicOffenseDieResult;
-import src.game.Hero.HeroActions;
-import src.game.Imperial.ImperialActions;
+import src.game.Personnel.Actions;
 import src.game.Personnel.Directions;
 
 public class Game {
@@ -27,6 +26,8 @@ public class Game {
     private static Screen ui;
     private static ArrayList<GraphicOffenseDieResult> offenseResults = new ArrayList<>();
     private static ArrayList<GraphicDefenseDieResult> defenseResults = new ArrayList<>();
+    private static ArrayList<Personnel> availableDefenders = new ArrayList<>();
+    private static CompletableFuture<Personnel> currentDefender = new CompletableFuture<>();
 
     public static record MapTile(BufferedImage img, int[][] tileArray) {
     }
@@ -88,80 +89,94 @@ public class Game {
         }
     }
 
-    public void handleKeyboardInput(int keyCode) {
-        switch (keyCode) {
-            case 81 -> heroes.get(0).move(Directions.UPLEFT);
-            case 87 -> heroes.get(0).move(Directions.UP);
-            case 69 -> heroes.get(0).move(Directions.UPRIGHT);
-            case 65 -> heroes.get(0).move(Directions.LEFT);
-            case 68 -> heroes.get(0).move(Directions.RIGHT);
-            case 90 -> heroes.get(0).move(Directions.DOWNLEFT);
-            case 88 -> heroes.get(0).move(Directions.DOWN);
-            case 67 -> heroes.get(0).move(Directions.DOWNRIGHT);
-        }
-    }
-
     public void playRound() {
         String[] heroExhaustOptions = getExhaustOptions(true);
         String[] imperialExhaustOptions = getExhaustOptions(false);
+        Personnel activeFigure;
         if (heroExhaustOptions.length > 0) {
-            Hero activeFigure = heroes.get(InputUtils.getMultipleChoice("Deployment Selection",
+            activeFigure = heroes.get(InputUtils.getMultipleChoice("Deployment Selection",
                     "Choose deployment card to exhaust", heroExhaustOptions));
-            int totalAvailableMoves = 0;
+            activeFigure.setActive(true);
+            ui.repaint();
+            int leftoverMoves = 0;
             for (int i = 0; i < 2; i++) {
-                HeroActions[] availableActions = activeFigure.getActions();
-                HeroActions chosenAction = availableActions[InputUtils.getMultipleChoice("Action Selection",
-                        "Choose an action to take",
-                        availableActions)];
-                // Player chooses from a list of available actions: attack, recover, special
-                // action
-                switch (chosenAction) {
-                    case MOVE -> {
-                        totalAvailableMoves += activeFigure.getSpeed();
-                        int movesUsed = InputUtils.getNumericChoice(
-                                "Choose the number of moves you will use first", 0, totalAvailableMoves);
-                        totalAvailableMoves -= movesUsed;
-                        handleMoves(activeFigure, movesUsed);
-                    }
-                    case ATTACK -> handleAttack(activeFigure);
-                    case RECOVER -> activeFigure.dealDamage(-1 * activeFigure.getEndurance());
-                    case SPECIAL -> activeFigure.performSpecial();
-                }
+                leftoverMoves += takeAction(activeFigure, true);
             }
             // Player uses the rest of their moves (if any)
-            handleMoves(activeFigure, totalAvailableMoves);
+            handleMoves(activeFigure, leftoverMoves);
+            activeFigure.setActive(false);
         }
         if (imperialExhaustOptions.length > 0) {
             DeploymentGroup<? extends Imperial> deploymentGroup = imperialDeployments
                     .get(InputUtils.getMultipleChoice("Deployment Selection",
                             "Choose deployment card to exhaust", imperialExhaustOptions));
             for (Imperial imperial : deploymentGroup.getMembers()) {
-                int totalAvailableMoves = 0;
-                totalAvailableMoves += imperial.getSpeed();
-                int movesUsed = InputUtils.getNumericChoice(
-                        "Choose the number of moves you will use first", 0, totalAvailableMoves);
-                totalAvailableMoves -= movesUsed;
-                handleMoves(imperial, movesUsed);
-                ImperialActions[] availableActions = imperial.getActions();
-                ImperialActions chosenAction = availableActions[InputUtils.getMultipleChoice("Action Selection",
-                        "Choose an action to take",
-                        availableActions)];
-                switch (chosenAction) {
-                    case MOVE -> {
-                        totalAvailableMoves += imperial.getSpeed();
-                        movesUsed = InputUtils.getNumericChoice(
-                                "Choose the number of moves you will use", 0, totalAvailableMoves);
-                        totalAvailableMoves -= movesUsed;
-                        handleMoves(imperial, movesUsed);
-                    }
-                    case ATTACK -> handleAttack(imperial);
-                    case SPECIAL -> imperial.performSpecial();
-                }
-                handleMoves(imperial, totalAvailableMoves);
+                imperial.setActive(true);
+                int leftoverMoves = 0;
+                leftoverMoves += takeAction(imperial, Actions.MOVE);
+                leftoverMoves += takeAction(imperial, false);
+                handleMoves(imperial, leftoverMoves);
+                imperial.setActive(false);
             }
         }
         ui.repaint();
         playRound();
+    }
+
+    // Returns the number of moves gained
+    public int takeAction(Personnel activeFigure, boolean rebel) {
+        int leftoverMoves = 0;
+        ArrayList<Actions> availableActions = new ArrayList<Actions>();
+        for (Actions action : activeFigure.getActions()) {
+            availableActions.add(action);
+        }
+        availableDefenders = availableDefenders(activeFigure, true);
+        if (availableDefenders.size() == 0) {
+            availableActions.remove(Actions.ATTACK);
+        }
+        Actions chosenAction = availableActions.get(InputUtils.getMultipleChoice("Action Selection",
+                "Choose an action to take",
+                availableActions.toArray()));
+        leftoverMoves = takeAction(activeFigure, chosenAction);
+        return leftoverMoves;
+    }
+
+    public int takeAction(Personnel activeFigure, Actions action) {
+        int leftoverMoves = 0;
+        switch (action) {
+            case MOVE -> {
+                leftoverMoves += activeFigure.getSpeed();
+                int movesUsed = InputUtils.getNumericChoice(
+                        "Choose the number of moves you will use first", 0, leftoverMoves);
+                leftoverMoves -= movesUsed;
+                handleMoves(activeFigure, movesUsed);
+            }
+            case ATTACK -> handleAttack(activeFigure);
+            case RECOVER -> activeFigure.dealDamage(-1 * ((Hero) (activeFigure)).getEndurance());
+            case SPECIAL -> activeFigure.performSpecial();
+        }
+        return leftoverMoves;
+    }
+
+    public ArrayList<Personnel> availableDefenders(Personnel attacker, boolean rebelAttacker) {
+        ArrayList<Personnel> availableDefenders = new ArrayList<>();
+        if (rebelAttacker) {
+            for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
+                for (Imperial member : group.getMembers()) {
+                    if (attacker.canAttack(member)) {
+                        availableDefenders.add(member);
+                    }
+                }
+            }
+        }
+        else {
+            for (Hero hero : heroes) {
+                    if (attacker.canAttack(hero)) {
+                        availableDefenders.add(hero);
+                    }
+            }
+        }
+        return availableDefenders;
     }
 
     public String[] getExhaustOptions(boolean rebels) {
@@ -228,10 +243,26 @@ public class Game {
     }
 
     public static void handleAttack(Personnel activeFigure) {
-        CompletableFuture<Personnel> other = new CompletableFuture<>();
-        ui.setSelectionButtonOutput(other, activeFigure instanceof Hero);
-        Personnel chosenDefender = other.join();
+        ui.setSelectingCombat(true);
+        for (Personnel person : availableDefenders) {
+            person.setPossibleTarget(true);
+        }
+        ui.repaint();
+        Personnel chosenDefender = currentDefender.join();
+        for (Personnel person : availableDefenders) {
+            person.setPossibleTarget(false);
+        }
         activeFigure.performAttack(chosenDefender);
+    }
+
+    public static boolean setDefender(Personnel defender) {
+        if (availableDefenders.contains(defender)) {
+            currentDefender.complete(defender);
+            return true;
+        }
+        else {
+            return false;
+        }
     }
 
     public ArrayList<Imperial> getImperials() {
