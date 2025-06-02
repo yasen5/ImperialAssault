@@ -112,6 +112,7 @@ public class Game {
                             "Choose deployment card to exhaust", imperialExhaustOptions));
             for (Imperial imperial : deploymentGroup.getMembers()) {
                 imperial.setActive(true);
+                ui.repaint();
                 int leftoverMoves = 0;
                 leftoverMoves += takeAction(imperial, Actions.MOVE);
                 leftoverMoves += takeAction(imperial, false);
@@ -130,7 +131,7 @@ public class Game {
         for (Actions action : activeFigure.getActions()) {
             availableActions.add(action);
         }
-        availableDefenders = availableDefenders(activeFigure, true);
+        availableDefenders = availableDefenders(activeFigure, rebel);
         if (availableDefenders.size() == 0) {
             availableActions.remove(Actions.ATTACK);
         }

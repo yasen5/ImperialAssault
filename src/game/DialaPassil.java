@@ -14,7 +14,7 @@ public class DialaPassil extends Hero {
     @Override
     public DefenseRoll[] getDefense() {
         DefenseRoll[] result = super.getDefense();
-        if (InputUtils.getYesNo("You rolled: " + result[0].toString(), "Would you like to reroll?")) {
+        if (InputUtils.getYesNo("Ability Selection", "Would you like to reroll?")) {
             ApplyStrain(1);
             result = super.getDefense();
         }
