@@ -16,6 +16,7 @@ public class DialaPassil extends Hero {
         DefenseRoll[] result = super.getDefense();
         if (InputUtils.getYesNo("Ability Selection", "Would you like to reroll?")) {
             ApplyStrain(1);
+            Game.clearDice();
             result = super.getDefense();
         }
         return result;

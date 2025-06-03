@@ -99,13 +99,15 @@ public class Game {
     }
 
     public void playRound() {
-        String[] heroExhaustOptions = getExhaustOptions(true);
-        String[] imperialExhaustOptions = getExhaustOptions(false);
-        Personnel activeFigure;
-        if (heroExhaustOptions.length > 0) {
-            activeFigure = heroes.get(InputUtils.getMultipleChoice("Deployment Selection",
-                    "Choose deployment card to exhaust", heroExhaustOptions));
+        ArrayList<Hero> heroExhaustOptions = getHeroExhaustOptions();
+        ArrayList<DeploymentGroup<? extends Imperial>> imperialExhaustOptions = getImperialExhaustOptions();
+        
+        if (!heroExhaustOptions.isEmpty()) {
+            Hero activeFigure;
+            activeFigure = heroExhaustOptions.remove(InputUtils.getMultipleChoice("Deployment Selection",
+                    "Choose deployment card to exhaust", heroExhaustOptions.toArray()));
             activeFigure.setActive(true);
+            activeFigure.setExhausted(true);
             ui.repaint();
             int leftoverMoves = 0;
             int numActions = 2;
@@ -121,10 +123,11 @@ public class Game {
             activeFigure.setActive(false);
         }
         removeDeadFigures();
-        if (imperialExhaustOptions.length > 0) {
-            DeploymentGroup<? extends Imperial> deploymentGroup = imperialDeployments
-                    .get(InputUtils.getMultipleChoice("Deployment Selection",
-                            "Choose deployment card to exhaust", imperialExhaustOptions));
+        if (!imperialExhaustOptions.isEmpty()) {
+            DeploymentGroup<? extends Imperial> deploymentGroup = imperialExhaustOptions
+                    .remove(InputUtils.getMultipleChoice("Deployment Selection",
+                            "Choose deployment card to exhaust", imperialExhaustOptions.toArray()));
+            deploymentGroup.setExhausted(true);
             for (Imperial imperial : deploymentGroup.getMembers()) {
                 imperial.setActive(true);
                 ui.repaint();
@@ -139,8 +142,37 @@ public class Game {
         }
         removeDeadFigures();
         ui.repaint();
+        if (heroExhaustOptions.isEmpty() && imperialExhaustOptions.isEmpty()) {
+            replenishDeployments();
+        }
+        checkEndGame();
         if (!gameEnd) {
             playRound();
+        }
+    }
+
+    public void replenishDeployments() {
+        for (Hero hero : heroes) {
+            hero.setExhausted(false);
+        }
+        for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
+            group.setExhausted(false);
+        }
+    }
+
+    public void checkEndGame() {
+        if (heroes.isEmpty()) {
+            endGame(false);
+        }
+        boolean allDeploymentGroupsEmpty = true;
+        for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
+            if (!group.isEmpty()) {
+                allDeploymentGroupsEmpty = false;
+                break;
+            }
+        }
+        if (allDeploymentGroupsEmpty) {
+            endGame(true);
         }
     }
 
@@ -241,22 +273,24 @@ public class Game {
         return availableDefenders;
     }
 
-    public String[] getExhaustOptions(boolean rebels) {
-        ArrayList<String> readyDeployments = new ArrayList<String>();
-        if (rebels) {
-            for (Hero hero : heroes) {
-                if (!hero.getExhausted()) {
-                    readyDeployments.add(hero.getName());
-                }
-            }
-        } else {
-            for (DeploymentGroup<? extends Imperial> deploymentCard : imperialDeployments) {
-                if (!deploymentCard.getExhausted()) {
-                    readyDeployments.add(deploymentCard.getName());
-                }
+    public ArrayList<Hero> getHeroExhaustOptions() {
+        ArrayList<Hero> readyDeployments = new ArrayList<>();
+        for (Hero hero : heroes) {
+            if (!hero.getExhausted()) {
+                readyDeployments.add(hero);
             }
         }
-        return readyDeployments.toArray(new String[readyDeployments.size()]);
+        return readyDeployments;
+    }
+
+    public ArrayList<DeploymentGroup<? extends Imperial>> getImperialExhaustOptions() {
+        ArrayList<DeploymentGroup<? extends Imperial>> readyDeployments = new ArrayList<>();
+        for (DeploymentGroup<? extends Imperial> deploymentGroup : imperialDeployments) {
+            if (!deploymentGroup.getExhausted()) {
+                readyDeployments.add(deploymentGroup);
+            }
+        }
+        return readyDeployments;
     }
 
     public static boolean isSpaceAvailable(Pos pos) {

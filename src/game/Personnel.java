@@ -139,24 +139,6 @@ public abstract class Personnel {
         pos.move(dir);
     }
 
-    public void incrementX(int amt) {
-        if (pos.getX() + amt >= Constants.tileMatrix[0].length) {
-            System.out.println("You tried to add " + amt + " to " + pos.getX()
-                    + "(x), but the length of the row was " + Constants.tileMatrix[0].length);
-            System.exit(0);
-        }
-        pos.incrementX(amt);
-    }
-
-    public void incrementY(int amt) {
-        if (pos.getY() + amt >= Constants.tileMatrix.length) {
-            System.out.println("You tried to add " + amt + " to " + pos.getY()
-                    + "(y), but the number of columns was " + Constants.tileMatrix.length);
-            System.exit(0);
-        }
-        pos.incrementY(amt);
-    }
-
     public void setStunned(boolean value) {
         stunned = value;
     }
@@ -262,5 +244,10 @@ public abstract class Personnel {
 
     public boolean stunned() {
         return stunned;
+    }
+
+    @Override
+    public String toString() {
+        return name;
     }
 }

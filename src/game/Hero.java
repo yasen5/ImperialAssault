@@ -38,6 +38,10 @@ public abstract class Hero extends Personnel implements FullDeployment {
         return exhausted;
     }
 
+    public void setExhausted(boolean exhausted) {
+        this.exhausted = exhausted; 
+    }
+
     @Override
     public void draw(Graphics g) {
         super.draw(g);

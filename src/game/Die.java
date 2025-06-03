@@ -47,7 +47,7 @@ public class Die {
                 new OffenseDieResult(3, 0, 0), new OffenseDieResult(3, 0, 0)
         }),
         YELLOW(new OffenseDieResult[] {
-                new OffenseDieResult(1, 2, 0), new OffenseDieResult(1, 0, 0),
+                new OffenseDieResult(1, 2, 0), new OffenseDieResult(0, 1, 0),
                 new OffenseDieResult(0, 1, 2), new OffenseDieResult(1, 0, 2),
                 new OffenseDieResult(1, 1, 1), new OffenseDieResult(2, 0, 1)
         });

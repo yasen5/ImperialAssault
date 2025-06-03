@@ -12,10 +12,12 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
     private boolean exhausted = false;
     private DeploymentCard deploymentCard;
     private boolean displayStats = false;
+    private String name;
 
     public DeploymentGroup(Pos[] poses, Function<Pos, T> constructor, String name) {
         this.constructor = constructor;
         this.deploymentCard = new DeploymentCard(Constants.baseImgFilePath + name + "Deployment.jpg", false, this);
+        this.name = name;
         addMembers(poses);
     }
 
@@ -36,6 +38,10 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
 
     public boolean getExhausted() {
         return exhausted;
+    }
+
+    public void setExhausted(boolean exhausted) {
+        this.exhausted = exhausted;
     }
 
     public String getName() {
@@ -85,5 +91,14 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
                 i--;
             }
         }
+    }
+
+    public boolean isEmpty() {
+        return members.isEmpty();
+    }
+
+    @Override
+    public String toString() {
+        return name;
     }
 }

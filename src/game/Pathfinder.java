@@ -53,7 +53,6 @@ public class Pathfinder {
                 }
                 boolean reachableUnderMax = bestPath.size() <= maxMoves;
                 if (reachableUnderMax) {
-                    System.out.println("Yo");
                 }
                 return reachableUnderMax;
             } else {
