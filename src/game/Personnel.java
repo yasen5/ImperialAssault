@@ -1,7 +1,6 @@
 package src.game;
 
 import java.awt.Color;
-import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -14,13 +13,14 @@ import javax.imageio.ImageIO;
 import src.Constants;
 import src.Screen;
 import src.game.Die.*;
+import src.game.FullDeployment.PersonnelStatus;
 
 public abstract class Personnel {
     private int startingHealth, health, speed;
     private int xSize = 1, ySize = 1;
     private Pos pos;
     private Pos[] corners;
-    private boolean stunned, bleeding;
+    protected boolean stunned = false, focused = false;
     private BufferedImage image;
     private String name;
     private DefenseDieType[] defenseDice;
@@ -43,7 +43,8 @@ public abstract class Personnel {
         MOVE,
         ATTACK,
         RECOVER,
-        SPECIAL
+        SPECIAL,
+        INTERACT
     }
 
     public Personnel(String name, int startingHealth, int speed, Pos pos, DefenseDieType[] defenseDice, boolean hasSpecial) {
@@ -51,8 +52,6 @@ public abstract class Personnel {
         this.startingHealth = startingHealth;
         this.health = startingHealth;
         this.speed = speed;
-        this.stunned = false;
-        this.bleeding = false;
         this.defenseDice = defenseDice;
         try {
             this.image = ImageIO.read(new File(Constants.baseImgFilePath + name + ".jpg"));
@@ -108,7 +107,7 @@ public abstract class Personnel {
             surges--;
         }
         totalResults.addDamage(postPierceDamage);
-        if (totalResults.getDamage() > 0) {
+        if ((getRange() != Integer.MAX_VALUE || Pathfinder.canReachPoint(pos, other.getPos(), totalResults.getAccuracy(), false)) && totalResults.getDamage() > 0) {
             other.dealDamage(totalResults.getDamage());
         }
     }
@@ -160,10 +159,6 @@ public abstract class Personnel {
 
     public void setStunned(boolean value) {
         stunned = value;
-    }
-
-    public void setBleeding(boolean value) {
-        bleeding = value;
     }
 
     public DefenseRoll[] getDefense(Personnel other) {
@@ -276,5 +271,9 @@ public abstract class Personnel {
 
     public ArrayList<Actions> getActions() {
         return actions;
+    }
+
+    public PersonnelStatus getStatus() {
+        return new PersonnelStatus(health, stunned, focused);
     }
 }

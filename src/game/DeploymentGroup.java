@@ -11,10 +11,11 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
     private Function<Pos, T> constructor;
     private boolean exhausted = false;
     private DeploymentCard deploymentCard;
+    private boolean displayStats = false;
 
     public DeploymentGroup(Pos[] poses, Function<Pos, T> constructor, String name) {
         this.constructor = constructor;
-        this.deploymentCard = new DeploymentCard(Constants.baseImgFilePath + name + "Deployment.jpg", false);
+        this.deploymentCard = new DeploymentCard(Constants.baseImgFilePath + name + "Deployment.jpg", false, this);
         addMembers(poses);
     }
 
@@ -50,6 +51,9 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
             member.draw(g);
         }
         deploymentCard.draw(g);
+        if (displayStats) {
+            drawStats(g);
+        }
     }
 
     public ArrayList<T> getMembers() {
@@ -58,5 +62,28 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
 
     public DeploymentCard getDeploymentCard() {
         return deploymentCard;
+    }
+
+    @Override
+    public PersonnelStatus[] getStatuses() {
+        PersonnelStatus[] statuses = new PersonnelStatus[members.size()];
+        for (int i = 0; i < members.size(); i++) {
+            statuses[i] = members.get(i).getStatus();
+        }
+        return statuses;
+    }
+
+    @Override
+    public void toggleDisplay() {
+        displayStats = !displayStats;
+    }
+
+    public void removeDeadFigures() {
+        for (int i = 0; i < members.size(); i++) {
+            if (members.get(i).getDead()) {
+                members.remove(i);
+                i--;
+            }
+        }
     }
 }

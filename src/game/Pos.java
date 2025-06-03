@@ -130,6 +130,12 @@ public class Pos {
         return nextPoint;
     }
 
+    public Pos getNextPosRespectingFigures(Directions dir, Pos acceptableLocation) {
+        Pos nextPoint = new Pos(x, y);
+        nextPoint.move(dir);
+        return nextPoint;
+    }
+
     @Override
     public String toString() {
         return "(" + x + ", " + y + ")";

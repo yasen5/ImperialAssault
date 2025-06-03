@@ -13,6 +13,7 @@ public abstract class Hero extends Personnel implements FullDeployment {
     private Equipment.Weapon weapon;
     private boolean exhausted = false;
     private DeploymentCard deploymentCard;
+    private boolean displayStats = false;
 
     public Hero(String name, int startingHealth, int speed, int endurance, Equipment.Weapon weapon, Pos pos,
             boolean hasSpecial, DefenseDieType[] defenseDice) {
@@ -21,7 +22,7 @@ public abstract class Hero extends Personnel implements FullDeployment {
         this.weapon = weapon;
         this.wounded = false;
         this.strain = 0;
-        this.deploymentCard = new DeploymentCard(Constants.baseImgFilePath + name + "Deployment.jpg", true);
+        this.deploymentCard = new DeploymentCard(Constants.baseImgFilePath + name + "Deployment.jpg", true, this);
         this.actions.add(Actions.RECOVER);
     }
 
@@ -41,14 +42,21 @@ public abstract class Hero extends Personnel implements FullDeployment {
     public void draw(Graphics g) {
         super.draw(g);
         deploymentCard.draw(g);
+        if (displayStats) {
+            drawStats(g);
+        }
     }
 
     @Override
     public OffenseRoll[] getOffense() {
         OffenseDieType[] attackDice = weapon.attackDice();
-        OffenseRoll[] result = new OffenseRoll[attackDice.length];
+        OffenseRoll[] result = new OffenseRoll[attackDice.length + (focused ? 1 : 0)];
         for (int i = 0; i < attackDice.length; i++) {
             result[i] = attackDice[i].roll();
+        }
+        if (focused) {
+            result[result.length - 1] = OffenseDieType.GREEN.roll();
+            focused = false;
         }
         return result;
     }
@@ -73,5 +81,16 @@ public abstract class Hero extends Personnel implements FullDeployment {
         else {
             return Integer.MAX_VALUE;
         }
+    }
+
+    @Override
+    public PersonnelStatus[] getStatuses() {
+        PersonnelStatus[] statuses = new PersonnelStatus[] {getStatus()};
+        return statuses;
+    }
+
+    @Override
+    public void toggleDisplay() {
+        displayStats = !displayStats;
     }
 }

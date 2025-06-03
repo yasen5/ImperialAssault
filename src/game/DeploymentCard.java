@@ -12,12 +12,13 @@ public class DeploymentCard {
     private BufferedImage image;
     private boolean exhausted;
     private boolean visible = false;
-    private static int heroXSize = 600, heroYSize = 472, imperialXSize = 380, imperialYSize = 600;
-    private static int x = 1000, y = 10;
+    public static final int heroXSize = 600, heroYSize = 472, imperialXSize = 380, imperialYSize = 600;
+    public static final int x = 1000, y = 10;
+    private FullDeployment parent;
 
     private final boolean rebel;
 
-    public DeploymentCard(String imgFilePath, boolean rebel) {
+    public DeploymentCard(String imgFilePath, boolean rebel, FullDeployment parent) {
         try {
             image = ImageIO.read(new File(imgFilePath));
         } catch (IOException e) {
@@ -26,6 +27,7 @@ public class DeploymentCard {
         }
         exhausted = false;
         this.rebel = rebel;
+        this.parent = parent;
     }
 
     public void draw(Graphics g) {
@@ -48,5 +50,6 @@ public class DeploymentCard {
 
     public void setVisible(boolean value) {
         visible = value;
+        parent.toggleDisplay();
     }
 }

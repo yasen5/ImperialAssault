@@ -1,8 +1,5 @@
 package src.game;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-
 import src.game.Die.DefenseDieType;
 import src.game.Die.OffenseDieType;
 import src.game.Die.OffenseRoll;
@@ -26,9 +23,13 @@ public abstract class Imperial extends Personnel {
 
     @Override
     public OffenseRoll[] getOffense() {
-        OffenseRoll[] results = new OffenseRoll[offenseDice.length];
+        OffenseRoll[] results = new OffenseRoll[offenseDice.length + (focused ? 1 : 0)];
         for (int i = 0; i < offenseDice.length; i++) {
-            results[0] = offenseDice[i].roll();
+            results[i] = offenseDice[i].roll();
+        }
+        if (focused) {
+            results[results.length - 1] = OffenseDieType.GREEN.roll();
+            focused = false;
         }
         return results;
     }

@@ -20,7 +20,7 @@ import src.game.Personnel.Actions;
 import src.game.Personnel.Directions;
 
 public class Game {
-    private static MapTile mapTile;
+    private final MapTile mapTile;
     private static ArrayList<DeploymentGroup<? extends Imperial>> imperialDeployments = new ArrayList<>();
     private static ArrayList<Hero> heroes = new ArrayList<>();
     private static Screen ui;
@@ -28,6 +28,14 @@ public class Game {
     private static ArrayList<GraphicDefenseDieResult> defenseResults = new ArrayList<>();
     private static ArrayList<Personnel> availableDefenders = new ArrayList<>();
     private static CompletableFuture<Personnel> currentDefender = new CompletableFuture<>();
+    @SuppressWarnings("unchecked")
+    private static final Interactable<? extends Personnel>[] interactables = (Interactable<? extends Personnel>[]) new Interactable[] {
+            new Terminal<Imperial>(new Pos(7, 0), Imperial.class),
+            new Terminal<Imperial>(new Pos(0, 3), Imperial.class),
+            new Door<Personnel>(new Pos(0, 6), Personnel.class),
+            new Door<Personnel>(new Pos(6, 7), Personnel.class)
+    };
+    private static boolean gameEnd;
 
     public static record MapTile(BufferedImage img, int[][] tileArray) {
     }
@@ -66,12 +74,12 @@ public class Game {
             deployment.draw(g);
         }
         g.setColor(new Color(255, 255, 255));
-        g.drawString("Offense Results:", 960, 1080 / 2);
+        g.drawString("Offense Results:", 960, 700);
         g.drawString("Defense Results:", 960, 810);
         for (int i = 0; i < offenseResults.size(); i++) {
             BufferedImage image = Die.offenseDieFaces.get(offenseResults.get(i));
             int startX = 960 + i * (Constants.tileSize + 10);
-            int startY = 1080 / 2 + 20;
+            int startY = 700 + 20;
             g.drawImage(image, startX, startY,
                     startX + Constants.tileSize,
                     startY + Constants.tileSize, 0, 0, image.getWidth(null), image.getHeight(null),
@@ -86,6 +94,9 @@ public class Game {
                     startX + Constants.tileSize,
                     startY + Constants.tileSize, 0, 0, image.getWidth(null), image.getHeight(null),
                     null);
+        }
+        for (Interactable<? extends Personnel> interactable : interactables) {
+            interactable.draw(g);
         }
     }
 
@@ -106,6 +117,7 @@ public class Game {
             handleMoves(activeFigure, leftoverMoves);
             activeFigure.setActive(false);
         }
+        removeDeadFigures();
         if (imperialExhaustOptions.length > 0) {
             DeploymentGroup<? extends Imperial> deploymentGroup = imperialDeployments
                     .get(InputUtils.getMultipleChoice("Deployment Selection",
@@ -120,8 +132,23 @@ public class Game {
                 imperial.setActive(false);
             }
         }
+        removeDeadFigures();
         ui.repaint();
-        playRound();
+        if (!gameEnd) {
+            playRound();
+        }
+    }
+
+    public void removeDeadFigures() {
+        for (int i = 0; i < heroes.size(); i++) {
+            if (heroes.get(i).getDead()) {
+                heroes.remove(i);
+                i--;
+            }
+        }
+        for (int i = 0; i < imperialDeployments.size(); i++) {
+            imperialDeployments.get(i).removeDeadFigures();
+        }
     }
 
     // Returns the number of moves gained
@@ -134,6 +161,9 @@ public class Game {
         availableDefenders = availableDefenders(activeFigure, rebel);
         if (availableDefenders.size() == 0) {
             availableActions.remove(Actions.ATTACK);
+        }
+        if (canInteract(activeFigure)) {
+            availableActions.add(Actions.INTERACT);
         }
         Actions chosenAction = availableActions.get(InputUtils.getMultipleChoice("Action Selection",
                 "Choose an action to take",
@@ -155,8 +185,35 @@ public class Game {
             case ATTACK -> handleAttack(activeFigure);
             case RECOVER -> activeFigure.dealDamage(-1 * ((Hero) (activeFigure)).getEndurance());
             case SPECIAL -> activeFigure.performSpecial();
+            case INTERACT -> handleInteraction(activeFigure);
         }
         return leftoverMoves;
+    }
+
+    public void handleInteraction(Personnel activeFigure) {
+        Pos activePos = activeFigure.getPos();
+        for (Directions dir : Directions.values()) {
+            Pos nextPos = activePos.getNextPos(dir);
+            for (Interactable<? extends Personnel> interactable : interactables) {
+                if (nextPos.isEqualTo(interactable.getPos())) {
+                    interactable.interact(activeFigure);
+                    return;
+                }
+            }
+        }
+    }
+
+    public boolean canInteract(Personnel activeFigure) {
+        Pos activePos = activeFigure.getPos();
+        for (Directions dir : Directions.values()) {
+            Pos nextPos = activePos.getNextPos(dir);
+            for (Interactable<? extends Personnel> interactable : interactables) {
+                if (nextPos.isEqualTo(interactable.getPos()) && interactable.canInteract()) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public ArrayList<Personnel> availableDefenders(Personnel attacker, boolean rebelAttacker) {
@@ -169,12 +226,11 @@ public class Game {
                     }
                 }
             }
-        }
-        else {
+        } else {
             for (Hero hero : heroes) {
-                    if (attacker.canAttack(hero)) {
-                        availableDefenders.add(hero);
-                    }
+                if (attacker.canAttack(hero)) {
+                    availableDefenders.add(hero);
+                }
             }
         }
         return availableDefenders;
@@ -244,6 +300,7 @@ public class Game {
     }
 
     public static void handleAttack(Personnel activeFigure) {
+        currentDefender = new CompletableFuture<>();
         ui.setSelectingCombat(true);
         for (Personnel person : availableDefenders) {
             person.setPossibleTarget(true);
@@ -260,8 +317,7 @@ public class Game {
         if (availableDefenders.contains(defender)) {
             currentDefender.complete(defender);
             return true;
-        }
-        else {
+        } else {
             return false;
         }
     }
@@ -288,6 +344,7 @@ public class Game {
             imperialDeployments.remove(0);
         }
         setup();
+        playRound();
     }
 
     public void setup() {
@@ -349,5 +406,11 @@ public class Game {
         while (!defenseResults.isEmpty()) {
             defenseResults.remove(0);
         }
+    }
+
+    public static void endGame(boolean rebelsWin) {
+        ui.endGame(rebelsWin);
+        ui.deactiveateMovementButtons();
+        gameEnd = true;
     }
 }
