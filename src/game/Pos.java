@@ -79,17 +79,31 @@ public class Pos {
         if (!inBounds) {
             return false;
         }
+        FullPos thisCenterPos = new FullPos((int) (getFullX() + Constants.tileSize * 0.5),
+                getFullY() + Constants.tileSize * 0.5);
+        FullPos nextCenterPos = new FullPos(
+                (newX + 0.5) * Constants.tileSize,
+                (newY + 0.5) * Constants.tileSize);
         for (WallLine wallLine : Constants.wallLines) {
-            if (wallLine.intersects(new FullPos((int) (getFullX() + Constants.tileSize * 0.5),
-                    getFullY() + Constants.tileSize * 0.5),
-                    new FullPos(
-                            (newX + 0.5) * Constants.tileSize,
-                            (newY + 0.5) * Constants.tileSize),
+            if (wallLine.intersects(thisCenterPos,
+                    nextCenterPos,
                     true)) {
                 return false;
             }
         }
-        return (Constants.tileMatrix[newY][newX] == 1 && (!respectFigures || Game.isSpaceAvailable(new Pos(newX, newY))));
+        for (Interactable<? extends Personnel> interactable : Game.interactables) {
+            if (interactable.blocking()) {
+                for (WallLine wallLine : interactable.getWallLines()) {
+                    if (wallLine.intersects(thisCenterPos,
+                            nextCenterPos,
+                            true)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return (Constants.tileMatrix[newY][newX] == 1
+                && (!respectFigures || Game.isSpaceAvailable(new Pos(newX, newY))));
     }
 
     public void move(Directions dir) {

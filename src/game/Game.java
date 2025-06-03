@@ -29,7 +29,7 @@ public class Game {
     private static ArrayList<Personnel> availableDefenders = new ArrayList<>();
     private static CompletableFuture<Personnel> currentDefender = new CompletableFuture<>();
     @SuppressWarnings("unchecked")
-    private static final Interactable<? extends Personnel>[] interactables = (Interactable<? extends Personnel>[]) new Interactable[] {
+    public static final Interactable<? extends Personnel>[] interactables = (Interactable<? extends Personnel>[]) new Interactable[] {
             new Terminal<Imperial>(new Pos(7, 0), Imperial.class),
             new Terminal<Imperial>(new Pos(0, 3), Imperial.class),
             new Door<Personnel>(new Pos(0, 6), Personnel.class),
@@ -74,25 +74,23 @@ public class Game {
             deployment.draw(g);
         }
         g.setColor(new Color(255, 255, 255));
-        g.drawString("Offense Results:", 960, 700);
-        g.drawString("Defense Results:", 960, 810);
         for (int i = 0; i < offenseResults.size(); i++) {
             BufferedImage image = Die.offenseDieFaces.get(offenseResults.get(i));
-            int startX = 960 + i * (Constants.tileSize + 10);
-            int startY = 700 + 20;
+            int startX = 960 + i * (Die.xSize + 10);
+            int startY = 650 + 20;
             g.drawImage(image, startX, startY,
-                    startX + Constants.tileSize,
-                    startY + Constants.tileSize, 0, 0, image.getWidth(null), image.getHeight(null),
+                    startX + Die.xSize,
+                    startY + Die.ySize, 0, 0, image.getWidth(null), image.getHeight(null),
                     null);
         }
         for (int i = 0; i < defenseResults.size(); i++) {
             BufferedImage image = Die.defenseDieFaces.get(defenseResults.get(i));
-            int startX = 960 + i * (Constants.tileSize + 10);
+            int startX = 960 + i * (Die.xSize + 10);
             int startY = 820;
             g.drawImage(image, startX,
                     startY,
-                    startX + Constants.tileSize,
-                    startY + Constants.tileSize, 0, 0, image.getWidth(null), image.getHeight(null),
+                    startX + Die.xSize,
+                    startY + Die.ySize, 0, 0, image.getWidth(null), image.getHeight(null),
                     null);
         }
         for (Interactable<? extends Personnel> interactable : interactables) {
@@ -110,7 +108,12 @@ public class Game {
             activeFigure.setActive(true);
             ui.repaint();
             int leftoverMoves = 0;
-            for (int i = 0; i < 2; i++) {
+            int numActions = 2;
+            if (activeFigure.stunned()) {
+                numActions--;
+                activeFigure.setStunned(false);
+            }
+            for (int i = 0; i < numActions; i++) {
                 leftoverMoves += takeAction(activeFigure, true);
             }
             // Player uses the rest of their moves (if any)
@@ -126,7 +129,9 @@ public class Game {
                 imperial.setActive(true);
                 ui.repaint();
                 int leftoverMoves = 0;
-                leftoverMoves += takeAction(imperial, Actions.MOVE);
+                if (!imperial.stunned()) {
+                    leftoverMoves += takeAction(imperial, Actions.MOVE);
+                }
                 leftoverMoves += takeAction(imperial, false);
                 handleMoves(imperial, leftoverMoves);
                 imperial.setActive(false);
@@ -348,7 +353,7 @@ public class Game {
     }
 
     public void setup() {
-        heroes.add(new DialaPassil(new Pos(6, 5)));
+        heroes.add(new DialaPassil(new Pos(4, 9)));
         heroes.add(new Gaarkhan(new Pos(1, 4)));
         imperialDeployments
                 .add(new DeploymentGroup<StormTrooper>(new Pos[] { new Pos(4, 11), new Pos(4, 12), new Pos(5, 11) },

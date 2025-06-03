@@ -182,23 +182,6 @@ public abstract class Personnel {
                     pos.getFullY() + imageSideSpace, Constants.tileSize * xSize - 2 * imageSideSpace,
                     Constants.tileSize * ySize - 2 * imageSideSpace);
         }
-        // g.setColor(new Color(255, 255, 255));
-        // g.fillRect(pos.getFullX(), pos.getFullY(), Constants.tileSize,
-        //         (int) (Constants.tileSize * 0.1));
-        // g.fillRect(pos.getFullX(), pos.getFullY() + (int) (Constants.tileSize * 0.9),
-        //         Constants.tileSize,
-        //         (int) (Constants.tileSize * 0.1));
-        // g.fillRect(pos.getFullX(), pos.getFullY(), (int) (Constants.tileSize * 0.1),
-        //         Constants.tileSize);
-        // g.fillRect(pos.getFullX() + (int) (Constants.tileSize * 0.9), pos.getFullY(),
-        //         (int) (Constants.tileSize * 0.1),
-        //         Constants.tileSize);
-        // g.setColor(new Color(0, 0, 0));
-        // g.drawRect(pos.getFullX(), pos.getFullY(), Constants.tileSize,
-        //         Constants.tileSize);
-        // g.setFont(new Font("Bookman Old Style", Font.BOLD, 11));
-        // g.setColor(new Color(140, 0, 0));
-        // g.drawString("" + health, pos.getFullX(), (pos.getY() + 1) * Constants.tileSize);
     }
 
     public String getName() {
@@ -275,5 +258,9 @@ public abstract class Personnel {
 
     public PersonnelStatus getStatus() {
         return new PersonnelStatus(health, stunned, focused);
+    }
+
+    public boolean stunned() {
+        return stunned;
     }
 }

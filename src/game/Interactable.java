@@ -8,14 +8,16 @@ import java.io.IOException;
 import javax.imageio.ImageIO;
 
 import src.Constants;
+import src.Constants.WallLine;
 
 public abstract class Interactable<ValidInteractors extends Personnel> {
     private final Pos pos;
     private final int xSize, ySize;
     private BufferedImage image;
     private final Class<ValidInteractors> validInteractorClass;
+    private final WallLine[] wallLines;
 
-    public Interactable(Pos pos, Class<ValidInteractors> validInteractorClass, String imgName, int xSize, int ySize) {
+    public Interactable(Pos pos, Class<ValidInteractors> validInteractorClass, String imgName, int xSize, int ySize, WallLine[] wallLines) {
         this.pos = pos;
         this.validInteractorClass = validInteractorClass;
         try {
@@ -26,9 +28,10 @@ public abstract class Interactable<ValidInteractors extends Personnel> {
         }
         this.xSize = xSize;
         this.ySize = ySize;
+        this.wallLines = wallLines;
     }
 
-    public Interactable(Pos pos, Class<ValidInteractors> validInteractorClass, String imgName) {
+    public Interactable(Pos pos, Class<ValidInteractors> validInteractorClass, String imgName, WallLine[] wallLines) {
         this.pos = pos;
         this.validInteractorClass = validInteractorClass;
         try {
@@ -39,6 +42,7 @@ public abstract class Interactable<ValidInteractors extends Personnel> {
         }
         this.xSize = Constants.tileSize;
         this.ySize = Constants.tileSize;
+        this.wallLines = wallLines;
     }
 
     public void draw(Graphics g) {
@@ -64,5 +68,13 @@ public abstract class Interactable<ValidInteractors extends Personnel> {
 
     public boolean canInteract() {
         return true;
+    }
+
+    public boolean blocking() {
+        return wallLines != null && canInteract();
+    }
+
+    public WallLine[] getWallLines() {
+        return wallLines;
     }
 }

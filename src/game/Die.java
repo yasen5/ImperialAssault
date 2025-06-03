@@ -10,6 +10,8 @@ import javax.imageio.ImageIO;
 import src.Constants;
 
 public class Die {
+    public static final int xSize = Constants.tileSize * 2, ySize = Constants.tileSize * 2;
+
     public static record OffenseDieResult(int damage, int surge, int accuracy) {
     }
 

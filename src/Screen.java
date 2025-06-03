@@ -215,7 +215,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 		movementButtonOutput = output;
 	}
 
-	public static void deactivateMovementButton(Directions dir) {
+	public void deactivateMovementButton(Directions dir) {
 		movementButtons.get(dir).setVisible(false);
 		movementButtons.get(dir).setEnabled(false);
 	}
