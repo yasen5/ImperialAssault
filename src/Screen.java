@@ -16,10 +16,6 @@ import java.io.File;
 import java.io.IOException;
 import java.security.KeyStore.LoadStoreParameter;
 import java.util.concurrent.CompletableFuture;
-
-import javax.imageio.ImageIO;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.Clip;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JEditorPane;
@@ -331,13 +327,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 	public void endGame(boolean rebelsWin) {
 		deactiveateMovementButtons();
 		gameEnd = true;
-		try {
-            Clip clip = AudioSystem.getClip();
-            clip.open(AudioSystem.getAudioInputStream(new File("/Users/yasen/Documents/Quarter4Project/src/game/sounds/Applause.wav")));
-            clip.start();
-        } catch (Exception exc) {
-            exc.printStackTrace(System.out);
-        }
+		LoaderUtils.playSound("Applause");
 	}
 
 	// Animation in a boardgame for some reason

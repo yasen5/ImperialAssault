@@ -46,7 +46,9 @@ public class Constants {
     }
 
     public static final int tileSize = 70;
-    public static final String baseImgFilePath = "/Users/yasen/Documents/Quarter4Project/src/game/images/";
+    public static final String gamePath = "/Users/yasen/Documents/Quarter4Project/src/game/";
+    public static final String baseImgFilePath = gamePath + "images/";
+    public static final String baseSoundFilePath = gamePath + "sounds/";
     public static final int[][] tileMatrix = new int[][] {
             new int[] { 0, 0, 0, 1, 1, 0, 1, 1, 0, 0 },
             new int[] { 0, 0, 0, 1, 1, 0, 1, 1, 0, 0 },

@@ -5,6 +5,8 @@ import java.io.File;
 import java.io.IOException;
 
 import javax.imageio.ImageIO;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
 
 import src.Constants;
 
@@ -23,5 +25,13 @@ public class LoaderUtils {
         }
     }
 
-    
+    public static void playSound(String name) {
+        try {
+            Clip clip = AudioSystem.getClip();
+            clip.open(AudioSystem.getAudioInputStream(new File(Constants.baseSoundFilePath + name + ".wav").getAbsoluteFile()));
+            clip.start();
+        } catch (Exception exc) {
+            exc.printStackTrace(System.out);
+        }
+    }
 }

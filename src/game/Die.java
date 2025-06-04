@@ -66,7 +66,7 @@ public class Die {
         public OffenseRoll roll() {
             int face = (int) (Math.random() * 6);
             Game.addOffenseResult(new GraphicOffenseDieResult(face, this));
-            playSound("/Users/yasen/Documents/Quarter4Project/src/game/sounds/DieRoll.wav");
+            LoaderUtils.playSound("DieRoll");
             return new OffenseRoll(face, results[face]);
         }
 
@@ -97,7 +97,7 @@ public class Die {
         public DefenseRoll roll() {
             int face = (int) (Math.random() * 6);
             Game.addDefenseResult(new GraphicDefenseDieResult(face, this));
-            playSound("/Users/yasen/Documents/Quarter4Project/src/game/sounds/DieRoll.wav");
+            LoaderUtils.playSound("DieRoll");
             return new DefenseRoll(face, results[face]);
         }
 
@@ -115,18 +115,14 @@ public class Die {
         for (OffenseDieType die : OffenseDieType.values()) {
             for (int i = 0; i < 6; i++) {
                 offenseDieFaces.put(new GraphicOffenseDieResult(i, die),
-                        LoaderUtils.getImage("dice/" + die.name() + i));
+                        LoaderUtils.getImage("dice/" + die.name().toLowerCase() + (i+1)));
             }
         }
-    }
-
-    public static void playSound(String name) {
-        try {
-            Clip clip = AudioSystem.getClip();
-            clip.open(AudioSystem.getAudioInputStream(new File(name).getAbsoluteFile()));
-            clip.start();
-        } catch (Exception exc) {
-            exc.printStackTrace(System.out);
+        for (DefenseDieType die : DefenseDieType.values()) {
+            for (int i = 0; i < 6; i++) {
+                defenseDieFaces.put(new GraphicDefenseDieResult(i, die),
+                        LoaderUtils.getImage("dice/" + die.name().toLowerCase() + (i + 1)));
+            }
         }
     }
 }
