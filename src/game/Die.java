@@ -71,7 +71,6 @@ public class Die {
         }
 
         public OffenseDieResult getResult(int face) {
-            System.out.println("Dice rolled");
             return results[face];
         }
     }
@@ -119,37 +118,37 @@ public class Die {
             offenseDieFaces.put(new GraphicOffenseDieResult(0, OffenseDieType.BLUE),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/blue1.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load blue 1 image");
+            throw new java.lang.RuntimeException("Couldn't load blue 1 image");
         }
         try {
             offenseDieFaces.put(new GraphicOffenseDieResult(1, OffenseDieType.BLUE),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/blue2.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load blue 2 image");
+            throw new java.lang.RuntimeException("Couldn't load blue 2 image");
         }
         try {
             offenseDieFaces.put(new GraphicOffenseDieResult(2, OffenseDieType.BLUE),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/blue3.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load blue 3 image");
+            throw new java.lang.RuntimeException("Couldn't load blue 3 image");
         }
         try {
             offenseDieFaces.put(new GraphicOffenseDieResult(3, OffenseDieType.BLUE),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/blue4.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load blue 4 image");
+            throw new java.lang.RuntimeException("Couldn't load blue 4 image");
         }
         try {
             offenseDieFaces.put(new GraphicOffenseDieResult(4, OffenseDieType.BLUE),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/blue5.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load blue 5 image");
+            throw new java.lang.RuntimeException("Couldn't load blue 5 image");
         }
         try {
             offenseDieFaces.put(new GraphicOffenseDieResult(5, OffenseDieType.BLUE),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/blue6.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load blue 6 image");
+            throw new java.lang.RuntimeException("Couldn't load blue 6 image");
         }
 
         // GREEN
@@ -157,37 +156,37 @@ public class Die {
             offenseDieFaces.put(new GraphicOffenseDieResult(0, OffenseDieType.GREEN),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/green1.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load green 1 image");
+            throw new java.lang.RuntimeException("Couldn't load green 1 image");
         }
         try {
             offenseDieFaces.put(new GraphicOffenseDieResult(1, OffenseDieType.GREEN),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/green2.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load green 2 image");
+            throw new java.lang.RuntimeException("Couldn't load green 2 image");
         }
         try {
             offenseDieFaces.put(new GraphicOffenseDieResult(2, OffenseDieType.GREEN),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/green3.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load green 3 image");
+            throw new java.lang.RuntimeException("Couldn't load green 3 image");
         }
         try {
             offenseDieFaces.put(new GraphicOffenseDieResult(3, OffenseDieType.GREEN),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/green4.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load green 4 image");
+            throw new java.lang.RuntimeException("Couldn't load green 4 image");
         }
         try {
             offenseDieFaces.put(new GraphicOffenseDieResult(4, OffenseDieType.GREEN),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/green5.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load green 5 image");
+            throw new java.lang.RuntimeException("Couldn't load green 5 image");
         }
         try {
             offenseDieFaces.put(new GraphicOffenseDieResult(5, OffenseDieType.GREEN),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/green6.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load green 6 image");
+            throw new java.lang.RuntimeException("Couldn't load green 6 image");
         }
 
         // RED
@@ -195,37 +194,37 @@ public class Die {
             offenseDieFaces.put(new GraphicOffenseDieResult(0, OffenseDieType.RED),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/red1.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load red 1 image");
+            throw new java.lang.RuntimeException("Couldn't load red 1 image");
         }
         try {
             offenseDieFaces.put(new GraphicOffenseDieResult(1, OffenseDieType.RED),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/red2.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load red 2 image");
+            throw new java.lang.RuntimeException("Couldn't load red 2 image");
         }
         try {
             offenseDieFaces.put(new GraphicOffenseDieResult(2, OffenseDieType.RED),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/red3.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load red 3 image");
+            throw new java.lang.RuntimeException("Couldn't load red 3 image");
         }
         try {
             offenseDieFaces.put(new GraphicOffenseDieResult(3, OffenseDieType.RED),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/red4.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load red 4 image");
+            throw new java.lang.RuntimeException("Couldn't load red 4 image");
         }
         try {
             offenseDieFaces.put(new GraphicOffenseDieResult(4, OffenseDieType.RED),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/red5.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load red 5 image");
+            throw new java.lang.RuntimeException("Couldn't load red 5 image");
         }
         try {
             offenseDieFaces.put(new GraphicOffenseDieResult(5, OffenseDieType.RED),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/red6.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load red 6 image");
+            throw new java.lang.RuntimeException("Couldn't load red 6 image");
         }
 
         // YELLOW
@@ -233,37 +232,37 @@ public class Die {
             offenseDieFaces.put(new GraphicOffenseDieResult(0, OffenseDieType.YELLOW),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/yellow1.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load yellow 1 image");
+            throw new java.lang.RuntimeException("Couldn't load yellow 1 image");
         }
         try {
             offenseDieFaces.put(new GraphicOffenseDieResult(1, OffenseDieType.YELLOW),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/yellow2.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load yellow 2 image");
+            throw new java.lang.RuntimeException("Couldn't load yellow 2 image");
         }
         try {
             offenseDieFaces.put(new GraphicOffenseDieResult(2, OffenseDieType.YELLOW),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/yellow3.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load yellow 3 image");
+            throw new java.lang.RuntimeException("Couldn't load yellow 3 image");
         }
         try {
             offenseDieFaces.put(new GraphicOffenseDieResult(3, OffenseDieType.YELLOW),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/yellow4.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load yellow 4 image");
+            throw new java.lang.RuntimeException("Couldn't load yellow 4 image");
         }
         try {
             offenseDieFaces.put(new GraphicOffenseDieResult(4, OffenseDieType.YELLOW),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/yellow5.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load yellow 5 image");
+            throw new java.lang.RuntimeException("Couldn't load yellow 5 image");
         }
         try {
             offenseDieFaces.put(new GraphicOffenseDieResult(5, OffenseDieType.YELLOW),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/yellow6.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load yellow 6 image");
+            throw new java.lang.RuntimeException("Couldn't load yellow 6 image");
         }
 
         // BLACK
@@ -271,37 +270,37 @@ public class Die {
             defenseDieFaces.put(new GraphicDefenseDieResult(0, DefenseDieType.BLACK),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/black1.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load black 1 image");
+            throw new java.lang.RuntimeException("Couldn't load black 1 image");
         }
         try {
             defenseDieFaces.put(new GraphicDefenseDieResult(1, DefenseDieType.BLACK),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/black2.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load black 2 image");
+            throw new java.lang.RuntimeException("Couldn't load black 2 image");
         }
         try {
             defenseDieFaces.put(new GraphicDefenseDieResult(2, DefenseDieType.BLACK),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/black3.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load black 3 image");
+            throw new java.lang.RuntimeException("Couldn't load black 3 image");
         }
         try {
             defenseDieFaces.put(new GraphicDefenseDieResult(3, DefenseDieType.BLACK),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/black4.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load black 4 image");
+            throw new java.lang.RuntimeException("Couldn't load black 4 image");
         }
         try {
             defenseDieFaces.put(new GraphicDefenseDieResult(4, DefenseDieType.BLACK),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/black5.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load black 5 image");
+            throw new java.lang.RuntimeException("Couldn't load black 5 image");
         }
         try {
             defenseDieFaces.put(new GraphicDefenseDieResult(5, DefenseDieType.BLACK),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/black6.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load black 6 image");
+            throw new java.lang.RuntimeException("Couldn't load black 6 image");
         }
 
         // WHITE
@@ -309,37 +308,37 @@ public class Die {
             defenseDieFaces.put(new GraphicDefenseDieResult(0, DefenseDieType.WHITE),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/white1.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load white 1 image");
+            throw new java.lang.RuntimeException("Couldn't load white 1 image");
         }
         try {
             defenseDieFaces.put(new GraphicDefenseDieResult(1, DefenseDieType.WHITE),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/white2.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load white 2 image");
+            throw new java.lang.RuntimeException("Couldn't load white 2 image");
         }
         try {
             defenseDieFaces.put(new GraphicDefenseDieResult(2, DefenseDieType.WHITE),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/white3.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load white 3 image");
+            throw new java.lang.RuntimeException("Couldn't load white 3 image");
         }
         try {
             defenseDieFaces.put(new GraphicDefenseDieResult(3, DefenseDieType.WHITE),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/white4.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load white 4 image");
+            throw new java.lang.RuntimeException("Couldn't load white 4 image");
         }
         try {
             defenseDieFaces.put(new GraphicDefenseDieResult(4, DefenseDieType.WHITE),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/white5.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load white 5 image");
+            throw new java.lang.RuntimeException("Couldn't load white 5 image");
         }
         try {
             defenseDieFaces.put(new GraphicDefenseDieResult(5, DefenseDieType.WHITE),
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/white6.png")));
         } catch (IOException e) {
-            System.out.println("Couldn't load white 6 image");
+            throw new java.lang.RuntimeException("Couldn't load white 6 image");
         }
     }
 

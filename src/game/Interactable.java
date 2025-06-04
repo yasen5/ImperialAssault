@@ -25,8 +25,7 @@ public abstract class Interactable<ValidInteractors extends Personnel> {
         try {
             image = ImageIO.read(new File(Constants.baseImgFilePath + imgName));
         } catch (IOException e) {
-            System.out.println("No terminal token image");
-            System.exit(0);
+            throw new java.lang.RuntimeException("No terminal token image");
         }
         this.xSize = xSize;
         this.ySize = ySize;
@@ -40,8 +39,7 @@ public abstract class Interactable<ValidInteractors extends Personnel> {
         try {
             image = ImageIO.read(new File(Constants.baseImgFilePath + imgName));
         } catch (IOException e) {
-            System.out.println("No terminal token image");
-            System.exit(0);
+            throw new java.lang.RuntimeException("No terminal token image");
         }
         this.xSize = Constants.tileSize;
         this.ySize = Constants.tileSize;

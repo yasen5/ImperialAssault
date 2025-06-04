@@ -31,9 +31,8 @@ public class DeploymentCard {
             try {
                 this.image = ImageIO.read(new File(adjustedName + ".png"));
             } catch (IOException e) {
-                System.out.println("Couldn't read either in jpg or png, tried " + adjustedName + ".jpg" + " and "
+                throw new java.lang.RuntimeException("Couldn't read either in jpg or png, tried " + adjustedName + ".jpg" + " and "
                         + adjustedName + ".png" + ex);
-                System.exit(0);
             }
         }
         exhausted = false;

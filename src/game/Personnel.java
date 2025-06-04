@@ -67,10 +67,9 @@ public abstract class Personnel {
             try {
                 this.image = ImageIO.read(new File(Constants.baseImgFilePath + name + ".png"));
             } catch (IOException e) {
-                System.out.println("Couldn't read either in jpg or png, tried " + Constants.baseImgFilePath + name
+                throw new java.lang.RuntimeException("Couldn't read either in jpg or png, tried " + Constants.baseImgFilePath + name
                         + ".jpg" + " and " + Constants.baseImgFilePath
                         + name + ".png" + ex);
-                System.exit(0);
             }
         }
         this.pos = pos;
@@ -177,7 +176,7 @@ public abstract class Personnel {
                 Constants.tileSize * (pos.getY() + ySize) - imageSideSpace, 0, 0, image.getWidth(null),
                 image.getHeight(null),
                 null);
-        if (Screen.getSelectionType() == SelectingType.COMBAT && !possibleTarget) {
+        if (Screen.getSelectionType() == SelectingType.COMBAT || Screen.getSelectionType() == SelectingType.SPECIAL && !possibleTarget) {
             g.setColor(new Color(0, 0, 0, 70));
             g.fillRect(pos.getFullX() + imageSideSpace,
                     pos.getFullY() + imageSideSpace, Constants.tileSize * xSize - 2 * imageSideSpace,
@@ -210,13 +209,13 @@ public abstract class Personnel {
     // Optional functions that define special action behavior
     public void performSpecial() {
         if (specialRequiresSelection) {
-            System.out.println("Performing special without required selection");
+            throw new java.lang.RuntimeException("Performing special without required selection");
         }
     }
 
     public void performSpecial(Personnel selected) {
         if (!specialRequiresSelection) {
-            System.out.println("Performing special with selection that isn't require it");
+            throw new java.lang.RuntimeException("Performing special with selection that isn't require it");
         }
     }
 
@@ -232,25 +231,16 @@ public abstract class Personnel {
             return false;
         }
         for (Pos corner : corners) {
-            System.out.println();
             Pos[] cornersUsed = new Pos[2];
             int sightCount = 0;
             for (Pos enemyCorner : other.getCorners()) {
                 if (Pathfinder.straightlineToPos(corner, enemyCorner)) {
-                    System.out.println("Can reach point " + enemyCorner + " from point " + corner);
                     cornersUsed[sightCount >= 2 ? 0 : sightCount] = enemyCorner;
                     sightCount++;
                     if (sightCount >= 2) {
                         if (!Pos.onOneLine(pos, cornersUsed[0], cornersUsed[1])) {
                             return true;
                         }
-                    }
-                    if (sightCount >= 2) {
-                        System.out.print("Made it but was blocked by intersection. The points are: ");
-                        for (Pos position : cornersUsed) {
-                            System.out.print(position + " ");
-                        }
-                        System.out.println();
                     }
                 }
             }

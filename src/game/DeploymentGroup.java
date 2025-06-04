@@ -51,8 +51,7 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
     public String getName() {
         // Safety to make sure you can't selected exhausted deployment
         if (members.isEmpty()) {
-            System.out.println("Empty deployment but not exhausted");
-            System.exit(0);
+            throw new java.lang.RuntimeException("Empty deployment but not exhausted");
         }
         return members.get(0).getName();
     }

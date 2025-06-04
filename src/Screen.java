@@ -166,7 +166,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 			startScreenimage = ImageIO
 					.read(new File(Constants.baseImgFilePath + "IACoverArt.png"));
 		} catch (IOException e) {
-			System.out.println("Haha l no cover art");
+			throw new java.lang.RuntimeException("Cover art image couldn't load");
 		}
 		previousSelectedCard = game.getHeroes().get(0).getDeploymentCard();
 		previousSelectedCard.setVisible(true);

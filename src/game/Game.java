@@ -50,8 +50,7 @@ public class Game {
         try {
             mapImg = ImageIO.read(new File(Constants.baseImgFilePath + "TutorialTile.png"));
         } catch (IOException e) {
-            System.out.println("No map image L bozo");
-            System.exit(0);
+            throw new java.lang.RuntimeException("No map image L bozo");
         }
         mapTile = new MapTile(mapImg, Constants.tileMatrix);
     }
