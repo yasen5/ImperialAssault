@@ -3,19 +3,14 @@ package src.game;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-
-import javax.imageio.ImageIO;
 
 import src.Constants;
 import src.Screen;
 import src.Screen.SelectingType;
 import src.game.Die.*;
 import src.game.FullDeployment.PersonnelStatus;
-import src.game.Pathfinder.FullPos;
 
 public abstract class Personnel {
     // Instance variables
@@ -165,7 +160,8 @@ public abstract class Personnel {
                 Constants.tileSize * (pos.getY() + ySize) - imageSideSpace, 0, 0, image.getWidth(null),
                 image.getHeight(null),
                 null);
-        if ((Screen.getSelectionType() == SelectingType.COMBAT || Screen.getSelectionType() == SelectingType.SPECIAL) && !possibleTarget) {
+        if ((Screen.getSelectionType() == SelectingType.COMBAT || Screen.getSelectionType() == SelectingType.SPECIAL)
+                && !possibleTarget) {
             g.setColor(new Color(0, 0, 0, 70));
             g.fillRect(pos.getFullX() + imageSideSpace,
                     pos.getFullY() + imageSideSpace, Constants.tileSize * xSize - 2 * imageSideSpace,

@@ -12,7 +12,8 @@ public class Constants {
     public static record WalledTile(Pos pos, Directions[] wallDirections) {
     }
 
-    // Can be put anywhere, be vertical horizontal, have the tips count (block line of sight)
+    // Can be put anywhere, be vertical horizontal, have the tips count (block line
+    // of sight)
     public static record WallLine(Pos pos, boolean vertical, boolean shortenFirstTip, boolean shortenSecondTip,
             boolean softBarrier) {
         public boolean intersects(FullPos p1, FullPos p2, boolean includeSoft) {

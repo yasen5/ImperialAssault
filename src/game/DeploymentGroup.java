@@ -28,7 +28,8 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
         addMember(pos);
     }
 
-    // Add members (not used currently because the tutorial has no way to replenish dead groups)
+    // Add members (not used currently because the tutorial has no way to replenish
+    // dead groups)
     public void addMembers(Pos[] poses) {
         for (Pos pos : poses) {
             members.add(constructor.apply(pos));

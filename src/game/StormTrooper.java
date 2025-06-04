@@ -18,7 +18,8 @@ public class StormTrooper extends Imperial {
         return new Equipment.SurgeOptions[] { Equipment.SurgeOptions.DAMAGE1, Equipment.SurgeOptions.ACCURACY1 };
     }
 
-    // Same as the superclass's implementation, except you can reroll if a trooper is near
+    // Same as the superclass's implementation, except you can reroll if a trooper
+    // is near
     @Override
     public OffenseRoll[] getOffense() {
         OffenseRoll[] results = new OffenseRoll[offenseDice.length + (focused ? 1 : 0)];

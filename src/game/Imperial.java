@@ -18,13 +18,15 @@ public abstract class Imperial extends Personnel {
 
     // Constructor
     public Imperial(String name, int startingHealth, int speed, Pos pos,
-            ImperialType type, DefenseDieType[] defenseDice, OffenseDieType[] offenseDice, boolean hasSpecial, boolean specialRequiresSelection) {
+            ImperialType type, DefenseDieType[] defenseDice, OffenseDieType[] offenseDice, boolean hasSpecial,
+            boolean specialRequiresSelection) {
         super(name, startingHealth, speed, pos, defenseDice, hasSpecial, specialRequiresSelection);
         this.type = type;
         this.offenseDice = offenseDice;
     }
 
-    // Same as in Hero.java's implementation, with more time could be set up to be in the superclass for less duplicate code
+    // Same as in Hero.java's implementation, with more time could be set up to be
+    // in the superclass for less duplicate code
     @Override
     public OffenseRoll[] getOffense() {
         OffenseRoll[] results = new OffenseRoll[offenseDice.length + (focused ? 1 : 0)];

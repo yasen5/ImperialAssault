@@ -1,13 +1,7 @@
 package src.game;
 
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
 import java.util.HashMap;
-
-import javax.imageio.ImageIO;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.Clip;
 
 import src.Constants;
 
@@ -115,7 +109,7 @@ public class Die {
         for (OffenseDieType die : OffenseDieType.values()) {
             for (int i = 0; i < 6; i++) {
                 offenseDieFaces.put(new GraphicOffenseDieResult(i, die),
-                        LoaderUtils.getImage("dice/" + die.name().toLowerCase() + (i+1)));
+                        LoaderUtils.getImage("dice/" + die.name().toLowerCase() + (i + 1)));
             }
         }
         for (DefenseDieType die : DefenseDieType.values()) {

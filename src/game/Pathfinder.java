@@ -19,16 +19,19 @@ public class Pathfinder {
     public static record Point(Pos pos, Point parent) {
     }
 
-    public static record FullPos(double x, double y) {}
+    public static record FullPos(double x, double y) {
+    }
 
     public static boolean canReachPoint(Pos start, Pos end, int maxMoves, boolean respectFigures) {
         return canReachPoint(start, end, maxMoves, respectFigures, true);
     }
 
-    // Breadth-first search to figure out whether you can get to a space in a specified number of moves
+    // Breadth-first search to figure out whether you can get to a space in a
+    // specified number of moves
     // Respect figures: determines whether you can move through figures
     // Respect soft barriers: determines whether you respect the dotted red lines
-    public static boolean canReachPoint(Pos start, Pos end, int maxMoves, boolean respectFigures, boolean respectSoftBarriers) {
+    public static boolean canReachPoint(Pos start, Pos end, int maxMoves, boolean respectFigures,
+            boolean respectSoftBarriers) {
         if (!start.isOnGrid()) {
             return false;
         }
@@ -76,7 +79,8 @@ public class Pathfinder {
         return false;
     }
 
-    // Determines whether you can draw a straightl line from A to B without intersecting any walls
+    // Determines whether you can draw a straightl line from A to B without
+    // intersecting any walls
     public static boolean straightlineToPos(Pos startingLocation, Pos endingLocation) {
         if (startingLocation.isEqualTo(endingLocation)) {
             return true;
@@ -109,14 +113,14 @@ public class Pathfinder {
             }
         }
         for (Interactable<? extends Personnel> interactable : Game.interactables) {
-                if (interactable.blocking()) {
-                    for (WallLine line : interactable.getWallLines()) {
-                        if (line.intersects(startingLocation.getFullPos(), endingLocation.getFullPos(), false)) {
-                            return false;
-                        }
+            if (interactable.blocking()) {
+                for (WallLine line : interactable.getWallLines()) {
+                    if (line.intersects(startingLocation.getFullPos(), endingLocation.getFullPos(), false)) {
+                        return false;
                     }
                 }
             }
+        }
         return true;
     }
 
@@ -153,8 +157,8 @@ public class Pathfinder {
 
         // Special collinear cases
         return (cSide == 0 && pointOnSegment(a, c, b) ||
-        dSide == 0 && pointOnSegment(a, d, b) ||
-        aSide == 0 && pointOnSegment(c, a, d) ||
-        bSide == 0 && pointOnSegment(c, b, d));
+                dSide == 0 && pointOnSegment(a, d, b) ||
+                aSide == 0 && pointOnSegment(c, a, d) ||
+                bSide == 0 && pointOnSegment(c, b, d));
     }
 }

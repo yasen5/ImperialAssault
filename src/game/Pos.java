@@ -82,8 +82,7 @@ public class Pos {
         if (!inBounds) {
             return false;
         }
-        FullPos thisCenterPos = new FullPos((int) (getFullX() + Constants.tileSize * 0.5),
-                getFullY() + Constants.tileSize * 0.5);
+        FullPos thisCenterPos = getCenterPos();
         FullPos nextCenterPos = new FullPos(
                 (newX + 0.5) * Constants.tileSize,
                 (newY + 0.5) * Constants.tileSize);
@@ -145,7 +144,8 @@ public class Pos {
         return getNextPos(dir);
     }
 
-    // Safe pos, but watch out because it doesn't monitor the validity of the next point
+    // Safe pos, but watch out because it doesn't monitor the validity of the next
+    // point
     public Pos getNextPos(Directions dir) {
         Pos nextPoint = new Pos(x, y);
         nextPoint.move(dir);

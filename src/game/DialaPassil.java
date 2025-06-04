@@ -7,7 +7,8 @@ public class DialaPassil extends Hero {
         super("DialaPassil", 12, 4, 5, new Equipment.Weapon("Plasteel Staff",
                 new OffenseDieType[] { OffenseDieType.GREEN, OffenseDieType.YELLOW }, new Equipment.SurgeOptions[] {
                         Equipment.SurgeOptions.STUN,
-                        Equipment.SurgeOptions.DAMAGE1 }, true, true),
+                        Equipment.SurgeOptions.DAMAGE1 },
+                true, true),
                 pos, false, new DefenseDieType[] { DefenseDieType.WHITE }, false);
     }
 
@@ -24,7 +25,8 @@ public class DialaPassil extends Hero {
         return result;
     }
 
-    // Player can remove a defense die (ignore it) from the opposing side by taking 2 strain
+    // Player can remove a defense die (ignore it) from the opposing side by taking
+    // 2 strain
     @Override
     public DefenseRoll[] getDefense(Personnel other) {
         if (InputUtils.getYesNo("Ability", "Remove a die from defense pool? (2 Strain)")) {

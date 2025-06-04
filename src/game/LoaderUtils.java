@@ -19,8 +19,9 @@ public class LoaderUtils {
             try {
                 return ImageIO.read(new File(adjustedName + ".png"));
             } catch (IOException e) {
-                throw new java.lang.RuntimeException("Couldn't read either in jpg or png, tried " + adjustedName + ".jpg" + " and "
-                        + adjustedName + ".png" + ex);
+                throw new java.lang.RuntimeException(
+                        "Couldn't read either in jpg or png, tried " + adjustedName + ".jpg" + " and "
+                                + adjustedName + ".png" + ex);
             }
         }
     }
@@ -28,7 +29,8 @@ public class LoaderUtils {
     public static void playSound(String name) {
         try {
             Clip clip = AudioSystem.getClip();
-            clip.open(AudioSystem.getAudioInputStream(new File(Constants.baseSoundFilePath + name + ".wav").getAbsoluteFile()));
+            clip.open(AudioSystem
+                    .getAudioInputStream(new File(Constants.baseSoundFilePath + name + ".wav").getAbsoluteFile()));
             clip.start();
         } catch (Exception exc) {
             exc.printStackTrace(System.out);

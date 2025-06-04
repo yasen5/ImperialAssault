@@ -2,14 +2,9 @@ package src.game;
 
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
-
 import javax.swing.SwingUtilities;
-
-import javax.imageio.ImageIO;
 
 import src.Constants;
 import src.Constants.WallLine;

@@ -2,10 +2,6 @@ package src.game;
 
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-
-import javax.imageio.ImageIO;
 
 import src.Constants;
 import src.Constants.WallLine;
@@ -19,7 +15,8 @@ public abstract class Interactable<ValidInteractors extends Personnel> {
     private final WallLine[] wallLines;
 
     // Constructor for if you want to specify the size
-    public Interactable(Pos pos, Class<ValidInteractors> validInteractorClass, String imgName, int xSize, int ySize, WallLine[] wallLines) {
+    public Interactable(Pos pos, Class<ValidInteractors> validInteractorClass, String imgName, int xSize, int ySize,
+            WallLine[] wallLines) {
         this.pos = pos;
         this.validInteractorClass = validInteractorClass;
         image = LoaderUtils.getImage(imgName);

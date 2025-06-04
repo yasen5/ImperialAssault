@@ -40,7 +40,7 @@ public abstract class Hero extends Personnel implements FullDeployment {
     }
 
     public void setExhausted(boolean exhausted) {
-        this.exhausted = exhausted; 
+        this.exhausted = exhausted;
     }
 
     @Override
@@ -78,20 +78,19 @@ public abstract class Hero extends Personnel implements FullDeployment {
     public int getEndurance() {
         return endurance;
     }
-    
+
     @Override
     public int getRange() {
         if (weapon.melee()) {
             return weapon.reach() ? 2 : 1;
-        }
-        else {
+        } else {
             return Integer.MAX_VALUE;
         }
     }
 
     @Override
     public PersonnelStatus[] getStatuses() {
-        PersonnelStatus[] statuses = new PersonnelStatus[] {getStatus()};
+        PersonnelStatus[] statuses = new PersonnelStatus[] { getStatus() };
         return statuses;
     }
 
