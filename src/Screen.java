@@ -1,6 +1,7 @@
 package src;
 
 import java.awt.Color;
+import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Image;
@@ -13,11 +14,16 @@ import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.security.spec.ECFieldF2m;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JEditorPane;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
 import src.game.BiMap;
@@ -38,6 +44,32 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 	private Thread mainGameLoop;
 	private static SelectingType currentSelectionType = SelectingType.EXPLANATION;
 	private static DeploymentCard previousSelectedCard;
+	private JEditorPane editorPane;
+	private static String[] dialogChain = new String[] {
+			"<html><body style='width: 300px; padding: 10px;'>" +
+					"<h3>Welcome to Imperial Assault!</h3>" +
+					"<p>To get started, read through pages 4-8 of this guide (NOTE: Some aspects of the game have been changed):</p>"
+					+
+					"<p><a href='https://images-cdn.fantasyflightgames.com/filer_public/89/06/8906c720-5ed5-4b22-aa1b-b58b4528956c/swi01_learn_to_play_v17.pdf'>Complete Game Guide</a></p>"
+					+
+					"<p>Select any text above to copy it, or click the links to open them in your browser.</p>" +
+					"</body></html>",
+			"<html><body style='width: 300px; padding: 10px;'>" +
+					"<h3>Changes:</h3>" +
+					"<p>The main changes are that you are only playing with two rebels, and without the droid or e-web engineer. There are no bleeding effects. There are no crates. Specials can be activated multiple times per activation. Melee vs ranged weapon types are not important. Heroes do not flip to a wounded side but are rather immediately defeated. You can move through any figure. Keywords other than \"stun\" and \"focused\" are irrelevant</p>"
+					+
+					"</body></html>",
+			"<html><body style='width: 300px; padding: 10px;'>" +
+					"<h3>Instructions!</h3>" +
+					"<p>You will first choose the figure(s) to move. Once you do, the current figure will be lit in green. To move, you will use the arrow buttons after you specify the number of moves you want to make.\nActions will be represented by dialogues, which you can respond to. When you attack, valid targets will be lit up and others will be grayed out.</p>"
+					+
+					"</body></html>",
+			"<html><body style='width: 300px; padding: 10px;'>" +
+							"<h3>Instructions!</h3>" +
+					"<p>To view the abilities of an individual character, click on them while there isn't an option pane or you are selecting a target for combat (sorry it doesn't work otherwise). You will see their health, strain, and some conditions (although these unfortunately get covered up by option panes periodically)</p>"
+					+
+					"</body></html>"
+	};
 
 	public static BiMap<Directions, JButton> movementButtons = new BiMap<Directions, JButton>();
 
@@ -47,9 +79,39 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 		SPECIAL
 	}
 
+	public void showInstructionsChain() {
+		for (int i = 0; i < dialogChain.length; i++) {
+			editorPane = new JEditorPane("text/html", dialogChain[i]);
+			editorPane.setEditable(false);
+			editorPane.setOpaque(false);
+			if (i == 0) {
+				editorPane.addHyperlinkListener(e -> {
+					if (e.getEventType() == javax.swing.event.HyperlinkEvent.EventType.ACTIVATED) {
+						try {
+							Desktop.getDesktop().browse(e.getURL().toURI());
+						} catch (Exception ex) {
+							JOptionPane.showMessageDialog(null,
+									"Could not open link: " + e.getURL(),
+									"Error",
+									JOptionPane.ERROR_MESSAGE);
+						}
+					}
+				});
+			}
+			JOptionPane.showConfirmDialog(
+					null,
+					editorPane,
+					"Instructions",
+					JOptionPane.OK_CANCEL_OPTION,
+					JOptionPane.INFORMATION_MESSAGE);
+
+		}
+	}
+
 	public Screen() {
 		setFocusable(true);
 		setLayout(null);
+		showInstructionsChain();
 		movementButtons.put(Directions.UP,
 				new JButton(new ImageIcon(new ImageIcon(Constants.baseImgFilePath + "ArrowButtonUp.png").getImage()
 						.getScaledInstance(buttonSize,
@@ -176,8 +238,6 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 		}
 		repaint();
 	}
-
-
 
 	public void mouseEntered(MouseEvent e) {
 	}
