@@ -165,7 +165,7 @@ public abstract class Personnel {
                 Constants.tileSize * (pos.getY() + ySize) - imageSideSpace, 0, 0, image.getWidth(null),
                 image.getHeight(null),
                 null);
-        if (Screen.getSelectionType() == SelectingType.COMBAT || Screen.getSelectionType() == SelectingType.SPECIAL && !possibleTarget) {
+        if ((Screen.getSelectionType() == SelectingType.COMBAT || Screen.getSelectionType() == SelectingType.SPECIAL) && !possibleTarget) {
             g.setColor(new Color(0, 0, 0, 70));
             g.fillRect(pos.getFullX() + imageSideSpace,
                     pos.getFullY() + imageSideSpace, Constants.tileSize * xSize - 2 * imageSideSpace,
