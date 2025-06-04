@@ -4,7 +4,9 @@ import java.awt.Graphics;
 import java.util.ArrayList;
 import java.util.function.Function;
 
+// Basically an arraylist of imperials with some added functionality
 public class DeploymentGroup<T extends Imperial> implements FullDeployment {
+    // Instance variables
     private ArrayList<T> members = new ArrayList<T>();
     private Function<Pos, T> constructor;
     private boolean exhausted = false;
@@ -12,6 +14,7 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
     private boolean displayStats = false;
     private String name;
 
+    // Constructor
     public DeploymentGroup(Pos[] poses, Function<Pos, T> constructor, String name) {
         this.constructor = constructor;
         this.deploymentCard = new DeploymentCard(name, false, this);
@@ -19,17 +22,20 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
         addMembers(poses);
     }
 
+    // Alternate constructor for a single member
     public DeploymentGroup(Pos pos, Function<Pos, T> constructor) {
         this.constructor = constructor;
         addMember(pos);
     }
 
+    // Add members (not used currently because the tutorial has no way to replenish dead groups)
     public void addMembers(Pos[] poses) {
         for (Pos pos : poses) {
             members.add(constructor.apply(pos));
         }
     }
 
+    // Same as above but for single member
     public void addMember(Pos pos) {
         members.add(constructor.apply(pos));
     }
@@ -43,6 +49,7 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
     }
 
     public String getName() {
+        // Safety to make sure you can't selected exhausted deployment
         if (members.isEmpty()) {
             System.out.println("Empty deployment but not exhausted");
             System.exit(0);
@@ -50,6 +57,7 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
         return members.get(0).getName();
     }
 
+    // Draw all members
     public void draw(Graphics g) {
         for (T member : members) {
             member.draw(g);
@@ -68,6 +76,7 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
         return deploymentCard;
     }
 
+    // Get the statuses of all members
     @Override
     public PersonnelStatus[] getStatuses() {
         PersonnelStatus[] statuses = new PersonnelStatus[members.size()];

@@ -5,15 +5,18 @@ import src.game.Die.OffenseDieType;
 import src.game.Die.OffenseRoll;
 
 public abstract class Imperial extends Personnel {
+    // Instance variables
     private ImperialType type;
     protected OffenseDieType[] offenseDice;
 
+    // Types relevant for some abilities
     public static enum ImperialType {
         TROOPER,
         DROID,
         OFFICER
     }
 
+    // Constructor
     public Imperial(String name, int startingHealth, int speed, Pos pos,
             ImperialType type, DefenseDieType[] defenseDice, OffenseDieType[] offenseDice, boolean hasSpecial, boolean specialRequiresSelection) {
         super(name, startingHealth, speed, pos, defenseDice, hasSpecial, specialRequiresSelection);
@@ -21,6 +24,7 @@ public abstract class Imperial extends Personnel {
         this.offenseDice = offenseDice;
     }
 
+    // Same as in Hero.java's implementation, with more time could be set up to be in the superclass for less duplicate code
     @Override
     public OffenseRoll[] getOffense() {
         OffenseRoll[] results = new OffenseRoll[offenseDice.length + (focused ? 1 : 0)];

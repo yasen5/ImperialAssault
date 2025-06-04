@@ -14,9 +14,6 @@ import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.security.spec.ECFieldF2m;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import javax.imageio.ImageIO;
@@ -35,6 +32,7 @@ import src.game.Personnel.Directions;
 import src.game.Pos;
 
 public class Screen extends JPanel implements ActionListener, MouseListener, KeyListener {
+	// Instance variables
 	private Game game;
 	private boolean gameStarted = false; // Turn to false when submitting
 	private BufferedImage startScreenimage;
@@ -45,6 +43,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 	private static SelectingType currentSelectionType = SelectingType.EXPLANATION;
 	private static DeploymentCard previousSelectedCard;
 	private JEditorPane editorPane;
+	// Chain of dialogues before the game begins
 	private static String[] dialogChain = new String[] {
 			"<html><body style='width: 300px; padding: 10px;'>" +
 					"<h3>Welcome to Imperial Assault!</h3>" +
@@ -65,11 +64,12 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 					+
 					"</body></html>",
 			"<html><body style='width: 300px; padding: 10px;'>" +
-							"<h3>Instructions!</h3>" +
+					"<h3>Instructions!</h3>" +
 					"<p>To view the abilities of an individual character, click on them while there isn't an option pane or you are selecting a target for combat (sorry it doesn't work otherwise). You will see their health, strain, and some conditions (although these unfortunately get covered up by option panes periodically)</p>"
 					+
 					"</body></html>"
 	};
+	private boolean rebelsWin;
 
 	public static BiMap<Directions, JButton> movementButtons = new BiMap<Directions, JButton>();
 
@@ -79,6 +79,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 		SPECIAL
 	}
 
+	// Run through the dialogue chain until it finishes (will block the thread)
 	public void showInstructionsChain() {
 		for (int i = 0; i < dialogChain.length; i++) {
 			editorPane = new JEditorPane("text/html", dialogChain[i]);
@@ -108,6 +109,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 		}
 	}
 
+	// Constructor, sets everything up
 	public Screen() {
 		setFocusable(true);
 		setLayout(null);
@@ -173,20 +175,24 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 		return new Dimension(1920, 1080);
 	}
 
+	// Draw based on stage of the game
 	@Override
 	public void paintComponent(Graphics g) {
 		super.paintComponent(g);
 		if (gameEnd) {
+			// End screen
 			g.setColor(new Color(0, 0, 0));
 			g.drawRect(0, 0, 1920, 1080);
 			g.setColor(new Color(255, 255, 255));
-			g.drawString("Game over", 100, 100);
+			g.drawString("Game over, " + (rebelsWin ? "rebels " : "imperials") + " won", 100, 100);
 		} else if (gameStarted) {
+			// Regular game
 			g.setColor(new Color(25, 25, 25));
 			g.fillRect(getPreferredSize().width / 2 - 200, 0, getPreferredSize().width / 2 + 200,
 					getPreferredSize().height);
 			game.drawGame(g);
 		} else {
+			// Start screen
 			g.drawImage(startScreenimage, 0,
 					0,
 					getPreferredSize().width,
@@ -195,6 +201,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 		}
 	}
 
+	// Report movement button output
 	public void actionPerformed(ActionEvent e) {
 		Object source = e.getSource();
 		for (Directions direction : Directions.values()) {
@@ -210,6 +217,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 
 	}
 
+	// Perform the necessary tasks based on the type of selection
 	public void mouseReleased(MouseEvent e) {
 		if (!gameStarted) {
 			gameStarted = true;
@@ -252,6 +260,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 
 	}
 
+	// Cheat key and reset
 	public void keyReleased(KeyEvent e) {
 		if (e.getKeyCode() == KeyEvent.VK_F1) {
 			gameEnd = true;
@@ -265,6 +274,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 
 	}
 
+	// Moves and activates the button at a specific area (used for movement buttons)
 	public JButton moveAndActivateButton(Directions direction, int x, int y, double angleRads) {
 		int xDiff = (int) (Constants.tileSize *
 				Math.cos(angleRads));
@@ -298,6 +308,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 		repaint();
 	}
 
+	// Reset everything
 	public void reset() {
 		gameEnd = false;
 		deactiveateMovementButtons();

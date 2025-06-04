@@ -8,6 +8,7 @@ public class Equipment {
             SurgeOptions[] surgeOptions, boolean melee, boolean reach) {
     };
 
+    // All the surge options a weapon can have in the tutorial
     public static enum SurgeOptions {
         DAMAGE1,
         DAMAGE2,
@@ -21,7 +22,8 @@ public class Equipment {
         FOCUS
     }
 
-    // Attacker, Defender, Damage, Accuracy, Recover
+    // Param order: Attacker, Defender, Damage, Accuracy, Recover
+    // Maps the surge option to a lambda that can run
     public static Map<SurgeOptions, BiConsumer<Personnel[], TotalAttackResult>> surgeEffects = Map.of(
             SurgeOptions.STUN, (Personnel[] combatants, TotalAttackResult totalResults) -> {
                 combatants[1].setStunned(true);

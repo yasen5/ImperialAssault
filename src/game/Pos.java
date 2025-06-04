@@ -41,6 +41,9 @@ public class Pos {
         return (this.x == other.getX() && this.y == other.getY());
     }
 
+    // Determines whether you can move in that direction
+    // Respect figures: check if you are moving through figures
+    // RespectSoftBarriers: check if you are moving through dotted red lines
     public boolean canMove(Directions dir, boolean respectFigures, boolean respectSoftBarriers) {
         int newX = getX();
         int newY = getY();
@@ -108,6 +111,7 @@ public class Pos {
                 && (!respectFigures || Game.isSpaceAvailable(new Pos(newX, newY))));
     }
 
+    // Move in a direction
     public void move(Directions dir) {
         switch (dir) {
             case UP -> y -= 1;
@@ -133,6 +137,7 @@ public class Pos {
         }
     }
 
+    // Unsafe because it might return null if you can't move there
     public Pos getNextPosUnsafe(Directions dir, boolean respectFigures, boolean respectSoftBarriers) {
         if (!canMove(dir, respectFigures, respectSoftBarriers)) {
             return null;
@@ -140,13 +145,8 @@ public class Pos {
         return getNextPos(dir);
     }
 
+    // Safe pos, but watch out because it doesn't monitor the validity of the next point
     public Pos getNextPos(Directions dir) {
-        Pos nextPoint = new Pos(x, y);
-        nextPoint.move(dir);
-        return nextPoint;
-    }
-
-    public Pos getNextPosRespectingFigures(Directions dir, Pos acceptableLocation) {
         Pos nextPoint = new Pos(x, y);
         nextPoint.move(dir);
         return nextPoint;
@@ -178,6 +178,7 @@ public class Pos {
         return new FullPos(getFullX(), getFullY());
     }
 
+    // Check if the point got closer in any way
     public static boolean closerToTarget(Pos original, Pos newPos, Pos target) {
         return Math.abs(target.getX() - newPos.getX()) < Math.abs(target.getX() - original.getX())
                 || Math.abs(target.getY() - newPos.getY()) < Math.abs(target.getY() - original.getY());

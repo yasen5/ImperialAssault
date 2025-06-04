@@ -11,12 +11,14 @@ import src.Constants;
 import src.Constants.WallLine;
 
 public abstract class Interactable<ValidInteractors extends Personnel> {
+    // Private instance variables
     private final Pos pos;
     private final int xSize, ySize;
     private BufferedImage image;
     private final Class<ValidInteractors> validInteractorClass;
     private final WallLine[] wallLines;
 
+    // Constructor for if you want to specify the size
     public Interactable(Pos pos, Class<ValidInteractors> validInteractorClass, String imgName, int xSize, int ySize, WallLine[] wallLines) {
         this.pos = pos;
         this.validInteractorClass = validInteractorClass;
@@ -31,6 +33,7 @@ public abstract class Interactable<ValidInteractors extends Personnel> {
         this.wallLines = wallLines;
     }
 
+    // Base constructor
     public Interactable(Pos pos, Class<ValidInteractors> validInteractorClass, String imgName, WallLine[] wallLines) {
         this.pos = pos;
         this.validInteractorClass = validInteractorClass;
@@ -54,6 +57,7 @@ public abstract class Interactable<ValidInteractors extends Personnel> {
                 null);
     }
 
+    // Check if the interactor is valid, then follow through with the interaction
     public void interact(Personnel interactor) {
         if (validInteractorClass.isInstance(interactor)) {
             safeInteract(validInteractorClass.cast(interactor));
@@ -70,6 +74,7 @@ public abstract class Interactable<ValidInteractors extends Personnel> {
         return true;
     }
 
+    // Return whether it interferes with movement/line of sight
     public boolean blocking() {
         return wallLines != null && canInteract();
     }

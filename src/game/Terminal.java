@@ -5,6 +5,7 @@ public class Terminal<ValidInteractors extends Personnel> extends Interactable<V
         super(pos, validInteractorClass, "RedTerminalToken.png", null);
     }
 
+    // Interactable that ends the game if interacted with (in the imperials favor)
     @Override
     public void safeInteract(ValidInteractors interactor) {
         Game.endGame(false);

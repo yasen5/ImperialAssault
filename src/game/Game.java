@@ -1,6 +1,5 @@
 package src.game;
 
-import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -21,6 +20,7 @@ import src.game.Personnel.Actions;
 import src.game.Personnel.Directions;
 
 public class Game {
+    // Variables
     private final MapTile mapTile;
     private static ArrayList<DeploymentGroup<? extends Imperial>> imperialDeployments = new ArrayList<>();
     private static ArrayList<Hero> heroes = new ArrayList<>();
@@ -41,6 +41,7 @@ public class Game {
     public static record MapTile(BufferedImage img, int[][] tileArray) {
     }
 
+    // Constructor
     public Game(Screen ui) {
         this.ui = ui;
         setup();
@@ -54,27 +55,23 @@ public class Game {
         mapTile = new MapTile(mapImg, Constants.tileMatrix);
     }
 
+    // Draws all game elements
     public void drawGame(Graphics g) {
+        // Draw the map tile
         g.drawImage(mapTile.img(), 0, 0, Constants.tileSize * mapTile.tileArray()[0].length,
                 Constants.tileSize * mapTile
                         .tileArray().length,
                 0, 0, mapTile.img().getWidth(null), mapTile.img().getHeight(null),
                 null);
-        if (Constants.debug) {
-            for (int i = 0; i < mapTile.tileArray().length; i++) {
-                for (int j = 0; j < mapTile.tileArray()[0].length; j++) {
-                    g.setColor(mapTile.tileArray()[i][j] == 0 ? new Color(255, 0, 0) : new Color(255, 255, 255));
-                    g.fillRect((int) (Constants.tileSize * (j + 0.5)), (int) (Constants.tileSize * (i + 0.5)), 3, 3);
-                }
-            }
-        }
+        // Draw heroes
         for (Hero hero : heroes) {
             hero.draw(g);
         }
+        // Draw imperials
         for (DeploymentGroup<? extends Imperial> deployment : imperialDeployments) {
             deployment.draw(g);
         }
-        g.setColor(new Color(255, 255, 255));
+        // Draw the dice
         for (int i = 0; i < offenseResults.size(); i++) {
             BufferedImage image = Die.offenseDieFaces.get(offenseResults.get(i));
             int startX = 960 + i * (Die.xSize + 10);
@@ -94,16 +91,18 @@ public class Game {
                     startY + Die.ySize, 0, 0, image.getWidth(null), image.getHeight(null),
                     null);
         }
+        // Draw interactable objects
         for (Interactable<? extends Personnel> interactable : interactables) {
             interactable.draw(g);
         }
     }
 
     public void playRound() {
+        // Figure out which groups can move
         ArrayList<Hero> heroExhaustOptions = getHeroExhaustOptions();
         ArrayList<DeploymentGroup<? extends Imperial>> imperialExhaustOptions = getImperialExhaustOptions();
-
         if (!heroExhaustOptions.isEmpty()) {
+            // Get selected hero
             Hero activeFigure;
             activeFigure = heroExhaustOptions.remove(InputUtils.getMultipleChoice("Deployment Selection",
                     "Choose deployment card to exhaust", heroExhaustOptions.toArray()));
@@ -112,18 +111,25 @@ public class Game {
             ui.repaint();
             int leftoverMoves = 0;
             int numActions = 2;
+            // If the active figure is stunned, waste one of their actions and unstun them
             if (activeFigure.stunned()) {
                 numActions--;
                 activeFigure.setStunned(false);
             }
+            // Take alloted actions
             for (int i = 0; i < numActions; i++) {
                 leftoverMoves += takeAction(activeFigure, true);
+                checkEndGame();
+                if (gameEnd) {
+                    return;
+                }
             }
             // Player uses the rest of their moves (if any)
             handleMoves(activeFigure, InputUtils.getNumericChoice(
                     "# of moves you'll use", 0, leftoverMoves));
             activeFigure.setActive(false);
         }
+        // Same but for imperials
         if (!imperialExhaustOptions.isEmpty()) {
             DeploymentGroup<? extends Imperial> deploymentGroup = imperialExhaustOptions
                     .remove(InputUtils.getMultipleChoice("Deployment Selection",
@@ -133,16 +139,22 @@ public class Game {
                 imperial.setActive(true);
                 ui.repaint();
                 int leftoverMoves = 0;
+                // If an imperial is stunned, they don't get the initial move
                 if (!imperial.stunned()) {
                     leftoverMoves += takeAction(imperial, Actions.MOVE);
                 }
                 leftoverMoves += takeAction(imperial, false);
+                checkEndGame();
+                if (gameEnd) {
+                    return;
+                }
                 handleMoves(imperial, InputUtils.getNumericChoice(
                         "# of moves you'll use", 0, leftoverMoves));
                 imperial.setActive(false);
             }
         }
         ui.repaint();
+        // If both sides have gone all the way, unexhaust them
         if (heroExhaustOptions.isEmpty() && imperialExhaustOptions.isEmpty()) {
             replenishDeployments();
         }
@@ -152,6 +164,7 @@ public class Game {
         }
     }
 
+    // Unexhaust everyone
     public void replenishDeployments() {
         for (Hero hero : heroes) {
             hero.setExhausted(false);
@@ -161,6 +174,7 @@ public class Game {
         }
     }
 
+    // See if any win/loss conditions have been met
     public void checkEndGame() {
         if (heroes.isEmpty()) {
             endGame(false);
@@ -177,6 +191,7 @@ public class Game {
         }
     }
 
+    // Remove anything with <0 health
     public void removeDeadFigures() {
         for (int i = 0; i < heroes.size(); i++) {
             if (heroes.get(i).getDead()) {
@@ -189,7 +204,8 @@ public class Game {
         }
     }
 
-    // Returns the number of moves gained
+    // Returns the number of moves gained, takes in an active figure and determines
+    // which options are available, then presents them
     public int takeAction(Personnel activeFigure, boolean rebel) {
         int leftoverMoves = 0;
         ArrayList<Actions> availableActions = new ArrayList<Actions>();
@@ -210,6 +226,7 @@ public class Game {
         return leftoverMoves;
     }
 
+    // Take a specific action, again returning number of moves leftover
     public int takeAction(Personnel activeFigure, Actions action) {
         int leftoverMoves = 0;
         switch (action) {
@@ -231,6 +248,8 @@ public class Game {
         return leftoverMoves;
     }
 
+    // Handle the special in a particular way depending on whether it needs
+    // something to be selected
     public void handleSpecial(Personnel activeFigure) {
         if (activeFigure.specialRequiresSelection()) {
             performSpecial(activeFigure);
@@ -239,6 +258,7 @@ public class Game {
         }
     }
 
+    // Interact with the nearest object
     public void handleInteraction(Personnel activeFigure) {
         Pos activePos = activeFigure.getPos();
         for (Directions dir : Directions.values()) {
@@ -252,6 +272,7 @@ public class Game {
         }
     }
 
+    // Check if any interactables are in range
     public boolean canInteract(Personnel activeFigure) {
         Pos activePos = activeFigure.getPos();
         for (Directions dir : Directions.values()) {
@@ -265,6 +286,7 @@ public class Game {
         return false;
     }
 
+    // See if anyone is in range and is a valid defender
     public ArrayList<Personnel> availableDefenders(Personnel attacker, boolean rebelAttacker) {
         ArrayList<Personnel> availableDefenders = new ArrayList<>();
         if (rebelAttacker) {
@@ -305,6 +327,7 @@ public class Game {
         return readyDeployments;
     }
 
+    // Check if the spac doesn't contain a hero or imperial already
     public static boolean isSpaceAvailable(Pos pos) {
         for (Hero hero : heroes) {
             if (hero.getPos().equalTo(pos)) {
@@ -321,6 +344,7 @@ public class Game {
         return true;
     }
 
+    // Handle multiple moves, specific number
     public static void handleMoves(Personnel activeFigure, int numMoves) {
         for (int j = 0; j < numMoves; j++) {
             handleMove(activeFigure);
@@ -328,6 +352,7 @@ public class Game {
         ui.deactiveateMovementButtons();
     }
 
+    // Handle one move, get the direction the user wants to go from the buttons
     public static void handleMove(Personnel activeFigure) {
         CompletableFuture<Directions> dir = new CompletableFuture<>();
         ui.setMovementButtonOutput(dir);
@@ -350,6 +375,8 @@ public class Game {
         ui.repaint();
     }
 
+    // Handle an attack by waiting for a defender to be selected and then performing
+    // the attack
     public static void handleAttack(Personnel activeFigure) {
         currentSelected = new CompletableFuture<>();
         ui.setSelectionType(SelectingType.COMBAT);
@@ -364,6 +391,7 @@ public class Game {
         activeFigure.performAttack(chosenDefender);
     }
 
+    // Set the defender or target of a special
     public static boolean setTarget(Personnel defender) {
         if (availableTargets.contains(defender)) {
             currentSelected.complete(defender);
@@ -387,7 +415,9 @@ public class Game {
         return heroes;
     }
 
+    // Remove existing things and reset
     public void reset() {
+        gameEnd = false;
         while (!heroes.isEmpty()) {
             heroes.remove(0);
         }
@@ -398,11 +428,12 @@ public class Game {
         playRound();
     }
 
+    // Add all the elements necessary to start
     public void setup() {
         heroes.add(new DialaPassil(new Pos(6, 5)));
         heroes.add(new Gaarkhan(new Pos(1, 4)));
         imperialDeployments
-                .add(new DeploymentGroup<StormTrooper>(new Pos[] { new Pos(4, 11), new Pos(4, 12), new Pos(5, 11) },
+                .add(new DeploymentGroup<StormTrooper>(new Pos[] { new Pos(0, 5), new Pos(4, 12), new Pos(5, 11) },
                         StormTrooper::new, "StormTrooper"));
         imperialDeployments
                 .add(new DeploymentGroup<Officer>(new Pos[] { new Pos(7, 11) }, Officer::new, "ImperialOfficer"));
@@ -416,6 +447,7 @@ public class Game {
         Game.defenseResults.add(defenseResults);
     }
 
+    // Figure out if anyone is at a position
     public static Personnel getPersonnelAtPos(Pos pos) {
         for (DeploymentGroup<? extends Imperial> deployment : imperialDeployments) {
             for (Imperial imperial : deployment.getMembers()) {
@@ -432,6 +464,7 @@ public class Game {
         return null;
     }
 
+    // Get the deployment card of the personnel at a position
     public DeploymentCard getDeploymentCard(Pos pos) {
         for (DeploymentGroup<? extends Imperial> deployment : imperialDeployments) {
             for (Imperial imperial : deployment.getMembers()) {
@@ -475,6 +508,7 @@ public class Game {
         defenseResults.remove(die);
     }
 
+    // Basically same as the handleAttack method, just for a special action
     public static void performSpecial(Personnel activeFigure) {
         currentSelected = new CompletableFuture<>();
         ui.setSelectionType(SelectingType.SPECIAL);

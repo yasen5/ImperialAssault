@@ -11,11 +11,12 @@ public class DialaPassil extends Hero {
                 pos, false, new DefenseDieType[] { DefenseDieType.WHITE }, false);
     }
 
+    // Player can choose to reroll if they rolled badly
     @Override
     public DefenseRoll[] getDefense() {
         DefenseRoll[] result = super.getDefense();
         Game.repaintScreen();
-        if (InputUtils.getYesNo("Ability Selection", "Would you like to reroll?")) {
+        if (InputUtils.getYesNo("Ability Selection", "Would you like to reroll? (1 strain)")) {
             ApplyStrain(1);
             Game.clearDice();
             result = super.getDefense();
@@ -23,6 +24,7 @@ public class DialaPassil extends Hero {
         return result;
     }
 
+    // Player can remove a defense die (ignore it) from the opposing side by taking 2 strain
     @Override
     public DefenseRoll[] getDefense(Personnel other) {
         if (InputUtils.getYesNo("Ability", "Remove a die from defense pool? (2 Strain)")) {

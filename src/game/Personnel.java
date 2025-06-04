@@ -17,6 +17,7 @@ import src.game.Die.*;
 import src.game.FullDeployment.PersonnelStatus;
 
 public abstract class Personnel {
+    // Instance variables
     private int startingHealth, health, speed;
     private int xSize = 1, ySize = 1;
     private Pos pos;
@@ -50,32 +51,39 @@ public abstract class Personnel {
         INTERACT
     }
 
-    public Personnel(String name, int startingHealth, int speed, Pos pos, DefenseDieType[] defenseDice, boolean hasSpecial, boolean specialRequiresSelection) {
+    public Personnel(String name, int startingHealth, int speed, Pos pos, DefenseDieType[] defenseDice,
+            boolean hasSpecial, boolean specialRequiresSelection) {
         this.name = name;
         this.startingHealth = startingHealth;
         this.health = startingHealth;
         this.speed = speed;
         this.defenseDice = defenseDice;
         this.specialRequiresSelection = specialRequiresSelection;
+        // Tries both .jpg and .png
         try {
             this.image = ImageIO.read(new File(Constants.baseImgFilePath + name + ".jpg"));
         } catch (IOException ex) {
             try {
                 this.image = ImageIO.read(new File(Constants.baseImgFilePath + name + ".png"));
             } catch (IOException e) {
-                System.out.println("Couldn't read either in jpg or png, tried " + Constants.baseImgFilePath + name + ".jpg" + " and " + Constants.baseImgFilePath
+                System.out.println("Couldn't read either in jpg or png, tried " + Constants.baseImgFilePath + name
+                        + ".jpg" + " and " + Constants.baseImgFilePath
                         + name + ".png" + ex);
                 System.exit(0);
             }
         }
         this.pos = pos;
-        this.corners = new Pos[] {pos, pos.getNextPos(Directions.RIGHT), pos.getNextPos(Directions.DOWN), pos.getNextPos(Directions.DOWNRIGHT)};
+        this.corners = new Pos[] { pos, pos.getNextPos(Directions.RIGHT), pos.getNextPos(Directions.DOWN),
+                pos.getNextPos(Directions.DOWNRIGHT) };
         this.actions = new ArrayList<>(Arrays.asList(Actions.MOVE, Actions.ATTACK));
         if (hasSpecial) {
             actions.add(Actions.SPECIAL);
         }
     }
 
+    // Perform an attack by getting the defender's results, subtracting them from
+    // your results, and then doing surge effects, then figuring out if you had
+    // enough range
     public void performAttack(Personnel other) {
         Game.clearDice();
         int surges = 0;
@@ -88,6 +96,7 @@ public abstract class Personnel {
             totalResults.addDamage(-result.shields());
             surges -= result.surgeCancel();
         }
+        // Pierce only acts when there are shields present, which is why it is separate
         int postPierceDamage = 0;
         for (OffenseRoll roll : getOffense()) {
             OffenseDieResult result = roll.result();
@@ -101,6 +110,7 @@ public abstract class Personnel {
         for (Equipment.SurgeOptions option : possibleActions) {
             surgeOptions.add(option);
         }
+        // Do all the surge options
         while (surges > 0 && !surgeOptions.isEmpty()) {
             int selectedIndex = InputUtils.getMultipleChoice("Surge Selection", "Spend Surges: " + surges,
                     surgeOptions.toArray());
@@ -112,11 +122,15 @@ public abstract class Personnel {
             surges--;
         }
         totalResults.addDamage(postPierceDamage);
-        if ((getRange() != Integer.MAX_VALUE || Pathfinder.canReachPoint(pos, other.getPos(), totalResults.getAccuracy(), false)) && totalResults.getDamage() > 0) {
+        // Check if there is high enough accuracy
+        if ((getRange() != Integer.MAX_VALUE
+                || Pathfinder.canReachPoint(pos, other.getPos(), totalResults.getAccuracy(), false))
+                && totalResults.getDamage() > 0) {
             other.dealDamage(totalResults.getDamage());
         }
     }
 
+    // Roll all the defense dice
     public DefenseRoll[] getDefense() {
         DefenseRoll[] results = new DefenseRoll[defenseDice.length];
         for (int i = 0; i < defenseDice.length; i++) {
@@ -129,6 +143,7 @@ public abstract class Personnel {
 
     public abstract Equipment.SurgeOptions[] getSurgeOptions();
 
+    // Deal damage, can't go above starting health
     public void dealDamage(int damage) {
         health -= damage;
         if (health > startingHealth) {
@@ -152,16 +167,19 @@ public abstract class Personnel {
         return other.getDefense();
     }
 
+    // Draw the image, do various shades on top based on whether it is active, being targeted, etc.
     public void draw(Graphics g) {
         g.drawImage(image, pos.getFullX() + imageSideSpace,
                 pos.getFullY() + imageSideSpace,
                 Constants.tileSize * (pos.getX() + xSize) - imageSideSpace,
-                Constants.tileSize * (pos.getY() + ySize) - imageSideSpace, 0, 0, image.getWidth(null), image.getHeight(null),
+                Constants.tileSize * (pos.getY() + ySize) - imageSideSpace, 0, 0, image.getWidth(null),
+                image.getHeight(null),
                 null);
         if (Screen.getSelectionType() == SelectingType.COMBAT && !possibleTarget) {
             g.setColor(new Color(0, 0, 0, 70));
             g.fillRect(pos.getFullX() + imageSideSpace,
-                pos.getFullY() + imageSideSpace, Constants.tileSize * xSize - 2 * imageSideSpace, Constants.tileSize * ySize - 2 * imageSideSpace);
+                    pos.getFullY() + imageSideSpace, Constants.tileSize * xSize - 2 * imageSideSpace,
+                    Constants.tileSize * ySize - 2 * imageSideSpace);
         }
         if (active) {
             g.setColor(new Color(0, 255, 0, 70));
@@ -187,6 +205,7 @@ public abstract class Personnel {
         return pos;
     }
 
+    // Optional functions that define special action behavior
     public void performSpecial() {
         if (specialRequiresSelection) {
             System.out.println("Performing special without required selection");
@@ -203,6 +222,7 @@ public abstract class Personnel {
         return Integer.MAX_VALUE;
     }
 
+    // Checks if the defender is in line of sight and if melee, if they are < range spaces away
     public boolean canAttack(Personnel other) {
         int range = getRange();
         if (range != Integer.MAX_VALUE && !Pathfinder.canReachPoint(pos, other.getPos(), range, false)) {
@@ -226,6 +246,7 @@ public abstract class Personnel {
         return corners;
     }
 
+    // Get the closest corner to the other Personnel
     public Pos getClosestCorner(Personnel other) {
         double minDistance = Integer.MAX_VALUE;
         Pos otherPos = other.getPos();

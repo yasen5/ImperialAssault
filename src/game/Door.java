@@ -6,6 +6,7 @@ import src.Constants;
 import src.Constants.WallLine;
 import src.game.Personnel.Directions;
 
+// Interactable that blocks attacks and movement until interacted with
 public class Door<ValidInteractors extends Personnel> extends Interactable<ValidInteractors> {
     private boolean active = true;
     private static final int xSize = Constants.tileSize * 2, ySize = 10;
@@ -16,6 +17,7 @@ public class Door<ValidInteractors extends Personnel> extends Interactable<Valid
                         new WallLine(pos.getNextPos(Directions.RIGHT), false, false, false, false) });
     }
 
+    // Repaint to show that the door isn't there
     @Override
     public void safeInteract(ValidInteractors interactor) {
         active = false;

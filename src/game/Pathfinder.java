@@ -9,6 +9,7 @@ import src.Constants;
 import src.Constants.WallLine;
 
 public class Pathfinder {
+    // General constants
     public static double positionTolerance = Constants.tileSize * 0.1;
     public static double raySpeed = Constants.tileSize * 0.5;
     public static double closeRaySpeed = Constants.tileSize * 0.05;
@@ -24,6 +25,9 @@ public class Pathfinder {
         return canReachPoint(start, end, maxMoves, respectFigures, true);
     }
 
+    // Breadth-first search to figure out whether you can get to a space in a specified number of moves
+    // Respect figures: determines whether you can move through figures
+    // Respect soft barriers: determines whether you respect the dotted red lines
     public static boolean canReachPoint(Pos start, Pos end, int maxMoves, boolean respectFigures, boolean respectSoftBarriers) {
         if (!start.isOnGrid()) {
             return false;
@@ -72,6 +76,7 @@ public class Pathfinder {
         return false;
     }
 
+    // Determines whether you can draw a straightl line from A to B without intersecting any walls
     public static boolean straightlineToPos(Pos startingLocation, Pos endingLocation) {
         if (startingLocation.isEqualTo(endingLocation)) {
             return true;
@@ -115,6 +120,7 @@ public class Pathfinder {
         return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
     }
 
+    // Cross product
     public static double orientation(FullPos p, FullPos q, FullPos r) {
         return (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
     }
@@ -124,6 +130,7 @@ public class Pathfinder {
                 q.y <= Math.max(p.y, r.y) && q.y >= Math.min(p.y, r.y);
     }
 
+    // Figures out if the points are all on opposite sides, meaning they intersect
     public static boolean intersection(FullPos a, FullPos b, FullPos c, FullPos d) {
         // Find orientations
         double cSide = orientation(a, b, c);

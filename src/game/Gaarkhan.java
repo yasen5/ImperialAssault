@@ -12,9 +12,19 @@ public class Gaarkhan extends Hero {
                 pos, true, new DefenseDieType[] { DefenseDieType.WHITE }, false);
     }
 
+    // Gaarkhan special: move and then attack
     @Override
     public void performSpecial() {
         Game.handleMoves(this, getSpeed());
         Game.handleAttack(this);
+    }
+
+    // Gaarkhan ability: when hit for 3 or more damage, he becomes focused
+    @Override
+    public void dealDamage(int amount) {
+        super.dealDamage(amount);
+        if (amount >= 3) {
+            this.focused = true;
+        }
     }
 }

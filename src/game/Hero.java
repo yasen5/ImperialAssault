@@ -7,6 +7,7 @@ import src.game.Die.OffenseDieType;
 import src.game.Die.OffenseRoll;
 
 public abstract class Hero extends Personnel implements FullDeployment {
+    // Instance variables
     private int endurance;
     protected boolean wounded;
     private Equipment.Weapon weapon;
@@ -14,6 +15,7 @@ public abstract class Hero extends Personnel implements FullDeployment {
     private DeploymentCard deploymentCard;
     private boolean displayStats = false;
 
+    // Constructor
     public Hero(String name, int startingHealth, int speed, int endurance, Equipment.Weapon weapon, Pos pos,
             boolean hasSpecial, DefenseDieType[] defenseDice, boolean specialRequiresSelection) {
         super(name, startingHealth, speed, pos, defenseDice, hasSpecial, specialRequiresSelection);
@@ -24,6 +26,7 @@ public abstract class Hero extends Personnel implements FullDeployment {
         this.actions.add(Actions.RECOVER);
     }
 
+    // Add strain, if too much strain, turn it into damage instead
     public void ApplyStrain(int strain) {
         this.strain += strain;
         if (this.strain > endurance) {
@@ -49,6 +52,7 @@ public abstract class Hero extends Personnel implements FullDeployment {
         }
     }
 
+    // Get the offense from the weapon's dice, if focused, add a green die
     @Override
     public OffenseRoll[] getOffense() {
         OffenseDieType[] attackDice = weapon.attackDice();

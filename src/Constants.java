@@ -7,10 +7,12 @@ import src.game.Pathfinder.FullPos;
 import src.game.Personnel.Directions;
 import src.game.Pos;
 
+// Contains all the constants for use throughout the program
 public class Constants {
     public static record WalledTile(Pos pos, Directions[] wallDirections) {
     }
 
+    // Can be put anywhere, be vertical horizontal, have the tips count (block line of sight)
     public static record WallLine(Pos pos, boolean vertical, boolean shortenFirstTip, boolean shortenSecondTip,
             boolean softBarier) {
         public boolean intersects(FullPos p1, FullPos p2, boolean includeSoft) {
@@ -45,7 +47,6 @@ public class Constants {
 
     public static final int tileSize = 70;
     public static final String baseImgFilePath = "/Users/yasen/Documents/Quarter4Project/src/game/images/";
-    public static final boolean debug = true;
     public static final int[][] tileMatrix = new int[][] {
             new int[] { 0, 0, 0, 1, 1, 0, 1, 1, 0, 0 },
             new int[] { 0, 0, 0, 1, 1, 0, 1, 1, 0, 0 },

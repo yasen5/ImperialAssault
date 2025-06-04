@@ -10,18 +10,21 @@ import javax.imageio.ImageIO;
 
 import src.Constants;
 
+// This class helps display the status of a hero and their special abilities
 public class DeploymentCard {
+    // Instance variables
     private BufferedImage image;
     private boolean exhausted;
     private boolean visible = false;
     public static final int heroXSize = 600, heroYSize = 472, imperialXSize = 380, imperialYSize = 600;
     public static final int x = 1000, y = 10;
     private FullDeployment parent;
-
     private final boolean rebel;
 
+    // Constructor
     public DeploymentCard(String name, boolean rebel, FullDeployment parent) {
         String adjustedName = Constants.baseImgFilePath + name + "Deployment";
+        // Try both .jpg and .png
         try {
             this.image = ImageIO.read(new File(adjustedName + ".jpg"));
         } catch (IOException ex) {
@@ -38,6 +41,7 @@ public class DeploymentCard {
         this.parent = parent;
     }
 
+    // Draw if currently visible, grey out if exhausted
     public void draw(Graphics g) {
         int xSize = rebel ? heroXSize : imperialXSize;
         int ySize = rebel ? heroYSize : imperialYSize;
@@ -56,6 +60,7 @@ public class DeploymentCard {
         exhausted = value;
     }
 
+    // Toggle visibility
     public void setVisible(boolean value) {
         visible = value;
         parent.toggleDisplay();

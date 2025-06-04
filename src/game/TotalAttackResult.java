@@ -1,5 +1,6 @@
 package src.game;
 
+// Basic storage class
 public class TotalAttackResult {
     private int damage, accuracy, recovery;
 

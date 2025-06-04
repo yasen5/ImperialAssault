@@ -18,6 +18,7 @@ public class StormTrooper extends Imperial {
         return new Equipment.SurgeOptions[] { Equipment.SurgeOptions.DAMAGE1, Equipment.SurgeOptions.ACCURACY1 };
     }
 
+    // Same as the superclass's implementation, except you can reroll if a trooper is near
     @Override
     public OffenseRoll[] getOffense() {
         OffenseRoll[] results = new OffenseRoll[offenseDice.length + (focused ? 1 : 0)];
@@ -29,7 +30,7 @@ public class StormTrooper extends Imperial {
             focused = false;
         }
         Game.repaintScreen();
-        if (InputUtils.getYesNo("Ability", "Reroll an attack die?")) {
+        if (trooperNear() && InputUtils.getYesNo("Ability", "Reroll an attack die?")) {
             int chosenDie = InputUtils.getMultipleChoice("Reroll", "Choose which die to reroll", offenseDice);
             Game.removeOffenseDie(chosenDie);
             results[chosenDie] = offenseDice[chosenDie].roll();
@@ -37,6 +38,7 @@ public class StormTrooper extends Imperial {
         return results;
     }
 
+    // Checks if there are adjacent troopers
     public boolean trooperNear() {
         for (Directions dir : Directions.values()) {
             Personnel adjacentPersonnel = Game.getPersonnelAtPos(getPos().getNextPos(dir));

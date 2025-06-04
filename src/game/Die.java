@@ -11,6 +11,7 @@ import javax.sound.sampled.Clip;
 
 import src.Constants;
 
+// This class has a lot of lines, but it basically just contains the set up possible results for different dice and the sounds/images that pop up when you roll a die
 public class Die {
     public static final int xSize = Constants.tileSize * 2, ySize = Constants.tileSize * 2;
 
@@ -32,6 +33,7 @@ public class Die {
     public static record GraphicDefenseDieResult(int face, DefenseDieType die) {
     }
 
+    // Initialize dice results
     public enum OffenseDieType {
         BLUE(new OffenseDieResult[] {
                 new OffenseDieResult(0, 1, 2), new OffenseDieResult(1, 0, 2),
@@ -60,6 +62,7 @@ public class Die {
             this.results = results;
         }
 
+        // Roll, play the sound, show the die in the game
         public OffenseRoll roll() {
             int face = (int) (Math.random() * 6);
             Game.addOffenseResult(new GraphicOffenseDieResult(face, this));
@@ -73,6 +76,7 @@ public class Die {
         }
     }
 
+    // Same exact thing as the offense
     public enum DefenseDieType {
         BLACK(new DefenseDieResult[] {
                 new DefenseDieResult(0, 1, false), new DefenseDieResult(1, 0, false),
@@ -106,6 +110,7 @@ public class Die {
     public static HashMap<GraphicOffenseDieResult, BufferedImage> offenseDieFaces;
     public static HashMap<GraphicDefenseDieResult, BufferedImage> defenseDieFaces;
 
+    // MANY MANY LINES to get the right images, in the future will use a factory
     static {
         offenseDieFaces = new HashMap<GraphicOffenseDieResult, BufferedImage>();
         defenseDieFaces = new HashMap<GraphicDefenseDieResult, BufferedImage>();

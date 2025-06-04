@@ -3,6 +3,7 @@ package src.game;
 import java.awt.Color;
 import java.awt.Graphics;
 
+// Interface for things that have deployment cards and stats
 interface FullDeployment {
     public static final int statusSpacing = 100;
     public static final int startingX = DeploymentCard.x - 200;
@@ -17,6 +18,7 @@ interface FullDeployment {
 
     public void toggleDisplay();
 
+    // Draw all the collective statuses
     public default void drawStats(Graphics g) {
         PersonnelStatus[] statuses = getStatuses();
         for (int i = 0; i < statuses.length; i++) {

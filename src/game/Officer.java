@@ -21,11 +21,13 @@ public class Officer extends Imperial {
                 Equipment.SurgeOptions.DAMAGE1 };
     }
 
+    // Give another friendly figure two moves
     @Override
     public void performSpecial(Personnel selected) {
         Game.handleMoves(selected, 2);
     }
 
+    // Find all imperial figures within two spaces
     @Override
     public ArrayList<Personnel> getSpecialTargets() {
         ArrayList<Personnel> targets = new ArrayList<>();
@@ -43,6 +45,7 @@ public class Officer extends Imperial {
         return targets;
     }
 
+    // You get to reroll defence if next to a friendly figure
     @Override
     public DefenseRoll[] getDefense() {
         DefenseRoll[] results = new DefenseRoll[defenseDice.length];
