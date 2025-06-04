@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.util.HashMap;
 
 import javax.imageio.ImageIO;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
 
 import src.Constants;
 
@@ -61,6 +63,7 @@ public class Die {
         public OffenseRoll roll() {
             int face = (int) (Math.random() * 6);
             Game.addOffenseResult(new GraphicOffenseDieResult(face, this));
+            playSound("/Users/yasen/Documents/Quarter4Project/src/game/sounds/DieRoll.wav");
             return new OffenseRoll(face, results[face]);
         }
 
@@ -91,6 +94,7 @@ public class Die {
         public DefenseRoll roll() {
             int face = (int) (Math.random() * 6);
             Game.addDefenseResult(new GraphicDefenseDieResult(face, this));
+            playSound("/Users/yasen/Documents/Quarter4Project/src/game/sounds/DieRoll.wav");
             return new DefenseRoll(face, results[face]);
         }
 
@@ -331,6 +335,16 @@ public class Die {
                     ImageIO.read(new File(Constants.baseImgFilePath + "dice/white6.png")));
         } catch (IOException e) {
             System.out.println("Couldn't load white 6 image");
+        }
+    }
+
+    public static void playSound(String name) {
+        try {
+            Clip clip = AudioSystem.getClip();
+            clip.open(AudioSystem.getAudioInputStream(new File(name).getAbsoluteFile()));
+            clip.start();
+        } catch (Exception exc) {
+            exc.printStackTrace(System.out);
         }
     }
 }

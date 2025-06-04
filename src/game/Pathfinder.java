@@ -6,6 +6,7 @@ import java.util.Queue;
 import src.game.Personnel.Directions;
 
 import src.Constants;
+import src.Constants.WallLine;
 
 public class Pathfinder {
     public static double positionTolerance = Constants.tileSize * 0.1;
@@ -20,6 +21,10 @@ public class Pathfinder {
     public static record FullPos(double x, double y) {}
 
     public static boolean canReachPoint(Pos start, Pos end, int maxMoves, boolean respectFigures) {
+        return canReachPoint(start, end, maxMoves, respectFigures, true);
+    }
+
+    public static boolean canReachPoint(Pos start, Pos end, int maxMoves, boolean respectFigures, boolean respectSoftBarriers) {
         if (!start.isOnGrid()) {
             return false;
         }
@@ -57,7 +62,7 @@ public class Pathfinder {
                 return reachableUnderMax;
             } else {
                 for (Directions dir : validDirections) {
-                    Pos nextPos = currentPoint.pos().getNextPosUnsafe(dir, respectFigures);
+                    Pos nextPos = currentPoint.pos().getNextPosUnsafe(dir, respectFigures, respectSoftBarriers);
                     if (nextPos != null && !visited[nextPos.getY()][nextPos.getX()]) {
                         queue.add(new Point(nextPos, currentPoint));
                     }
@@ -90,6 +95,15 @@ public class Pathfinder {
                 System.exit(0);
             }
         }
+        for (Interactable<? extends Personnel> interactable : Game.interactables) {
+                if (interactable.blocking()) {
+                    for (WallLine line : interactable.getWallLines()) {
+                        if (line.intersects(startingLocation.getFullPos(), endingLocation.getFullPos(), false)) {
+                            return false;
+                        }
+                    }
+                }
+            }
         return true;
     }
 

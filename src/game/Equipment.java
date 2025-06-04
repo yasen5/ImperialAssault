@@ -17,7 +17,8 @@ public class Equipment {
         ACCURACY2,
         PIERCE1,
         PIERCE2,
-        STUN
+        STUN,
+        FOCUS
     }
 
     // Attacker, Defender, Damage, Accuracy, Recover
@@ -60,5 +61,9 @@ public class Equipment {
                         totalResults.addDamage(1);
                     }
                 }
+            },
+            SurgeOptions.FOCUS,
+            (Personnel[] combatants, TotalAttackResult totalResults) -> {
+                combatants[0].setFocused(true);
             });
 }

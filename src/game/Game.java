@@ -14,6 +14,7 @@ import javax.imageio.ImageIO;
 
 import src.Constants;
 import src.Screen;
+import src.Screen.SelectingType;
 import src.game.Die.GraphicDefenseDieResult;
 import src.game.Die.GraphicOffenseDieResult;
 import src.game.Personnel.Actions;
@@ -26,8 +27,8 @@ public class Game {
     private static Screen ui;
     private static ArrayList<GraphicOffenseDieResult> offenseResults = new ArrayList<>();
     private static ArrayList<GraphicDefenseDieResult> defenseResults = new ArrayList<>();
-    private static ArrayList<Personnel> availableDefenders = new ArrayList<>();
-    private static CompletableFuture<Personnel> currentDefender = new CompletableFuture<>();
+    private static ArrayList<Personnel> availableTargets = new ArrayList<>();
+    private static CompletableFuture<Personnel> currentSelected = new CompletableFuture<>();
     @SuppressWarnings("unchecked")
     public static final Interactable<? extends Personnel>[] interactables = (Interactable<? extends Personnel>[]) new Interactable[] {
             new Terminal<Imperial>(new Pos(7, 0), Imperial.class),
@@ -101,7 +102,7 @@ public class Game {
     public void playRound() {
         ArrayList<Hero> heroExhaustOptions = getHeroExhaustOptions();
         ArrayList<DeploymentGroup<? extends Imperial>> imperialExhaustOptions = getImperialExhaustOptions();
-        
+
         if (!heroExhaustOptions.isEmpty()) {
             Hero activeFigure;
             activeFigure = heroExhaustOptions.remove(InputUtils.getMultipleChoice("Deployment Selection",
@@ -119,10 +120,10 @@ public class Game {
                 leftoverMoves += takeAction(activeFigure, true);
             }
             // Player uses the rest of their moves (if any)
-            handleMoves(activeFigure, leftoverMoves);
+            handleMoves(activeFigure, InputUtils.getNumericChoice(
+                    "# of moves you'll use", 0, leftoverMoves));
             activeFigure.setActive(false);
         }
-        removeDeadFigures();
         if (!imperialExhaustOptions.isEmpty()) {
             DeploymentGroup<? extends Imperial> deploymentGroup = imperialExhaustOptions
                     .remove(InputUtils.getMultipleChoice("Deployment Selection",
@@ -136,11 +137,11 @@ public class Game {
                     leftoverMoves += takeAction(imperial, Actions.MOVE);
                 }
                 leftoverMoves += takeAction(imperial, false);
-                handleMoves(imperial, leftoverMoves);
+                handleMoves(imperial, InputUtils.getNumericChoice(
+                        "# of moves you'll use", 0, leftoverMoves));
                 imperial.setActive(false);
             }
         }
-        removeDeadFigures();
         ui.repaint();
         if (heroExhaustOptions.isEmpty() && imperialExhaustOptions.isEmpty()) {
             replenishDeployments();
@@ -195,8 +196,8 @@ public class Game {
         for (Actions action : activeFigure.getActions()) {
             availableActions.add(action);
         }
-        availableDefenders = availableDefenders(activeFigure, rebel);
-        if (availableDefenders.size() == 0) {
+        availableTargets = availableDefenders(activeFigure, rebel);
+        if (availableTargets.size() == 0) {
             availableActions.remove(Actions.ATTACK);
         }
         if (canInteract(activeFigure)) {
@@ -215,16 +216,27 @@ public class Game {
             case MOVE -> {
                 leftoverMoves += activeFigure.getSpeed();
                 int movesUsed = InputUtils.getNumericChoice(
-                        "Choose the number of moves you will use first", 0, leftoverMoves);
+                        "# of moves you'll use:", 0, leftoverMoves);
                 leftoverMoves -= movesUsed;
                 handleMoves(activeFigure, movesUsed);
             }
-            case ATTACK -> handleAttack(activeFigure);
+            case ATTACK -> {
+                handleAttack(activeFigure);
+                removeDeadFigures();
+            }
             case RECOVER -> activeFigure.dealDamage(-1 * ((Hero) (activeFigure)).getEndurance());
-            case SPECIAL -> activeFigure.performSpecial();
+            case SPECIAL -> handleSpecial(activeFigure);
             case INTERACT -> handleInteraction(activeFigure);
         }
         return leftoverMoves;
+    }
+
+    public void handleSpecial(Personnel activeFigure) {
+        if (activeFigure.specialRequiresSelection()) {
+            performSpecial(activeFigure);
+        } else {
+            activeFigure.performSpecial();
+        }
     }
 
     public void handleInteraction(Personnel activeFigure) {
@@ -339,22 +351,22 @@ public class Game {
     }
 
     public static void handleAttack(Personnel activeFigure) {
-        currentDefender = new CompletableFuture<>();
-        ui.setSelectingCombat(true);
-        for (Personnel person : availableDefenders) {
+        currentSelected = new CompletableFuture<>();
+        ui.setSelectionType(SelectingType.COMBAT);
+        for (Personnel person : availableTargets) {
             person.setPossibleTarget(true);
         }
         ui.repaint();
-        Personnel chosenDefender = currentDefender.join();
-        for (Personnel person : availableDefenders) {
+        Personnel chosenDefender = currentSelected.join();
+        for (Personnel person : availableTargets) {
             person.setPossibleTarget(false);
         }
         activeFigure.performAttack(chosenDefender);
     }
 
-    public static boolean setDefender(Personnel defender) {
-        if (availableDefenders.contains(defender)) {
-            currentDefender.complete(defender);
+    public static boolean setTarget(Personnel defender) {
+        if (availableTargets.contains(defender)) {
+            currentSelected.complete(defender);
             return true;
         } else {
             return false;
@@ -387,11 +399,13 @@ public class Game {
     }
 
     public void setup() {
-        heroes.add(new DialaPassil(new Pos(4, 9)));
+        heroes.add(new DialaPassil(new Pos(6, 5)));
         heroes.add(new Gaarkhan(new Pos(1, 4)));
         imperialDeployments
                 .add(new DeploymentGroup<StormTrooper>(new Pos[] { new Pos(4, 11), new Pos(4, 12), new Pos(5, 11) },
                         StormTrooper::new, "StormTrooper"));
+        imperialDeployments
+                .add(new DeploymentGroup<Officer>(new Pos[] { new Pos(7, 11) }, Officer::new, "ImperialOfficer"));
     }
 
     public static void addOffenseResult(GraphicOffenseDieResult offenseResults) {
@@ -402,7 +416,7 @@ public class Game {
         Game.defenseResults.add(defenseResults);
     }
 
-    public Personnel getPersonnelAtPos(Pos pos) {
+    public static Personnel getPersonnelAtPos(Pos pos) {
         for (DeploymentGroup<? extends Imperial> deployment : imperialDeployments) {
             for (Imperial imperial : deployment.getMembers()) {
                 if (imperial.getPos().equalTo(pos)) {
@@ -451,5 +465,32 @@ public class Game {
         ui.endGame(rebelsWin);
         ui.deactiveateMovementButtons();
         gameEnd = true;
+    }
+
+    public static void removeOffenseDie(int die) {
+        offenseResults.remove(die);
+    }
+
+    public static void removeDefenseDie(int die) {
+        defenseResults.remove(die);
+    }
+
+    public static void performSpecial(Personnel activeFigure) {
+        currentSelected = new CompletableFuture<>();
+        ui.setSelectionType(SelectingType.SPECIAL);
+        availableTargets = activeFigure.getSpecialTargets();
+        for (Personnel person : availableTargets) {
+            person.setPossibleTarget(true);
+        }
+        ui.repaint();
+        Personnel chosenDefender = currentSelected.join();
+        for (Personnel person : availableTargets) {
+            person.setPossibleTarget(false);
+        }
+        activeFigure.performSpecial(chosenDefender);
+    }
+
+    public static ArrayList<DeploymentGroup<? extends Imperial>> getDeploymentGroups() {
+        return imperialDeployments;
     }
 }

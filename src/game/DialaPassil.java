@@ -8,12 +8,13 @@ public class DialaPassil extends Hero {
                 new OffenseDieType[] { OffenseDieType.GREEN, OffenseDieType.YELLOW }, new Equipment.SurgeOptions[] {
                         Equipment.SurgeOptions.STUN,
                         Equipment.SurgeOptions.DAMAGE1 }, true, true),
-                pos, false, new DefenseDieType[] { DefenseDieType.WHITE });
+                pos, false, new DefenseDieType[] { DefenseDieType.WHITE }, false);
     }
 
     @Override
     public DefenseRoll[] getDefense() {
         DefenseRoll[] result = super.getDefense();
+        Game.repaintScreen();
         if (InputUtils.getYesNo("Ability Selection", "Would you like to reroll?")) {
             ApplyStrain(1);
             Game.clearDice();

@@ -36,10 +36,16 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 	private CompletableFuture<Directions> movementButtonOutput;
 	private static boolean gameEnd = false;
 	private Thread mainGameLoop;
-	private static boolean selectingCombat = false;
-	private DeploymentCard previousSelectedCard;
+	private static SelectingType currentSelectionType = SelectingType.EXPLANATION;
+	private static DeploymentCard previousSelectedCard;
 
 	public static BiMap<Directions, JButton> movementButtons = new BiMap<Directions, JButton>();
+
+	public static enum SelectingType {
+		EXPLANATION,
+		COMBAT,
+		SPECIAL
+	}
 
 	public Screen() {
 		setFocusable(true);
@@ -149,24 +155,29 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 			mainGameLoop = new Thread(() -> game.playRound());
 			mainGameLoop.start();
 		} else {
-			if (selectingCombat) {
-				Personnel personnel = game
-						.getPersonnelAtPos(new Pos(e.getX() / Constants.tileSize, e.getY() / Constants.tileSize));
-				if (personnel != null && game.setDefender(personnel)) {
-					selectingCombat = false;
-				}
-			} else {
-				previousSelectedCard.setVisible(false);
-				DeploymentCard newDeploymentCard = game
-						.getDeploymentCard(new Pos(e.getX() / Constants.tileSize, e.getY() / Constants.tileSize));
-				if (newDeploymentCard != null) {
-					previousSelectedCard = newDeploymentCard;
-				}
-				previousSelectedCard.setVisible(true);
+			switch (currentSelectionType) {
+				case COMBAT:
+				case SPECIAL:
+					Personnel personnel = Game
+							.getPersonnelAtPos(new Pos(e.getX() / Constants.tileSize, e.getY() / Constants.tileSize));
+					if (personnel != null && Game.setTarget(personnel)) {
+						currentSelectionType = SelectingType.EXPLANATION;
+					}
+					break;
+				case EXPLANATION:
+					previousSelectedCard.setVisible(false);
+					DeploymentCard newDeploymentCard = game
+							.getDeploymentCard(new Pos(e.getX() / Constants.tileSize, e.getY() / Constants.tileSize));
+					if (newDeploymentCard != null) {
+						previousSelectedCard = newDeploymentCard;
+					}
+					previousSelectedCard.setVisible(true);
 			}
 		}
 		repaint();
 	}
+
+
 
 	public void mouseEntered(MouseEvent e) {
 	}
@@ -235,12 +246,12 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 		repaint();
 	}
 
-	public void setSelectingCombat(boolean value) {
-		selectingCombat = value;
+	public void setSelectionType(SelectingType value) {
+		currentSelectionType = value;
 	}
 
-	public static boolean getSelectingCombat() {
-		return selectingCombat;
+	public static SelectingType getSelectionType() {
+		return currentSelectionType;
 	}
 
 	public void endGame(boolean rebelsWin) {

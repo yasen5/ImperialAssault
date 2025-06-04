@@ -41,7 +41,7 @@ public class Pos {
         return (this.x == other.getX() && this.y == other.getY());
     }
 
-    public boolean canMove(Directions dir, boolean respectFigures) {
+    public boolean canMove(Directions dir, boolean respectFigures, boolean respectSoftBarriers) {
         int newX = getX();
         int newY = getY();
         switch (dir) {
@@ -84,11 +84,13 @@ public class Pos {
         FullPos nextCenterPos = new FullPos(
                 (newX + 0.5) * Constants.tileSize,
                 (newY + 0.5) * Constants.tileSize);
-        for (WallLine wallLine : Constants.wallLines) {
-            if (wallLine.intersects(thisCenterPos,
-                    nextCenterPos,
-                    true)) {
-                return false;
+        if (respectSoftBarriers) {
+            for (WallLine wallLine : Constants.wallLines) {
+                if (wallLine.intersects(thisCenterPos,
+                        nextCenterPos,
+                        true)) {
+                    return false;
+                }
             }
         }
         for (Interactable<? extends Personnel> interactable : Game.interactables) {
@@ -131,8 +133,8 @@ public class Pos {
         }
     }
 
-    public Pos getNextPosUnsafe(Directions dir, boolean respectFigures) {
-        if (!canMove(dir, respectFigures)) {
+    public Pos getNextPosUnsafe(Directions dir, boolean respectFigures, boolean respectSoftBarriers) {
+        if (!canMove(dir, respectFigures, respectSoftBarriers)) {
             return null;
         }
         return getNextPos(dir);

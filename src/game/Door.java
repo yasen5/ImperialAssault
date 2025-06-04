@@ -19,6 +19,7 @@ public class Door<ValidInteractors extends Personnel> extends Interactable<Valid
     @Override
     public void safeInteract(ValidInteractors interactor) {
         active = false;
+        Game.repaintScreen();
     }
 
     @Override

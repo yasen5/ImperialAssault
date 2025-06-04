@@ -12,6 +12,7 @@ import javax.imageio.ImageIO;
 
 import src.Constants;
 import src.Screen;
+import src.Screen.SelectingType;
 import src.game.Die.*;
 import src.game.FullDeployment.PersonnelStatus;
 
@@ -23,10 +24,12 @@ public abstract class Personnel {
     protected boolean stunned = false, focused = false;
     private BufferedImage image;
     private String name;
-    private DefenseDieType[] defenseDice;
+    protected DefenseDieType[] defenseDice;
     private static int imageSideSpace = 7;
     private boolean possibleTarget = false, active = false;
     protected ArrayList<Actions> actions;
+    protected int strain = 0;
+    private boolean specialRequiresSelection;
 
     public static enum Directions {
         UP,
@@ -47,19 +50,21 @@ public abstract class Personnel {
         INTERACT
     }
 
-    public Personnel(String name, int startingHealth, int speed, Pos pos, DefenseDieType[] defenseDice, boolean hasSpecial) {
+    public Personnel(String name, int startingHealth, int speed, Pos pos, DefenseDieType[] defenseDice, boolean hasSpecial, boolean specialRequiresSelection) {
         this.name = name;
         this.startingHealth = startingHealth;
         this.health = startingHealth;
         this.speed = speed;
         this.defenseDice = defenseDice;
+        this.specialRequiresSelection = specialRequiresSelection;
         try {
             this.image = ImageIO.read(new File(Constants.baseImgFilePath + name + ".jpg"));
         } catch (IOException ex) {
             try {
                 this.image = ImageIO.read(new File(Constants.baseImgFilePath + name + ".png"));
             } catch (IOException e) {
-                System.out.println("Couldn't read both in jpg or png" + ex);
+                System.out.println("Couldn't read either in jpg or png, tried " + Constants.baseImgFilePath + name + ".jpg" + " and " + Constants.baseImgFilePath
+                        + name + ".png" + ex);
                 System.exit(0);
             }
         }
@@ -153,7 +158,7 @@ public abstract class Personnel {
                 Constants.tileSize * (pos.getX() + xSize) - imageSideSpace,
                 Constants.tileSize * (pos.getY() + ySize) - imageSideSpace, 0, 0, image.getWidth(null), image.getHeight(null),
                 null);
-        if (Screen.getSelectingCombat() && !possibleTarget) {
+        if (Screen.getSelectionType() == SelectingType.COMBAT && !possibleTarget) {
             g.setColor(new Color(0, 0, 0, 70));
             g.fillRect(pos.getFullX() + imageSideSpace,
                 pos.getFullY() + imageSideSpace, Constants.tileSize * xSize - 2 * imageSideSpace, Constants.tileSize * ySize - 2 * imageSideSpace);
@@ -175,7 +180,7 @@ public abstract class Personnel {
     }
 
     public boolean canMove(Directions dir) {
-        return pos.canMove(dir, true);
+        return pos.canMove(dir, true, true);
     }
 
     public Pos getPos() {
@@ -183,6 +188,15 @@ public abstract class Personnel {
     }
 
     public void performSpecial() {
+        if (specialRequiresSelection) {
+            System.out.println("Performing special without required selection");
+        }
+    }
+
+    public void performSpecial(Personnel selected) {
+        if (!specialRequiresSelection) {
+            System.out.println("Performing special with selection that isn't require it");
+        }
     }
 
     public int getRange() {
@@ -239,7 +253,7 @@ public abstract class Personnel {
     }
 
     public PersonnelStatus getStatus() {
-        return new PersonnelStatus(health, stunned, focused);
+        return new PersonnelStatus(health, strain, stunned, focused);
     }
 
     public boolean stunned() {
@@ -249,5 +263,17 @@ public abstract class Personnel {
     @Override
     public String toString() {
         return name;
+    }
+
+    public void setFocused(boolean focused) {
+        this.focused = focused;
+    }
+
+    public ArrayList<Personnel> getSpecialTargets() {
+        return null;
+    }
+
+    public boolean specialRequiresSelection() {
+        return specialRequiresSelection;
     }
 }

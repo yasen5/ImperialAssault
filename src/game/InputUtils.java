@@ -10,8 +10,8 @@ public class InputUtils {
         do {
             selectedIndex = JOptionPane.showOptionDialog(
                     Constants.frame,
-                    name,
                     explanation,
+                    name,
                     JOptionPane.DEFAULT_OPTION,
                     JOptionPane.QUESTION_MESSAGE,
                     null,
@@ -24,8 +24,8 @@ public class InputUtils {
     public static boolean getYesNo(String name, String explanation) {
         int response = JOptionPane.showConfirmDialog(
                 Constants.frame,
-                name,
                 explanation,
+                name,
                 JOptionPane.YES_NO_OPTION);
         return response == JOptionPane.YES_OPTION;
     }

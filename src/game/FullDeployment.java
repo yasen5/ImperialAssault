@@ -7,7 +7,7 @@ interface FullDeployment {
     public static final int statusSpacing = 100;
     public static final int startingX = DeploymentCard.x - 200;
     public static final Color healthColor = new Color(0, 255, 0), stunColor = new Color(113, 1, 130), focusedColor = new Color(1, 66, 20);
-    public static record PersonnelStatus(int health, boolean stunned, boolean focused) {}
+    public static record PersonnelStatus(int health, int strain, boolean stunned, boolean focused) {}
 
     public DeploymentCard getDeploymentCard();
 

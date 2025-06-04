@@ -2,13 +2,12 @@ package src.game;
 
 import java.awt.Graphics;
 
-import src.Constants;
 import src.game.Die.DefenseDieType;
 import src.game.Die.OffenseDieType;
 import src.game.Die.OffenseRoll;
 
 public abstract class Hero extends Personnel implements FullDeployment {
-    private int endurance, strain;
+    private int endurance;
     protected boolean wounded;
     private Equipment.Weapon weapon;
     private boolean exhausted = false;
@@ -16,13 +15,12 @@ public abstract class Hero extends Personnel implements FullDeployment {
     private boolean displayStats = false;
 
     public Hero(String name, int startingHealth, int speed, int endurance, Equipment.Weapon weapon, Pos pos,
-            boolean hasSpecial, DefenseDieType[] defenseDice) {
-        super(name, startingHealth, speed, pos, defenseDice, hasSpecial);
+            boolean hasSpecial, DefenseDieType[] defenseDice, boolean specialRequiresSelection) {
+        super(name, startingHealth, speed, pos, defenseDice, hasSpecial, specialRequiresSelection);
         this.endurance = endurance;
         this.weapon = weapon;
         this.wounded = false;
-        this.strain = 0;
-        this.deploymentCard = new DeploymentCard(Constants.baseImgFilePath + name + "Deployment.jpg", true, this);
+        this.deploymentCard = new DeploymentCard(name, true, this);
         this.actions.add(Actions.RECOVER);
     }
 

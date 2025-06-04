@@ -9,7 +9,7 @@ public class Gaarkhan extends Hero {
                 new OffenseDieType[] { OffenseDieType.RED, OffenseDieType.YELLOW }, new Equipment.SurgeOptions[] {
                         Equipment.SurgeOptions.PIERCE1,
                         Equipment.SurgeOptions.DAMAGE1 }, true, true),
-                pos, true, new DefenseDieType[] { DefenseDieType.WHITE });
+                pos, true, new DefenseDieType[] { DefenseDieType.WHITE }, false);
     }
 
     @Override

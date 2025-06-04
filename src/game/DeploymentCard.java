@@ -8,6 +8,8 @@ import java.io.IOException;
 
 import javax.imageio.ImageIO;
 
+import src.Constants;
+
 public class DeploymentCard {
     private BufferedImage image;
     private boolean exhausted;
@@ -18,12 +20,18 @@ public class DeploymentCard {
 
     private final boolean rebel;
 
-    public DeploymentCard(String imgFilePath, boolean rebel, FullDeployment parent) {
+    public DeploymentCard(String name, boolean rebel, FullDeployment parent) {
+        String adjustedName = Constants.baseImgFilePath + name + "Deployment";
         try {
-            image = ImageIO.read(new File(imgFilePath));
-        } catch (IOException e) {
-            System.out.println("Error reading deployment card image: " + e);
-            System.exit(0);
+            this.image = ImageIO.read(new File(adjustedName + ".jpg"));
+        } catch (IOException ex) {
+            try {
+                this.image = ImageIO.read(new File(adjustedName + ".png"));
+            } catch (IOException e) {
+                System.out.println("Couldn't read either in jpg or png, tried " + adjustedName + ".jpg" + " and "
+                        + adjustedName + ".png" + ex);
+                System.exit(0);
+            }
         }
         exhausted = false;
         this.rebel = rebel;

@@ -4,8 +4,6 @@ import java.awt.Graphics;
 import java.util.ArrayList;
 import java.util.function.Function;
 
-import src.Constants;
-
 public class DeploymentGroup<T extends Imperial> implements FullDeployment {
     private ArrayList<T> members = new ArrayList<T>();
     private Function<Pos, T> constructor;
@@ -16,7 +14,7 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
 
     public DeploymentGroup(Pos[] poses, Function<Pos, T> constructor, String name) {
         this.constructor = constructor;
-        this.deploymentCard = new DeploymentCard(Constants.baseImgFilePath + name + "Deployment.jpg", false, this);
+        this.deploymentCard = new DeploymentCard(name, false, this);
         this.name = name;
         addMembers(poses);
     }

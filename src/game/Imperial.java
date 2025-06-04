@@ -6,7 +6,7 @@ import src.game.Die.OffenseRoll;
 
 public abstract class Imperial extends Personnel {
     private ImperialType type;
-    private OffenseDieType[] offenseDice;
+    protected OffenseDieType[] offenseDice;
 
     public static enum ImperialType {
         TROOPER,
@@ -15,8 +15,8 @@ public abstract class Imperial extends Personnel {
     }
 
     public Imperial(String name, int startingHealth, int speed, Pos pos,
-            ImperialType type, DefenseDieType[] defenseDice, OffenseDieType[] offenseDice, boolean hasSpecial) {
-        super(name, startingHealth, speed, pos, defenseDice, hasSpecial);
+            ImperialType type, DefenseDieType[] defenseDice, OffenseDieType[] offenseDice, boolean hasSpecial, boolean specialRequiresSelection) {
+        super(name, startingHealth, speed, pos, defenseDice, hasSpecial, specialRequiresSelection);
         this.type = type;
         this.offenseDice = offenseDice;
     }
@@ -32,5 +32,9 @@ public abstract class Imperial extends Personnel {
             focused = false;
         }
         return results;
+    }
+
+    public ImperialType getType() {
+        return type;
     }
 }
