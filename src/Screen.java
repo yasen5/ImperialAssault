@@ -14,6 +14,7 @@ import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.security.KeyStore.LoadStoreParameter;
 import java.util.concurrent.CompletableFuture;
 
 import javax.imageio.ImageIO;
@@ -28,6 +29,7 @@ import javax.swing.JPanel;
 import src.game.BiMap;
 import src.game.DeploymentCard;
 import src.game.Game;
+import src.game.LoaderUtils;
 import src.game.Personnel;
 
 import src.game.Personnel.Directions;
@@ -162,12 +164,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 		addKeyListener(this);
 		game = new Game(this);
 		setBackground(new Color(0, 0, 0));
-		try {
-			startScreenimage = ImageIO
-					.read(new File(Constants.baseImgFilePath + "IACoverArt.png"));
-		} catch (IOException e) {
-			throw new java.lang.RuntimeException("Cover art image couldn't load");
-		}
+		startScreenimage = LoaderUtils.getImage("IACoverArt");
 		previousSelectedCard = game.getHeroes().get(0).getDeploymentCard();
 		previousSelectedCard.setVisible(true);
 		animate();

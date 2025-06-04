@@ -46,13 +46,7 @@ public class Game {
     public Game(Screen ui) {
         this.ui = ui;
         setup();
-        BufferedImage mapImg = null;
-        try {
-            mapImg = ImageIO.read(new File(Constants.baseImgFilePath + "TutorialTile.png"));
-        } catch (IOException e) {
-            throw new java.lang.RuntimeException("No map image L bozo");
-        }
-        mapTile = new MapTile(mapImg, Constants.tileMatrix);
+        mapTile = new MapTile(LoaderUtils.getImage("TutorialTile"), Constants.tileMatrix);
     }
 
     // Draws all game elements

@@ -3,12 +3,6 @@ package src.game;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-
-import javax.imageio.ImageIO;
-
-import src.Constants;
 
 // This class helps display the status of a hero and their special abilities
 public class DeploymentCard {
@@ -23,18 +17,8 @@ public class DeploymentCard {
 
     // Constructor
     public DeploymentCard(String name, boolean rebel, FullDeployment parent) {
-        String adjustedName = Constants.baseImgFilePath + name + "Deployment";
         // Try both .jpg and .png
-        try {
-            this.image = ImageIO.read(new File(adjustedName + ".jpg"));
-        } catch (IOException ex) {
-            try {
-                this.image = ImageIO.read(new File(adjustedName + ".png"));
-            } catch (IOException e) {
-                throw new java.lang.RuntimeException("Couldn't read either in jpg or png, tried " + adjustedName + ".jpg" + " and "
-                        + adjustedName + ".png" + ex);
-            }
-        }
+        image = LoaderUtils.getImage(name + "Deployment");
         exhausted = false;
         this.rebel = rebel;
         this.parent = parent;

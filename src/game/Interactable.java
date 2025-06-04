@@ -22,11 +22,7 @@ public abstract class Interactable<ValidInteractors extends Personnel> {
     public Interactable(Pos pos, Class<ValidInteractors> validInteractorClass, String imgName, int xSize, int ySize, WallLine[] wallLines) {
         this.pos = pos;
         this.validInteractorClass = validInteractorClass;
-        try {
-            image = ImageIO.read(new File(Constants.baseImgFilePath + imgName));
-        } catch (IOException e) {
-            throw new java.lang.RuntimeException("No terminal token image");
-        }
+        image = LoaderUtils.getImage(imgName);
         this.xSize = xSize;
         this.ySize = ySize;
         this.wallLines = wallLines;
@@ -36,11 +32,7 @@ public abstract class Interactable<ValidInteractors extends Personnel> {
     public Interactable(Pos pos, Class<ValidInteractors> validInteractorClass, String imgName, WallLine[] wallLines) {
         this.pos = pos;
         this.validInteractorClass = validInteractorClass;
-        try {
-            image = ImageIO.read(new File(Constants.baseImgFilePath + imgName));
-        } catch (IOException e) {
-            throw new java.lang.RuntimeException("No terminal token image");
-        }
+        image = LoaderUtils.getImage(imgName);
         this.xSize = Constants.tileSize;
         this.ySize = Constants.tileSize;
         this.wallLines = wallLines;

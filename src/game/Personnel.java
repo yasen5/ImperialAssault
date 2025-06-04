@@ -60,18 +60,7 @@ public abstract class Personnel {
         this.speed = speed;
         this.defenseDice = defenseDice;
         this.specialRequiresSelection = specialRequiresSelection;
-        // Tries both .jpg and .png
-        try {
-            this.image = ImageIO.read(new File(Constants.baseImgFilePath + name + ".jpg"));
-        } catch (IOException ex) {
-            try {
-                this.image = ImageIO.read(new File(Constants.baseImgFilePath + name + ".png"));
-            } catch (IOException e) {
-                throw new java.lang.RuntimeException("Couldn't read either in jpg or png, tried " + Constants.baseImgFilePath + name
-                        + ".jpg" + " and " + Constants.baseImgFilePath
-                        + name + ".png" + ex);
-            }
-        }
+        image = LoaderUtils.getImage(name);
         this.pos = pos;
         this.corners = new Pos[] { pos, pos.getNextPos(Directions.RIGHT), pos.getNextPos(Directions.DOWN),
                 pos.getNextPos(Directions.DOWNRIGHT) };
