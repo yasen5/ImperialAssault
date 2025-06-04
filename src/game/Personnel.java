@@ -15,6 +15,7 @@ import src.Screen;
 import src.Screen.SelectingType;
 import src.game.Die.*;
 import src.game.FullDeployment.PersonnelStatus;
+import src.game.Pathfinder.FullPos;
 
 public abstract class Personnel {
     // Instance variables
@@ -167,7 +168,8 @@ public abstract class Personnel {
         return other.getDefense();
     }
 
-    // Draw the image, do various shades on top based on whether it is active, being targeted, etc.
+    // Draw the image, do various shades on top based on whether it is active, being
+    // targeted, etc.
     public void draw(Graphics g) {
         g.drawImage(image, pos.getFullX() + imageSideSpace,
                 pos.getFullY() + imageSideSpace,
@@ -222,19 +224,33 @@ public abstract class Personnel {
         return Integer.MAX_VALUE;
     }
 
-    // Checks if the defender is in line of sight and if melee, if they are < range spaces away
+    // Checks if the defender is in line of sight and if melee, if they are < range
+    // spaces away
     public boolean canAttack(Personnel other) {
         int range = getRange();
         if (range != Integer.MAX_VALUE && !Pathfinder.canReachPoint(pos, other.getPos(), range, false)) {
             return false;
         }
         for (Pos corner : corners) {
+            System.out.println();
+            Pos[] cornersUsed = new Pos[2];
             int sightCount = 0;
             for (Pos enemyCorner : other.getCorners()) {
                 if (Pathfinder.straightlineToPos(corner, enemyCorner)) {
+                    System.out.println("Can reach point " + enemyCorner + " from point " + corner);
+                    cornersUsed[sightCount >= 2 ? 0 : sightCount] = enemyCorner;
                     sightCount++;
                     if (sightCount >= 2) {
-                        return true;
+                        if (!Pos.onOneLine(pos, cornersUsed[0], cornersUsed[1])) {
+                            return true;
+                        }
+                    }
+                    if (sightCount >= 2) {
+                        System.out.print("Made it but was blocked by intersection. The points are: ");
+                        for (Pos position : cornersUsed) {
+                            System.out.print(position + " ");
+                        }
+                        System.out.println();
                     }
                 }
             }

@@ -12,6 +12,7 @@ import javax.swing.SwingUtilities;
 import javax.imageio.ImageIO;
 
 import src.Constants;
+import src.Constants.WallLine;
 import src.Screen;
 import src.Screen.SelectingType;
 import src.game.Die.GraphicDefenseDieResult;
@@ -34,7 +35,7 @@ public class Game {
             new Terminal<Imperial>(new Pos(7, 0), Imperial.class),
             new Terminal<Imperial>(new Pos(0, 3), Imperial.class),
             new Door<Personnel>(new Pos(0, 6), Personnel.class),
-            new Door<Personnel>(new Pos(6, 7), Personnel.class)
+            new Door<Personnel>(new Pos(6, 8), Personnel.class)
     };
     private static boolean gameEnd;
 
@@ -260,30 +261,34 @@ public class Game {
 
     // Interact with the nearest object
     public void handleInteraction(Personnel activeFigure) {
+        getAdjacentInteractable(activeFigure).interact(activeFigure);
+    }
+
+    public Interactable<? extends Personnel> getAdjacentInteractable(Personnel activeFigure) {
         Pos activePos = activeFigure.getPos();
         for (Directions dir : Directions.values()) {
             Pos nextPos = activePos.getNextPos(dir);
             for (Interactable<? extends Personnel> interactable : interactables) {
-                if (nextPos.isEqualTo(interactable.getPos())) {
-                    interactable.interact(activeFigure);
-                    return;
+                if (!interactable.canInteract()) {
+                    continue;
+                }
+                if (interactable.blocking()) {
+                    for (WallLine wallLine : interactable.getWallLines()) {
+                        if (wallLine.intersects(activePos.getCenterPos(), nextPos.getCenterPos(), true)) {
+                            return interactable;
+                        }
+                    }
+                } else if (nextPos.equalTo(interactable.getPos())) {
+                    return interactable;
                 }
             }
         }
+        return null;
     }
 
     // Check if any interactables are in range
     public boolean canInteract(Personnel activeFigure) {
-        Pos activePos = activeFigure.getPos();
-        for (Directions dir : Directions.values()) {
-            Pos nextPos = activePos.getNextPos(dir);
-            for (Interactable<? extends Personnel> interactable : interactables) {
-                if (nextPos.isEqualTo(interactable.getPos()) && interactable.canInteract()) {
-                    return true;
-                }
-            }
-        }
-        return false;
+        return getAdjacentInteractable(activeFigure) != null;
     }
 
     // See if anyone is in range and is a valid defender
@@ -433,7 +438,7 @@ public class Game {
         heroes.add(new DialaPassil(new Pos(6, 5)));
         heroes.add(new Gaarkhan(new Pos(1, 4)));
         imperialDeployments
-                .add(new DeploymentGroup<StormTrooper>(new Pos[] { new Pos(0, 5), new Pos(4, 12), new Pos(5, 11) },
+                .add(new DeploymentGroup<StormTrooper>(new Pos[] { new Pos(4, 11), new Pos(4, 12), new Pos(5, 11) },
                         StormTrooper::new, "StormTrooper"));
         imperialDeployments
                 .add(new DeploymentGroup<Officer>(new Pos[] { new Pos(7, 11) }, Officer::new, "ImperialOfficer"));

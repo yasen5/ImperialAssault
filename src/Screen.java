@@ -17,6 +17,8 @@ import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 
 import javax.imageio.ImageIO;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JEditorPane;
@@ -43,6 +45,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 	private static SelectingType currentSelectionType = SelectingType.EXPLANATION;
 	private static DeploymentCard previousSelectedCard;
 	private JEditorPane editorPane;
+	private int animationTextPos = 0;
 	// Chain of dialogues before the game begins
 	private static String[] dialogChain = new String[] {
 			"<html><body style='width: 300px; padding: 10px;'>" +
@@ -69,7 +72,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 					+
 					"</body></html>"
 	};
-	private boolean rebelsWin;
+	private boolean rebelsWin = true;
 
 	public static BiMap<Directions, JButton> movementButtons = new BiMap<Directions, JButton>();
 
@@ -167,6 +170,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 		}
 		previousSelectedCard = game.getHeroes().get(0).getDeploymentCard();
 		previousSelectedCard.setVisible(true);
+		animate();
 	}
 
 	@Override
@@ -198,6 +202,8 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 					getPreferredSize().width,
 					getPreferredSize().height, 0, 0, startScreenimage.getWidth(null), startScreenimage.getHeight(null),
 					null);
+			g.setColor(new Color(0, 0, 0));
+			g.drawString("Woo animation yeah", animationTextPos, 50);
 		}
 	}
 
@@ -328,5 +334,32 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 	public void endGame(boolean rebelsWin) {
 		deactiveateMovementButtons();
 		gameEnd = true;
+		try {
+            Clip clip = AudioSystem.getClip();
+            clip.open(AudioSystem.getAudioInputStream(new File("/Users/yasen/Documents/Quarter4Project/src/game/sounds/Applause.wav")));
+            clip.start();
+        } catch (Exception exc) {
+            exc.printStackTrace(System.out);
+        }
+	}
+
+	// Animation in a boardgame for some reason
+	public void animate() {
+		Thread animationThread = new Thread(() -> {
+			while (!gameStarted) {
+				animationTextPos += 5;
+				if (animationTextPos > 800) {
+					animationTextPos = 0;
+				}
+				try {
+					Thread.sleep(50);
+					javax.swing.SwingUtilities.invokeLater(() -> repaint());
+				} catch (Exception e) {
+					System.out.println("Animation thread interrupted");
+					break;
+				}
+			}
+		});
+		animationThread.start();
 	}
 }

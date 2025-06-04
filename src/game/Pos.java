@@ -187,4 +187,12 @@ public class Pos {
     public static double getDistance(Pos p1, Pos p2) {
         return Math.sqrt(Math.pow(p2.getX() - p1.getX(), 2) + Math.pow(p2.getY() - p1.getY(), 2));
     }
+
+    public static boolean onOneLine(Pos p1, Pos p2, Pos p3) {
+        return p1.getX() == p2.getX() && p2.getX() == p3.getX() || p1.getY() == p2.getY() && p2.getY() == p3.getY();
+    }
+
+    public FullPos getCenterPos() {
+        return new FullPos(getFullX() + Constants.tileSize / 2, getFullY() + Constants.tileSize / 2);
+    }
 }

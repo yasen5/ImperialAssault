@@ -84,10 +84,14 @@ public class Pathfinder {
         int numIters = 0;
         double c_x = startingLocation.getFullX();
         double c_y = startingLocation.getFullY();
+        double prev_x;
+        double prev_y;
         int g_x = endingLocation.getFullX();
         int g_y = endingLocation.getFullY();
         double angle = Math.atan2(g_y - c_y, g_x - c_x);
         while (!inTolerance(c_x, g_x, positionTolerance) || !inTolerance(c_y, g_y, positionTolerance)) {
+            prev_x = c_x;
+            prev_y = c_y;
             numIters++;
             boolean closeToFinish = pointDistance(c_x, c_y, g_x, g_y) < closeDistance;
             c_x += (closeToFinish ? closeRaySpeed : raySpeed) * Math.cos(angle);
@@ -98,6 +102,11 @@ public class Pathfinder {
             if (numIters >= maxIters) {
                 System.out.println("Failed because of " + numIters + " iterations");
                 System.exit(0);
+            }
+            for (WallLine wallLine : Constants.wallLines) {
+                if (wallLine.intersects(new FullPos(c_x, c_y), new FullPos(prev_x, prev_y), false)) {
+                    return false;
+                }
             }
         }
         for (Interactable<? extends Personnel> interactable : Game.interactables) {

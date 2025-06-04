@@ -14,9 +14,9 @@ public class Constants {
 
     // Can be put anywhere, be vertical horizontal, have the tips count (block line of sight)
     public static record WallLine(Pos pos, boolean vertical, boolean shortenFirstTip, boolean shortenSecondTip,
-            boolean softBarier) {
+            boolean softBarrier) {
         public boolean intersects(FullPos p1, FullPos p2, boolean includeSoft) {
-            if (!includeSoft && softBarier) {
+            if (!includeSoft && softBarrier) {
                 return false;
             }
             int adjustedStartX = pos.getFullX();
