@@ -8,6 +8,7 @@ import java.util.Arrays;
 
 import src.Constants;
 import src.Screen;
+import src.Constants.WallLine;
 import src.Screen.SelectingType;
 import src.game.Die.*;
 import src.game.FullDeployment.PersonnelStatus;
@@ -219,6 +220,15 @@ public abstract class Personnel {
             Pos[] cornersUsed = new Pos[2];
             int sightCount = 0;
             for (Pos enemyCorner : other.getCorners()) {
+                for (WallLine wallLine : Constants.wallLines) {
+                    if (!wallLine.softBarrier()) {
+                        for (Pos hardEnd : wallLine.getHardEnds()) {
+                            if (hardEnd.equalTo(enemyCorner)) {
+                                return false;
+                            }
+                        }
+                    }
+                }
                 if (Pathfinder.straightlineToPos(corner, enemyCorner)) {
                     cornersUsed[sightCount >= 2 ? 0 : sightCount] = enemyCorner;
                     sightCount++;

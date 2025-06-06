@@ -1,5 +1,7 @@
 package src;
 
+import java.util.ArrayList;
+
 import javax.swing.JFrame;
 
 import src.game.Pathfinder;
@@ -43,6 +45,15 @@ public class Constants {
             }
             return Pathfinder.intersection(p1, p2, new FullPos(adjustedStartX, adjustedStartY),
                     new FullPos(adjustedEndX, adjustedEndY));
+        }
+
+        public ArrayList<Pos> getHardEnds() {
+            ArrayList<Pos> hardEnds = new ArrayList<>();
+            if (!shortenFirstTip) { hardEnds.add(pos); }
+            if (!shortenSecondTip) {
+                hardEnds.add(pos.getNextPos(vertical ? Directions.DOWN : Directions.RIGHT));
+            }
+            return hardEnds;
         }
     }
 
