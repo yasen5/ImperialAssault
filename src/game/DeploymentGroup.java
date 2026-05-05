@@ -13,6 +13,8 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
     private DeploymentCard deploymentCard;
     private boolean displayStats = false;
     private String name;
+    private String id;
+    private PlayerSeat ownerSeat = PlayerSeat.IMPERIAL;
 
     // Constructor
     public DeploymentGroup(Pos[] poses, Function<Pos, T> constructor, String name) {
@@ -47,6 +49,9 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
 
     public void setExhausted(boolean exhausted) {
         this.exhausted = exhausted;
+        if (deploymentCard != null) {
+            deploymentCard.setExhausted(exhausted);
+        }
     }
 
     public String getName() {
@@ -107,5 +112,21 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
     @Override
     public String toString() {
         return name;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public PlayerSeat getOwnerSeat() {
+        return ownerSeat;
+    }
+
+    public void setOwnerSeat(PlayerSeat ownerSeat) {
+        this.ownerSeat = ownerSeat;
     }
 }

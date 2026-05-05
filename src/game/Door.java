@@ -35,4 +35,9 @@ public class Door<ValidInteractors extends Personnel> extends Interactable<Valid
     public boolean canInteract() {
         return active;
     }
+
+    @Override
+    public void applySnapshotState(boolean active) {
+        this.active = active;
+    }
 }

@@ -41,6 +41,7 @@ public abstract class Hero extends Personnel implements FullDeployment {
 
     public void setExhausted(boolean exhausted) {
         this.exhausted = exhausted;
+        this.deploymentCard.setExhausted(exhausted);
     }
 
     @Override

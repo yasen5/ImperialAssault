@@ -28,6 +28,8 @@ public abstract class Personnel {
     protected ArrayList<Actions> actions;
     protected int strain = 0;
     private boolean specialRequiresSelection;
+    private String id;
+    private PlayerSeat ownerSeat = PlayerSeat.IMPERIAL;
 
     public static enum Directions {
         UP,
@@ -142,6 +144,8 @@ public abstract class Personnel {
 
     public void move(Directions dir) {
         pos.move(dir);
+        this.corners = new Pos[] { pos, pos.getNextPos(Directions.RIGHT), pos.getNextPos(Directions.DOWN),
+                pos.getNextPos(Directions.DOWNRIGHT) };
     }
 
     public void setStunned(boolean value) {
@@ -297,5 +301,51 @@ public abstract class Personnel {
 
     public boolean specialRequiresSelection() {
         return specialRequiresSelection;
+    }
+
+    public void setStrain(int strain) {
+        this.strain = strain;
+    }
+
+    public void setHealth(int health) {
+        this.health = health;
+    }
+
+    public void setPos(Pos pos) {
+        this.pos = pos;
+        this.corners = new Pos[] { pos, pos.getNextPos(Directions.RIGHT), pos.getNextPos(Directions.DOWN),
+                pos.getNextPos(Directions.DOWNRIGHT) };
+    }
+
+    public boolean isPossibleTarget() {
+        return possibleTarget;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public int getHealth() {
+        return health;
+    }
+
+    public int getStrain() {
+        return strain;
+    }
+
+    public PlayerSeat getOwnerSeat() {
+        return ownerSeat;
+    }
+
+    public void setOwnerSeat(PlayerSeat ownerSeat) {
+        this.ownerSeat = ownerSeat;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 }

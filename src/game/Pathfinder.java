@@ -112,7 +112,7 @@ public class Pathfinder {
                 }
             }
         }
-        for (Interactable<? extends Personnel> interactable : Game.interactables) {
+        for (Interactable<? extends Personnel> interactable : Game.getInteractables()) {
             if (interactable.blocking()) {
                 for (WallLine line : interactable.getWallLines()) {
                     if (line.intersects(startingLocation.getFullPos(), endingLocation.getFullPos(), false)) {

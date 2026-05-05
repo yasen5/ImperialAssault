@@ -3,8 +3,9 @@ package src.game;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import javax.swing.SwingUtilities;
+import java.util.function.Consumer;
 
 import src.Constants;
 import src.Constants.WallLine;
@@ -14,146 +15,203 @@ import src.game.Die.GraphicDefenseDieResult;
 import src.game.Die.GraphicOffenseDieResult;
 import src.game.Personnel.Actions;
 import src.game.Personnel.Directions;
+import src.net.DeploymentGroupSnapshot;
+import src.net.FigureSnapshot;
+import src.net.MatchSnapshot;
 
 public class Game {
-    // Variables
+    private static final ThreadLocal<Game> currentGame = new ThreadLocal<>();
+
     private final MapTile mapTile;
-    private static ArrayList<DeploymentGroup<? extends Imperial>> imperialDeployments = new ArrayList<>();
-    private static ArrayList<Hero> heroes = new ArrayList<>();
-    private static Screen ui;
-    private static ArrayList<GraphicOffenseDieResult> offenseResults = new ArrayList<>();
-    private static ArrayList<GraphicDefenseDieResult> defenseResults = new ArrayList<>();
-    private static ArrayList<Personnel> availableTargets = new ArrayList<>();
-    private static CompletableFuture<Personnel> currentSelected = new CompletableFuture<>();
+    private final ArrayList<DeploymentGroup<? extends Imperial>> imperialDeployments = new ArrayList<>();
+    private final ArrayList<Hero> heroes = new ArrayList<>();
+    private final ArrayList<GraphicOffenseDieResult> offenseResults = new ArrayList<>();
+    private final ArrayList<GraphicDefenseDieResult> defenseResults = new ArrayList<>();
     @SuppressWarnings("unchecked")
-    public static final Interactable<? extends Personnel>[] interactables = (Interactable<? extends Personnel>[]) new Interactable[] {
+    public final Interactable<? extends Personnel>[] interactables = (Interactable<? extends Personnel>[]) new Interactable[] {
             new Terminal<Imperial>(new Pos(7, 0), Imperial.class),
             new Terminal<Imperial>(new Pos(0, 3), Imperial.class),
             new Door<Personnel>(new Pos(0, 6), Personnel.class),
             new Door<Personnel>(new Pos(6, 8), Personnel.class)
     };
-    private static boolean gameEnd;
+
+    private Screen ui;
+    private GameDecisionProvider decisionProvider;
+    private Consumer<MatchSnapshot> snapshotListener;
+    private CompletableFuture<Personnel> currentSelected = new CompletableFuture<>();
+    private ArrayList<Personnel> availableTargets = new ArrayList<>();
+    private boolean gameEnd;
+    private boolean rebelsWin = true;
+    private PlayerSeat actingSeat = PlayerSeat.REBEL_1;
+    private final GameSessionConfig sessionConfig;
+    private final boolean authoritative;
 
     public static record MapTile(BufferedImage img, int[][] tileArray) {
     }
 
-    // Constructor
     public Game(Screen ui) {
-        this.ui = ui;
-        setup();
-        mapTile = new MapTile(LoaderUtils.getImage("TutorialTile"), Constants.tileMatrix);
+        this(ui, new GameSessionConfig(1), null, true);
+        this.decisionProvider = new LocalGameDecisionProvider(ui);
     }
 
-    // Draws all game elements
+    public Game(Screen ui, GameSessionConfig sessionConfig, GameDecisionProvider decisionProvider, boolean authoritative) {
+        this.ui = ui;
+        this.sessionConfig = sessionConfig;
+        this.decisionProvider = decisionProvider;
+        this.authoritative = authoritative;
+        this.mapTile = new MapTile(LoaderUtils.getImage("TutorialTile"), Constants.tileMatrix);
+        if (authoritative) {
+            setup();
+        }
+    }
+
+    public static Game createRemoteView(GameSessionConfig sessionConfig) {
+        return new Game(null, sessionConfig, null, false);
+    }
+
+    public static Game current() {
+        return currentGame.get();
+    }
+
+    public boolean hasDecisionProvider() {
+        return decisionProvider != null;
+    }
+
+    public PlayerSeat getActingSeat() {
+        return actingSeat;
+    }
+
+    public void setUi(Screen ui) {
+        this.ui = ui;
+        if (this.authoritative && this.decisionProvider == null) {
+            this.decisionProvider = new LocalGameDecisionProvider(ui);
+        }
+    }
+
+    public void setDecisionProvider(GameDecisionProvider decisionProvider) {
+        this.decisionProvider = decisionProvider;
+    }
+
+    public void setSnapshotListener(Consumer<MatchSnapshot> snapshotListener) {
+        this.snapshotListener = snapshotListener;
+    }
+
     public void drawGame(Graphics g) {
-        // Draw the map tile
         g.drawImage(mapTile.img(), 0, 0, Constants.tileSize * mapTile.tileArray()[0].length,
-                Constants.tileSize * mapTile
-                        .tileArray().length,
-                0, 0, mapTile.img().getWidth(null), mapTile.img().getHeight(null),
-                null);
-        // Draw heroes
+                Constants.tileSize * mapTile.tileArray().length,
+                0, 0, mapTile.img().getWidth(null), mapTile.img().getHeight(null), null);
         for (Hero hero : heroes) {
             hero.draw(g);
         }
-        // Draw imperials
         for (DeploymentGroup<? extends Imperial> deployment : imperialDeployments) {
             deployment.draw(g);
         }
-        // Draw the dice
         for (int i = 0; i < offenseResults.size(); i++) {
             BufferedImage image = Die.offenseDieFaces.get(offenseResults.get(i));
             int startX = 960 + i * (Die.xSize + 10);
-            int startY = 650 + 20;
-            g.drawImage(image, startX, startY,
-                    startX + Die.xSize,
-                    startY + Die.ySize, 0, 0, image.getWidth(null), image.getHeight(null),
-                    null);
+            int startY = 670;
+            g.drawImage(image, startX, startY, startX + Die.xSize, startY + Die.ySize, 0, 0,
+                    image.getWidth(null), image.getHeight(null), null);
         }
         for (int i = 0; i < defenseResults.size(); i++) {
             BufferedImage image = Die.defenseDieFaces.get(defenseResults.get(i));
             int startX = 960 + i * (Die.xSize + 10);
             int startY = 820;
-            g.drawImage(image, startX,
-                    startY,
-                    startX + Die.xSize,
-                    startY + Die.ySize, 0, 0, image.getWidth(null), image.getHeight(null),
-                    null);
+            g.drawImage(image, startX, startY, startX + Die.xSize, startY + Die.ySize, 0, 0,
+                    image.getWidth(null), image.getHeight(null), null);
         }
-        // Draw interactable objects
         for (Interactable<? extends Personnel> interactable : interactables) {
             interactable.draw(g);
         }
     }
 
     public void playRound() {
-        // Figure out which groups can move
-        ArrayList<Hero> heroExhaustOptions = getHeroExhaustOptions();
-        ArrayList<DeploymentGroup<? extends Imperial>> imperialExhaustOptions = getImperialExhaustOptions();
-        if (!heroExhaustOptions.isEmpty()) {
-            // Get selected hero
-            Hero activeFigure;
-            activeFigure = heroExhaustOptions.remove(InputUtils.getMultipleChoice("Deployment Selection",
-                    "Choose deployment card to exhaust", heroExhaustOptions.toArray()));
-            activeFigure.setActive(true);
-            activeFigure.setExhausted(true);
-            ui.repaint();
-            int leftoverMoves = 0;
-            int numActions = 2;
-            // If the active figure is stunned, waste one of their actions and unstun them
-            if (activeFigure.stunned()) {
-                numActions--;
-                activeFigure.setStunned(false);
+        currentGame.set(this);
+        try {
+            while (!gameEnd) {
+                playCycle();
             }
-            // Take alloted actions
-            for (int i = 0; i < numActions; i++) {
-                leftoverMoves += takeAction(activeFigure, true);
-                checkEndGame();
-                if (gameEnd) {
-                    return;
-                }
-            }
-            // Player uses the rest of their moves (if any)
-            handleMoves(activeFigure, InputUtils.getNumericChoice(
-                    "# of moves you'll use", 0, leftoverMoves));
-            activeFigure.setActive(false);
-        }
-        // Same but for imperials
-        if (!imperialExhaustOptions.isEmpty()) {
-            DeploymentGroup<? extends Imperial> deploymentGroup = imperialExhaustOptions
-                    .remove(InputUtils.getMultipleChoice("Deployment Selection",
-                            "Choose deployment card to exhaust", imperialExhaustOptions.toArray()));
-            deploymentGroup.setExhausted(true);
-            for (Imperial imperial : deploymentGroup.getMembers()) {
-                imperial.setActive(true);
-                ui.repaint();
-                int leftoverMoves = 0;
-                // If an imperial is stunned, they don't get the initial move
-                if (!imperial.stunned()) {
-                    leftoverMoves += takeAction(imperial, Actions.MOVE);
-                }
-                leftoverMoves += takeAction(imperial, false);
-                checkEndGame();
-                if (gameEnd) {
-                    return;
-                }
-                handleMoves(imperial, InputUtils.getNumericChoice(
-                        "# of moves you'll use", 0, leftoverMoves));
-                imperial.setActive(false);
-            }
-        }
-        ui.repaint();
-        // If both sides have gone all the way, unexhaust them
-        if (heroExhaustOptions.isEmpty() && imperialExhaustOptions.isEmpty()) {
-            replenishDeployments();
-        }
-        checkEndGame();
-        if (!gameEnd) {
-            playRound();
+        } finally {
+            currentGame.remove();
         }
     }
 
-    // Unexhaust everyone
+    private void playCycle() {
+        for (PlayerSeat rebelSeat : sessionConfig.rebelTurnOrder()) {
+            ArrayList<Hero> seatOptions = getHeroExhaustOptions(rebelSeat);
+            if (!seatOptions.isEmpty()) {
+                activateHero(rebelSeat, seatOptions);
+                if (gameEnd) {
+                    return;
+                }
+            }
+        }
+        ArrayList<DeploymentGroup<? extends Imperial>> imperialExhaustOptions = getImperialExhaustOptions();
+        if (!imperialExhaustOptions.isEmpty()) {
+            activateImperials(imperialExhaustOptions);
+            if (gameEnd) {
+                return;
+            }
+        }
+        repaint();
+        if (getHeroExhaustOptions().isEmpty() && imperialExhaustOptions.isEmpty()) {
+            replenishDeployments();
+        }
+        checkEndGame();
+    }
+
+    private void activateHero(PlayerSeat rebelSeat, ArrayList<Hero> seatOptions) {
+        actingSeat = rebelSeat;
+        Hero activeFigure = seatOptions
+                .remove(promptMultipleChoice(rebelSeat, "Deployment Selection",
+                        "Choose deployment card to exhaust", seatOptions.toArray()));
+        activeFigure.setActive(true);
+        activeFigure.setExhausted(true);
+        repaint();
+        int leftoverMoves = 0;
+        int numActions = 2;
+        if (activeFigure.stunned()) {
+            numActions--;
+            activeFigure.setStunned(false);
+        }
+        for (int i = 0; i < numActions; i++) {
+            leftoverMoves += takeAction(activeFigure, true);
+            checkEndGame();
+            if (gameEnd) {
+                return;
+            }
+        }
+        handleMovesInternal(activeFigure, promptNumericChoice(rebelSeat, "# of moves you'll use", 0, leftoverMoves));
+        activeFigure.setActive(false);
+        repaint();
+    }
+
+    private void activateImperials(ArrayList<DeploymentGroup<? extends Imperial>> imperialExhaustOptions) {
+        actingSeat = PlayerSeat.IMPERIAL;
+        DeploymentGroup<? extends Imperial> deploymentGroup = imperialExhaustOptions
+                .remove(promptMultipleChoice(PlayerSeat.IMPERIAL, "Deployment Selection",
+                        "Choose deployment card to exhaust", imperialExhaustOptions.toArray()));
+        deploymentGroup.setExhausted(true);
+        repaint();
+        for (Imperial imperial : deploymentGroup.getMembers()) {
+            imperial.setActive(true);
+            repaint();
+            int leftoverMoves = 0;
+            if (!imperial.stunned()) {
+                leftoverMoves += takeAction(imperial, Actions.MOVE);
+            }
+            leftoverMoves += takeAction(imperial, false);
+            checkEndGame();
+            if (gameEnd) {
+                return;
+            }
+            handleMovesInternal(imperial,
+                    promptNumericChoice(PlayerSeat.IMPERIAL, "# of moves you'll use", 0, leftoverMoves));
+            imperial.setActive(false);
+        }
+        repaint();
+    }
+
     public void replenishDeployments() {
         for (Hero hero : heroes) {
             hero.setExhausted(false);
@@ -161,12 +219,12 @@ public class Game {
         for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
             group.setExhausted(false);
         }
+        repaint();
     }
 
-    // See if any win/loss conditions have been met
     public void checkEndGame() {
         if (heroes.isEmpty()) {
-            endGame(false);
+            endGameInternal(false);
         }
         boolean allDeploymentGroupsEmpty = true;
         for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
@@ -176,11 +234,10 @@ public class Game {
             }
         }
         if (allDeploymentGroupsEmpty) {
-            endGame(true);
+            endGameInternal(true);
         }
     }
 
-    // Remove anything with <0 health
     public void removeDeadFigures() {
         for (int i = 0; i < heroes.size(); i++) {
             if (heroes.get(i).getDead()) {
@@ -191,16 +248,13 @@ public class Game {
         for (int i = 0; i < imperialDeployments.size(); i++) {
             imperialDeployments.get(i).removeDeadFigures();
         }
+        repaint();
     }
 
-    // Returns the number of moves gained, takes in an active figure and determines
-    // which options are available, then presents them
     public int takeAction(Personnel activeFigure, boolean rebel) {
         int leftoverMoves = 0;
-        ArrayList<Actions> availableActions = new ArrayList<Actions>();
-        for (Actions action : activeFigure.getActions()) {
-            availableActions.add(action);
-        }
+        ArrayList<Actions> availableActions = new ArrayList<>();
+        availableActions.addAll(activeFigure.getActions());
         availableTargets = availableDefenders(activeFigure, rebel);
         if (availableTargets.size() == 0) {
             availableActions.remove(Actions.ATTACK);
@@ -208,48 +262,45 @@ public class Game {
         if (canInteract(activeFigure)) {
             availableActions.add(Actions.INTERACT);
         }
-        Actions chosenAction = availableActions.get(InputUtils.getMultipleChoice("Action Selection",
-                "Choose an action to take",
-                availableActions.toArray()));
+        Actions chosenAction = availableActions.get(promptMultipleChoice(activeFigure.getOwnerSeat(), "Action Selection",
+                "Choose an action to take", availableActions.toArray()));
         leftoverMoves = takeAction(activeFigure, chosenAction);
         return leftoverMoves;
     }
 
-    // Take a specific action, again returning number of moves leftover
     public int takeAction(Personnel activeFigure, Actions action) {
         int leftoverMoves = 0;
         switch (action) {
             case MOVE -> {
                 leftoverMoves += activeFigure.getSpeed();
-                int movesUsed = InputUtils.getNumericChoice(
-                        "# of moves you'll use:", 0, leftoverMoves);
+                int movesUsed = promptNumericChoice(activeFigure.getOwnerSeat(), "# of moves you'll use:", 0,
+                        leftoverMoves);
                 leftoverMoves -= movesUsed;
-                handleMoves(activeFigure, movesUsed);
+                handleMovesInternal(activeFigure, movesUsed);
             }
             case ATTACK -> {
-                handleAttack(activeFigure);
+                handleAttackInternal(activeFigure);
                 removeDeadFigures();
             }
-            case RECOVER -> activeFigure.dealDamage(-1 * ((Hero) (activeFigure)).getEndurance());
+            case RECOVER -> activeFigure.dealDamage(-1 * ((Hero) activeFigure).getEndurance());
             case SPECIAL -> handleSpecial(activeFigure);
             case INTERACT -> handleInteraction(activeFigure);
         }
         return leftoverMoves;
     }
 
-    // Handle the special in a particular way depending on whether it needs
-    // something to be selected
     public void handleSpecial(Personnel activeFigure) {
         if (activeFigure.specialRequiresSelection()) {
-            performSpecial(activeFigure);
+            performSpecialInternal(activeFigure);
         } else {
             activeFigure.performSpecial();
+            repaint();
         }
     }
 
-    // Interact with the nearest object
     public void handleInteraction(Personnel activeFigure) {
         getAdjacentInteractable(activeFigure).interact(activeFigure);
+        repaint();
     }
 
     public Interactable<? extends Personnel> getAdjacentInteractable(Personnel activeFigure) {
@@ -274,36 +325,44 @@ public class Game {
         return null;
     }
 
-    // Check if any interactables are in range
     public boolean canInteract(Personnel activeFigure) {
         return getAdjacentInteractable(activeFigure) != null;
     }
 
-    // See if anyone is in range and is a valid defender
     public ArrayList<Personnel> availableDefenders(Personnel attacker, boolean rebelAttacker) {
-        ArrayList<Personnel> availableDefenders = new ArrayList<>();
+        ArrayList<Personnel> defenders = new ArrayList<>();
         if (rebelAttacker) {
             for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
                 for (Imperial member : group.getMembers()) {
                     if (attacker.canAttack(member)) {
-                        availableDefenders.add(member);
+                        defenders.add(member);
                     }
                 }
             }
         } else {
             for (Hero hero : heroes) {
                 if (attacker.canAttack(hero)) {
-                    availableDefenders.add(hero);
+                    defenders.add(hero);
                 }
             }
         }
-        return availableDefenders;
+        return defenders;
     }
 
     public ArrayList<Hero> getHeroExhaustOptions() {
         ArrayList<Hero> readyDeployments = new ArrayList<>();
         for (Hero hero : heroes) {
             if (!hero.getExhausted()) {
+                readyDeployments.add(hero);
+            }
+        }
+        return readyDeployments;
+    }
+
+    public ArrayList<Hero> getHeroExhaustOptions(PlayerSeat seat) {
+        ArrayList<Hero> readyDeployments = new ArrayList<>();
+        for (Hero hero : heroes) {
+            if (!hero.getExhausted() && hero.getOwnerSeat() == seat) {
                 readyDeployments.add(hero);
             }
         }
@@ -320,8 +379,7 @@ public class Game {
         return readyDeployments;
     }
 
-    // Check if the spac doesn't contain a hero or imperial already
-    public static boolean isSpaceAvailable(Pos pos) {
+    public boolean isSpaceAvailableInternal(Pos pos) {
         for (Hero hero : heroes) {
             if (hero.getPos().equalTo(pos)) {
                 return false;
@@ -337,69 +395,56 @@ public class Game {
         return true;
     }
 
-    // Handle multiple moves, specific number
-    public static void handleMoves(Personnel activeFigure, int numMoves) {
+    private void handleMovesInternal(Personnel activeFigure, int numMoves) {
         for (int j = 0; j < numMoves; j++) {
-            handleMove(activeFigure);
+            handleMoveInternal(activeFigure);
         }
-        ui.deactiveateMovementButtons();
+        if (ui != null) {
+            ui.deactiveateMovementButtons();
+        }
+        repaint();
     }
 
-    // Handle one move, get the direction the user wants to go from the buttons
-    public static void handleMove(Personnel activeFigure) {
-        CompletableFuture<Directions> dir = new CompletableFuture<>();
-        ui.setMovementButtonOutput(dir);
-        double[] angleRads = { Math.PI / 4.0 };
-        SwingUtilities.invokeLater(() -> {
-            for (Directions direction : Directions.values()) {
-                angleRads[0] += Math.PI / 4;
-                // Show the available buttons and disable/hide incorrect ones
-                if (activeFigure.canMove(direction)) {
-                    ui.moveAndActivateButton(direction,
-                            activeFigure.getPos().getX(), activeFigure.getPos().getY(),
-                            angleRads[0]);
-                } else {
-                    ui.deactivateMovementButton(direction);
-                }
+    private void handleMoveInternal(Personnel activeFigure) {
+        ArrayList<Directions> availableDirections = new ArrayList<>();
+        for (Directions direction : Directions.values()) {
+            if (activeFigure.canMove(direction)) {
+                availableDirections.add(direction);
             }
-        });
-        Directions chosenDir = dir.join();
+        }
+        Directions chosenDir = decisionProvider.chooseDirection(activeFigure.getOwnerSeat(), activeFigure,
+                availableDirections);
         activeFigure.move(chosenDir);
-        ui.repaint();
+        repaint();
     }
 
-    // Handle an attack by waiting for a defender to be selected and then performing
-    // the attack
-    public static void handleAttack(Personnel activeFigure) {
+    private void handleAttackInternal(Personnel activeFigure) {
         currentSelected = new CompletableFuture<>();
-        ui.setSelectionType(SelectingType.COMBAT);
         for (Personnel person : availableTargets) {
             person.setPossibleTarget(true);
         }
-        ui.repaint();
-        Personnel chosenDefender = currentSelected.join();
+        repaint();
+        Personnel chosenDefender = decisionProvider.chooseTarget(activeFigure.getOwnerSeat(), SelectingType.COMBAT,
+                new ArrayList<>(availableTargets));
         for (Personnel person : availableTargets) {
             person.setPossibleTarget(false);
         }
         activeFigure.performAttack(chosenDefender);
+        repaint();
     }
 
-    // Set the defender or target of a special
-    public static boolean setTarget(Personnel defender) {
+    public boolean trySetTarget(Personnel defender) {
         if (availableTargets.contains(defender)) {
             currentSelected.complete(defender);
             return true;
-        } else {
-            return false;
         }
+        return false;
     }
 
     public ArrayList<Imperial> getImperials() {
         ArrayList<Imperial> imperials = new ArrayList<>();
         for (DeploymentGroup<? extends Imperial> depGroup : imperialDeployments) {
-            for (Imperial imperial : depGroup.getMembers()) {
-                imperials.add(imperial);
-            }
+            imperials.addAll(depGroup.getMembers());
         }
         return imperials;
     }
@@ -408,40 +453,74 @@ public class Game {
         return heroes;
     }
 
-    // Remove existing things and reset
     public void reset() {
-        gameEnd = false;
-        while (!heroes.isEmpty()) {
-            heroes.remove(0);
+        currentGame.set(this);
+        try {
+            gameEnd = false;
+            rebelsWin = true;
+            heroes.clear();
+            imperialDeployments.clear();
+            clearDiceInternal();
+            for (Interactable<? extends Personnel> interactable : interactables) {
+                interactable.applySnapshotState(true);
+            }
+            setup();
+            playRound();
+        } finally {
+            currentGame.remove();
         }
-        while (!imperialDeployments.isEmpty()) {
-            imperialDeployments.remove(0);
-        }
-        setup();
-        playRound();
     }
 
-    // Add all the elements necessary to start
     public void setup() {
-        heroes.add(new DialaPassil(new Pos(6, 5)));
-        heroes.add(new Gaarkhan(new Pos(1, 4)));
-        imperialDeployments
-                .add(new DeploymentGroup<StormTrooper>(new Pos[] { new Pos(4, 11), new Pos(4, 12), new Pos(5, 11) },
-                        StormTrooper::new, "StormTrooper"));
-        imperialDeployments
-                .add(new DeploymentGroup<Officer>(new Pos[] { new Pos(7, 11) }, Officer::new, "ImperialOfficer"));
+        heroes.clear();
+        imperialDeployments.clear();
+        Hero diala = new DialaPassil(new Pos(6, 5));
+        Hero gaarkhan = new Gaarkhan(new Pos(1, 4));
+        configureHero(diala, "hero-diala", PlayerSeat.REBEL_1);
+        configureHero(gaarkhan, "hero-gaarkhan",
+                sessionConfig.rebelPlayerCount() == 1 ? PlayerSeat.REBEL_1 : PlayerSeat.REBEL_2);
+        heroes.add(diala);
+        heroes.add(gaarkhan);
+
+        DeploymentGroup<StormTrooper> troopers = new DeploymentGroup<>(
+                new Pos[] { new Pos(4, 11), new Pos(4, 12), new Pos(5, 11) },
+                StormTrooper::new, "StormTrooper");
+        configureDeploymentGroup(troopers, "imperial-stormtroopers", PlayerSeat.IMPERIAL);
+        DeploymentGroup<Officer> officers = new DeploymentGroup<>(
+                new Pos[] { new Pos(7, 11) }, Officer::new, "ImperialOfficer");
+        configureDeploymentGroup(officers, "imperial-officer", PlayerSeat.IMPERIAL);
+        imperialDeployments.add(troopers);
+        imperialDeployments.add(officers);
+        repaint();
     }
 
-    public static void addOffenseResult(GraphicOffenseDieResult offenseResults) {
-        Game.offenseResults.add(offenseResults);
+    private void configureHero(Hero hero, String id, PlayerSeat seat) {
+        hero.setId(id);
+        hero.setOwnerSeat(seat);
     }
 
-    public static void addDefenseResult(GraphicDefenseDieResult defenseResults) {
-        Game.defenseResults.add(defenseResults);
+    private void configureDeploymentGroup(DeploymentGroup<? extends Imperial> group, String id, PlayerSeat seat) {
+        group.setId(id);
+        group.setOwnerSeat(seat);
+        int index = 0;
+        for (Imperial imperial : group.getMembers()) {
+            imperial.setId(id + "-member-" + index);
+            imperial.setOwnerSeat(seat);
+            index++;
+        }
     }
 
-    // Figure out if anyone is at a position
-    public static Personnel getPersonnelAtPos(Pos pos) {
+    public void addOffenseResultInternal(GraphicOffenseDieResult offenseResult) {
+        offenseResults.add(offenseResult);
+        repaint();
+    }
+
+    public void addDefenseResultInternal(GraphicDefenseDieResult defenseResult) {
+        defenseResults.add(defenseResult);
+        repaint();
+    }
+
+    public Personnel getPersonnelAtPosInternal(Pos pos) {
         for (DeploymentGroup<? extends Imperial> deployment : imperialDeployments) {
             for (Imperial imperial : deployment.getMembers()) {
                 if (imperial.getPos().equalTo(pos)) {
@@ -457,7 +536,22 @@ public class Game {
         return null;
     }
 
-    // Get the deployment card of the personnel at a position
+    public Personnel getPersonnelById(String id) {
+        for (Hero hero : heroes) {
+            if (id.equals(hero.getId())) {
+                return hero;
+            }
+        }
+        for (DeploymentGroup<? extends Imperial> deployment : imperialDeployments) {
+            for (Imperial imperial : deployment.getMembers()) {
+                if (id.equals(imperial.getId())) {
+                    return imperial;
+                }
+            }
+        }
+        return null;
+    }
+
     public DeploymentCard getDeploymentCard(Pos pos) {
         for (DeploymentGroup<? extends Imperial> deployment : imperialDeployments) {
             for (Imperial imperial : deployment.getMembers()) {
@@ -474,50 +568,260 @@ public class Game {
         return null;
     }
 
-    public static void repaintScreen() {
-        ui.repaint();
-    }
-
-    public static void clearDice() {
-        while (!offenseResults.isEmpty()) {
-            offenseResults.remove(0);
+    public void repaint() {
+        if (ui != null) {
+            ui.repaint();
         }
-        while (!defenseResults.isEmpty()) {
-            defenseResults.remove(0);
+        if (snapshotListener != null) {
+            snapshotListener.accept(createSnapshot());
         }
     }
 
-    public static void endGame(boolean rebelsWin) {
-        ui.endGame(rebelsWin);
-        ui.deactiveateMovementButtons();
+    public void clearDiceInternal() {
+        offenseResults.clear();
+        defenseResults.clear();
+        repaint();
+    }
+
+    private void endGameInternal(boolean rebelsWin) {
+        this.rebelsWin = rebelsWin;
+        if (ui != null) {
+            ui.endGame(rebelsWin);
+            ui.deactiveateMovementButtons();
+        }
         gameEnd = true;
+        repaint();
     }
 
-    public static void removeOffenseDie(int die) {
+    public void removeOffenseDieInternal(int die) {
         offenseResults.remove(die);
+        repaint();
     }
 
-    public static void removeDefenseDie(int die) {
+    public void removeDefenseDieInternal(int die) {
         defenseResults.remove(die);
+        repaint();
     }
 
-    // Basically same as the handleAttack method, just for a special action
-    public static void performSpecial(Personnel activeFigure) {
-        currentSelected = new CompletableFuture<>();
-        ui.setSelectionType(SelectingType.SPECIAL);
+    private void performSpecialInternal(Personnel activeFigure) {
         availableTargets = activeFigure.getSpecialTargets();
         for (Personnel person : availableTargets) {
             person.setPossibleTarget(true);
         }
-        ui.repaint();
-        Personnel chosenDefender = currentSelected.join();
+        repaint();
+        Personnel chosenDefender = decisionProvider.chooseTarget(activeFigure.getOwnerSeat(), SelectingType.SPECIAL,
+                new ArrayList<>(availableTargets));
         for (Personnel person : availableTargets) {
             person.setPossibleTarget(false);
         }
         activeFigure.performSpecial(chosenDefender);
+        repaint();
+    }
+
+    public ArrayList<DeploymentGroup<? extends Imperial>> getDeploymentGroupsInternal() {
+        return imperialDeployments;
+    }
+
+    public int promptMultipleChoice(PlayerSeat seat, String name, String explanation, Object[] options) {
+        actingSeat = seat;
+        return decisionProvider.chooseMultipleChoice(seat, name, explanation, options);
+    }
+
+    public boolean promptYesNo(PlayerSeat seat, String name, String explanation) {
+        actingSeat = seat;
+        return decisionProvider.chooseYesNo(seat, name, explanation);
+    }
+
+    public int promptNumericChoice(PlayerSeat seat, String name, int minValue, int maxValue) {
+        actingSeat = seat;
+        return decisionProvider.chooseNumericChoice(seat, name, minValue, maxValue);
+    }
+
+    public MatchSnapshot createSnapshot() {
+        ArrayList<FigureSnapshot> heroSnapshots = new ArrayList<>();
+        for (Hero hero : heroes) {
+            heroSnapshots.add(new FigureSnapshot(hero.getId(), hero.getName(), hero.getPos().getX(), hero.getPos().getY(),
+                    hero.getHealth(), hero.getStrain(), hero.stunned(), hero.focused, hero.isActive(),
+                    hero.isPossibleTarget(), hero.getExhausted(), hero.getOwnerSeat()));
+        }
+        ArrayList<DeploymentGroupSnapshot> groupSnapshots = new ArrayList<>();
+        for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
+            ArrayList<FigureSnapshot> members = new ArrayList<>();
+            for (Imperial imperial : group.getMembers()) {
+                members.add(new FigureSnapshot(imperial.getId(), imperial.getName(), imperial.getPos().getX(),
+                        imperial.getPos().getY(), imperial.getHealth(), imperial.getStrain(), imperial.stunned(),
+                        imperial.focused, imperial.isActive(), imperial.isPossibleTarget(), false,
+                        imperial.getOwnerSeat()));
+            }
+            groupSnapshots.add(new DeploymentGroupSnapshot(group.getId(), group.toString(), group.getExhausted(),
+                    group.getOwnerSeat(), members));
+        }
+        ArrayList<Boolean> interactableStates = new ArrayList<>();
+        for (Interactable<? extends Personnel> interactable : interactables) {
+            interactableStates.add(interactable.snapshotState());
+        }
+        ArrayList<String> offense = new ArrayList<>();
+        for (GraphicOffenseDieResult die : offenseResults) {
+            offense.add(die.die().name() + ":" + die.face());
+        }
+        ArrayList<String> defense = new ArrayList<>();
+        for (GraphicDefenseDieResult die : defenseResults) {
+            defense.add(die.die().name() + ":" + die.face());
+        }
+        return new MatchSnapshot(sessionConfig, heroSnapshots, groupSnapshots, interactableStates, offense, defense,
+                gameEnd, rebelsWin);
+    }
+
+    public void loadSnapshot(MatchSnapshot snapshot) {
+        heroes.clear();
+        imperialDeployments.clear();
+        clearDiceInternal();
+        for (FigureSnapshot heroSnapshot : snapshot.heroes()) {
+            Hero hero = createHero(heroSnapshot);
+            applyFigureSnapshot(hero, heroSnapshot);
+            heroes.add(hero);
+        }
+        for (DeploymentGroupSnapshot groupSnapshot : snapshot.imperialGroups()) {
+            DeploymentGroup<? extends Imperial> group = createGroup(groupSnapshot);
+            group.setId(groupSnapshot.id());
+            group.setOwnerSeat(groupSnapshot.ownerSeat());
+            group.setExhausted(groupSnapshot.exhausted());
+            for (int i = 0; i < group.getMembers().size() && i < groupSnapshot.members().size(); i++) {
+                applyFigureSnapshot(group.getMembers().get(i), groupSnapshot.members().get(i));
+            }
+            imperialDeployments.add(group);
+        }
+        for (int i = 0; i < interactables.length && i < snapshot.interactableStates().size(); i++) {
+            interactables[i].applySnapshotState(snapshot.interactableStates().get(i));
+        }
+        for (String die : snapshot.offenseResults()) {
+            String[] parts = die.split(":");
+            offenseResults.add(new GraphicOffenseDieResult(Integer.parseInt(parts[1]),
+                    Die.OffenseDieType.valueOf(parts[0])));
+        }
+        for (String die : snapshot.defenseResults()) {
+            String[] parts = die.split(":");
+            defenseResults.add(new GraphicDefenseDieResult(Integer.parseInt(parts[1]),
+                    Die.DefenseDieType.valueOf(parts[0])));
+        }
+        this.gameEnd = snapshot.gameEnd();
+        this.rebelsWin = snapshot.rebelsWin();
+        repaint();
+    }
+
+    private Hero createHero(FigureSnapshot heroSnapshot) {
+        return switch (heroSnapshot.name()) {
+            case "DialaPassil" -> new DialaPassil(new Pos(heroSnapshot.x(), heroSnapshot.y()));
+            case "Gaarkhan" -> new Gaarkhan(new Pos(heroSnapshot.x(), heroSnapshot.y()));
+            default -> throw new IllegalArgumentException("Unknown hero " + heroSnapshot.name());
+        };
+    }
+
+    private DeploymentGroup<? extends Imperial> createGroup(DeploymentGroupSnapshot groupSnapshot) {
+        Pos[] poses = new Pos[groupSnapshot.members().size()];
+        for (int i = 0; i < poses.length; i++) {
+            FigureSnapshot member = groupSnapshot.members().get(i);
+            poses[i] = new Pos(member.x(), member.y());
+        }
+        return switch (groupSnapshot.name()) {
+            case "StormTrooper" -> new DeploymentGroup<StormTrooper>(poses, StormTrooper::new, "StormTrooper");
+            case "ImperialOfficer" -> new DeploymentGroup<Officer>(poses, Officer::new, "ImperialOfficer");
+            default -> throw new IllegalArgumentException("Unknown group " + groupSnapshot.name());
+        };
+    }
+
+    private void applyFigureSnapshot(Personnel personnel, FigureSnapshot snapshot) {
+        personnel.setId(snapshot.id());
+        personnel.setOwnerSeat(snapshot.ownerSeat());
+        personnel.setPos(new Pos(snapshot.x(), snapshot.y()));
+        personnel.setHealth(snapshot.health());
+        personnel.setStrain(snapshot.strain());
+        personnel.setStunned(snapshot.stunned());
+        personnel.setFocused(snapshot.focused());
+        personnel.setActive(snapshot.active());
+        personnel.setPossibleTarget(snapshot.possibleTarget());
+        if (personnel instanceof Hero hero) {
+            hero.setExhausted(snapshot.exhausted());
+        }
+    }
+
+    public boolean isGameEnd() {
+        return gameEnd;
+    }
+
+    public boolean rebelsWin() {
+        return rebelsWin;
+    }
+
+    public static boolean isSpaceAvailable(Pos pos) {
+        return current().isSpaceAvailableInternal(pos);
+    }
+
+    public static void addOffenseResult(GraphicOffenseDieResult offenseResult) {
+        current().addOffenseResultInternal(offenseResult);
+    }
+
+    public static void addDefenseResult(GraphicDefenseDieResult defenseResult) {
+        current().addDefenseResultInternal(defenseResult);
+    }
+
+    public static void handleMoves(Personnel activeFigure, int numMoves) {
+        current().handleMovesInternal(activeFigure, numMoves);
+    }
+
+    public static Personnel getPersonnelAtPos(Pos pos) {
+        return current().getPersonnelAtPosInternal(pos);
+    }
+
+    public static void handleAttack(Personnel activeFigure) {
+        current().handleAttackInternal(activeFigure);
+    }
+
+    public static boolean setTarget(Personnel defender) {
+        return current().trySetTarget(defender);
+    }
+
+    public static void repaintScreen() {
+        current().repaint();
+    }
+
+    public static void clearDice() {
+        current().clearDiceInternal();
+    }
+
+    public static void endGame(boolean rebelsWin) {
+        current().endGameInternal(rebelsWin);
+    }
+
+    public static void removeOffenseDie(int die) {
+        current().removeOffenseDieInternal(die);
+    }
+
+    public static void removeDefenseDie(int die) {
+        current().removeDefenseDieInternal(die);
+    }
+
+    public static void performSpecial(Personnel activeFigure) {
+        current().performSpecialInternal(activeFigure);
     }
 
     public static ArrayList<DeploymentGroup<? extends Imperial>> getDeploymentGroups() {
-        return imperialDeployments;
+        return current().getDeploymentGroupsInternal();
+    }
+
+    public static Interactable<? extends Personnel>[] getInteractables() {
+        return current().interactables;
+    }
+
+    public static void setAvailableTargets(ArrayList<Personnel> availableTargets) {
+        current().availableTargets = availableTargets;
+    }
+
+    public static CompletableFuture<Personnel> getCurrentSelection() {
+        return current().currentSelected;
+    }
+
+    public static void setCurrentSelection(CompletableFuture<Personnel> currentSelected) {
+        current().currentSelected = currentSelected;
     }
 }

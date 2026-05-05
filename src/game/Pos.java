@@ -95,7 +95,7 @@ public class Pos {
                 }
             }
         }
-        for (Interactable<? extends Personnel> interactable : Game.interactables) {
+        for (Interactable<? extends Personnel> interactable : Game.getInteractables()) {
             if (interactable.blocking()) {
                 for (WallLine wallLine : interactable.getWallLines()) {
                     if (wallLine.intersects(thisCenterPos,

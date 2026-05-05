@@ -61,6 +61,13 @@ public abstract class Interactable<ValidInteractors extends Personnel> {
         return true;
     }
 
+    public boolean snapshotState() {
+        return canInteract();
+    }
+
+    public void applySnapshotState(boolean active) {
+    }
+
     // Return whether it interferes with movement/line of sight
     public boolean blocking() {
         return wallLines != null && canInteract();

@@ -7,6 +7,14 @@ import src.Constants;
 public class InputUtils {
     // Get which response they chose, keep asking until response is valid
     public static int getMultipleChoice(String name, String explanation, Object[] options) {
+        Game currentGame = Game.current();
+        if (currentGame != null && currentGame.hasDecisionProvider()) {
+            return currentGame.promptMultipleChoice(currentGame.getActingSeat(), name, explanation, options);
+        }
+        return showMultipleChoiceDialog(name, explanation, options);
+    }
+
+    public static int showMultipleChoiceDialog(String name, String explanation, Object[] options) {
         int selectedIndex;
         do {
             selectedIndex = JOptionPane.showOptionDialog(
@@ -24,6 +32,14 @@ public class InputUtils {
 
     // Give yes/no prompt
     public static boolean getYesNo(String name, String explanation) {
+        Game currentGame = Game.current();
+        if (currentGame != null && currentGame.hasDecisionProvider()) {
+            return currentGame.promptYesNo(currentGame.getActingSeat(), name, explanation);
+        }
+        return showYesNoDialog(name, explanation);
+    }
+
+    public static boolean showYesNoDialog(String name, String explanation) {
         int response = JOptionPane.showConfirmDialog(
                 Constants.frame,
                 explanation,
@@ -34,6 +50,14 @@ public class InputUtils {
 
     // Get a numeric answer, force it to be valid
     public static int getNumericChoice(String name, int minValue, int maxValue) {
+        Game currentGame = Game.current();
+        if (currentGame != null && currentGame.hasDecisionProvider()) {
+            return currentGame.promptNumericChoice(currentGame.getActingSeat(), name, minValue, maxValue);
+        }
+        return showNumericChoiceDialog(name, minValue, maxValue);
+    }
+
+    public static int showNumericChoiceDialog(String name, int minValue, int maxValue) {
         int input;
         do {
             input = Integer
