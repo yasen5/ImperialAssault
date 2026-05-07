@@ -3,16 +3,25 @@ package net;
 import java.io.EOFException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Collections;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
+import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
+
+import game.Constants;
 import game.Screen.SelectingType;
 import game.Game;
 import game.GameDecisionProvider;
@@ -29,6 +38,9 @@ public class GameServer {
     private final EnumMap<PlayerSeat, ClientConnection> clients = new EnumMap<>(PlayerSeat.class);
     private final AtomicLong promptIds = new AtomicLong(1);
     private final Object lobbyLock = new Object();
+    private volatile Game spectatorGame;
+    private volatile game.Screen spectatorScreen;
+    private volatile String hostAddress;
 
     public GameServer(int port, int rebelPlayers) {
         this.port = port;
@@ -36,6 +48,8 @@ public class GameServer {
     }
 
     public void run() throws Exception {
+        hostAddress = resolveHostAddress();
+        startSpectatorDisplay();
         try (ServerSocket serverSocket = new ServerSocket(port)) {
             while (true) {
                 ClientConnection connection;
@@ -146,6 +160,7 @@ public class GameServer {
 
     private void broadcastLobbyState() {
         LobbySnapshot snapshot = createLobbySnapshot();
+        updateSpectatorLobbySnapshot(snapshot);
         ArrayList<ClientConnection> connections;
         synchronized (lobbyLock) {
             connections = new ArrayList<>(clients.values());
@@ -182,6 +197,7 @@ public class GameServer {
     }
 
     private void broadcastSnapshot(MatchSnapshot snapshot) {
+        updateSpectatorSnapshot(snapshot);
         ArrayList<ClientConnection> connections;
         synchronized (lobbyLock) {
             connections = new ArrayList<>(clients.values());
@@ -189,6 +205,67 @@ public class GameServer {
         for (ClientConnection connection : connections) {
             connection.send(snapshot);
         }
+    }
+
+    private void startSpectatorDisplay() throws Exception {
+        spectatorGame = Game.createRemoteView(config);
+        SwingUtilities.invokeAndWait(() -> {
+            spectatorScreen = new game.Screen(spectatorGame, true, true);
+            spectatorScreen.setServerStatusText("Hosting on " + hostAddress + ":" + port + " | read-only spectator");
+            Constants.frame = new JFrame("Imperial Assault Server - " + hostAddress + ":" + port);
+            Constants.frame.add(spectatorScreen);
+            Constants.frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            Constants.frame.pack();
+            Constants.frame.setVisible(true);
+            spectatorScreen.updateLobbySnapshot(createLobbySnapshot());
+        });
+    }
+
+    private void updateSpectatorLobbySnapshot(LobbySnapshot snapshot) {
+        game.Screen screen = spectatorScreen;
+        if (screen == null || snapshot == null) {
+            return;
+        }
+        SwingUtilities.invokeLater(() -> {
+            if (spectatorScreen != null) {
+                spectatorScreen.updateLobbySnapshot(snapshot);
+            }
+        });
+    }
+
+    private void updateSpectatorSnapshot(MatchSnapshot snapshot) {
+        if (spectatorGame == null) {
+            return;
+        }
+        SwingUtilities.invokeLater(() -> {
+            if (spectatorScreen != null) {
+                spectatorScreen.markGameStarted();
+            }
+            spectatorGame.loadSnapshot(snapshot);
+        });
+    }
+
+    private String resolveHostAddress() {
+        try {
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            for (NetworkInterface networkInterface : Collections.list(interfaces)) {
+                if (!networkInterface.isUp() || networkInterface.isLoopback() || networkInterface.isVirtual()) {
+                    continue;
+                }
+                for (InetAddress address : Collections.list(networkInterface.getInetAddresses())) {
+                    if (address instanceof Inet4Address && !address.isLoopbackAddress() && !address.isAnyLocalAddress()) {
+                        return address.getHostAddress();
+                    }
+                }
+            }
+            InetAddress localHost = InetAddress.getLocalHost();
+            if (localHost != null) {
+                return localHost.getHostAddress();
+            }
+        } catch (Exception ex) {
+            // Fall back to localhost below.
+        }
+        return "127.0.0.1";
     }
 
     private class RemoteDecisionProvider implements GameDecisionProvider {

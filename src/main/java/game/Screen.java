@@ -49,6 +49,7 @@ import net.RemotePrompt.PromptType;
 
 public class Screen extends JPanel implements ActionListener, MouseListener, KeyListener {
     private final boolean remoteMode;
+    private final boolean readOnly;
     private final Game game;
     private boolean gameStarted = false;
     private BufferedImage startScreenimage;
@@ -98,6 +99,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     private Consumer<MissionOption> missionSelectionAction = mission -> {
     };
     private game.PlayerSeat localSeat;
+    private volatile String serverStatusText;
 
     private static String[] dialogChain = new String[] {
             "<html><body style='width: 300px; padding: 10px;'>" +
@@ -140,32 +142,39 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     }
 
     public Screen() {
-        this(new Game(null), false);
+        this(new Game(null), false, false);
         game.setUi(this);
     }
 
     public Screen(Game game, boolean remoteMode) {
+        this(game, remoteMode, false);
+    }
+
+    public Screen(Game game, boolean remoteMode, boolean readOnly) {
         this.game = game;
         this.remoteMode = remoteMode;
+        this.readOnly = readOnly;
         this.game.setUi(this);
         Constants.screen = this;
         setFocusable(true);
         setLayout(null);
         promptPanel.setOpaque(false);
-        if (!remoteMode) {
+        if (!remoteMode && !readOnly) {
             showInstructionsChain();
         }
         initializeButtons();
         initializePromptPanel();
-        addMouseListener(this);
-        addKeyListener(this);
+        if (!readOnly) {
+            addMouseListener(this);
+            addKeyListener(this);
+        }
         setBackground(new Color(0, 0, 0));
         startScreenimage = LoaderUtils.getImage("IACoverArt");
         if (!game.getHeroes().isEmpty()) {
             previousSelectedCard = game.getHeroes().get(0).getDeploymentCard();
             previousSelectedCard.setVisible(true);
         }
-        if (remoteMode) {
+        if (remoteMode && !readOnly) {
             initializeLobbyControls();
         }
     }
@@ -362,7 +371,9 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     }
 
     private void refreshLobbyControls() {
-        if (!remoteMode) {
+        if (!remoteMode || readOnly) {
+            missionOneButton.setVisible(false);
+            missionTwoButton.setVisible(false);
             return;
         }
         boolean showControls = lobbySnapshot != null && !gameStarted && !lobbySnapshot.allMissionsMatch();
@@ -407,6 +418,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
                     startScreenimage.getWidth(null), startScreenimage.getHeight(null), null);
             drawLobbyOverlay(g);
         }
+        drawServerStatus(g);
     }
 
     private void drawLobbyOverlay(Graphics g) {
@@ -454,6 +466,34 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
             g2.drawString(state, x + panelWidth - 120, rowY);
             rowY += 42;
         }
+
+        if (serverStatusText != null) {
+            g2.setFont(g2.getFont().deriveFont(Font.BOLD, 18f));
+            g2.drawString(serverStatusText, x + 28, y + panelHeight - 28);
+        }
+    }
+
+    private void drawServerStatus(Graphics g) {
+        if (serverStatusText == null || serverStatusText.isBlank()) {
+            return;
+        }
+        java.awt.Graphics2D g2 = (java.awt.Graphics2D) g;
+        g2.setFont(g2.getFont().deriveFont(Font.BOLD, 18f));
+        int paddingX = 18;
+        int paddingY = 10;
+        int textWidth = g2.getFontMetrics().stringWidth(serverStatusText);
+        int width = Math.max(320, textWidth + paddingX * 2);
+        int height = 42;
+        int x = getPreferredSize().width - width - 20;
+        int y = 20;
+        Composite original = g2.getComposite();
+        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.82f));
+        g2.setColor(new Color(10, 10, 10));
+        g2.fillRoundRect(x, y, width, height, 18, 18);
+        g2.setComposite(original);
+        g2.setColor(new Color(255, 255, 255));
+        g2.drawRoundRect(x, y, width, height, 18, 18);
+        g2.drawString(serverStatusText, x + paddingX, y + paddingY + 14);
     }
 
     private void drawTurnHud(Graphics g) {
@@ -497,6 +537,9 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 
     @Override
     public void actionPerformed(ActionEvent e) {
+        if (readOnly) {
+            return;
+        }
         Object source = e.getSource();
         for (Directions direction : Directions.values()) {
             if (source.equals(movementButtons.get(direction))) {
@@ -517,6 +560,9 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 
     @Override
     public void mouseReleased(MouseEvent e) {
+        if (readOnly) {
+            return;
+        }
         if (!gameStarted && !remoteMode) {
             gameStarted = true;
             repaint();
@@ -577,6 +623,9 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 
     @Override
     public void keyReleased(KeyEvent e) {
+        if (readOnly) {
+            return;
+        }
         if (e.getKeyCode() == KeyEvent.VK_F1) {
             gameEnd = true;
         } else if (!remoteMode && e.getKeyCode() == KeyEvent.VK_R) {
@@ -679,6 +728,9 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     }
 
     public CompletableFuture<String> beginRemoteBoardPrompt(RemotePrompt prompt) {
+        if (readOnly) {
+            return CompletableFuture.completedFuture(null);
+        }
         activeRemotePrompt = prompt;
         remoteBoardSelection = new CompletableFuture<>();
         if (prompt.selectionType() != null) {
@@ -725,6 +777,11 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
             return;
         }
         statusText = newStatus;
+    }
+
+    public void setServerStatusText(String serverStatusText) {
+        this.serverStatusText = serverStatusText;
+        repaint();
     }
 
     public void showBanner(String text) {
