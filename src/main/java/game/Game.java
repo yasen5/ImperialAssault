@@ -124,6 +124,10 @@ public class Game {
         }
     }
 
+    public int getMapDrawWidth() {
+        return Constants.tileSize * mapTile.tileArray()[0].length;
+    }
+
     private <T> void drawDiceSection(Graphics g, ArrayList<T> dice, boolean offense) {
         if (dice.isEmpty()) {
             return;
@@ -136,7 +140,7 @@ public class Game {
             startX = ui.getSidebarDiceX();
             startY = offense ? ui.getDiceStartY() : ui.getDiceStartY() + 150;
         }
-        int availableWidth = ui != null ? ui.getSidebarWidth() - 620 : 300;
+        int availableWidth = ui != null ? ui.getSidebarDetailWidth() : 300;
         int maxPerRow = Math.max(1, (availableWidth + 10) / columnSpacing);
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);

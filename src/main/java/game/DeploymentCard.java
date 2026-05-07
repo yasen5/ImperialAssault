@@ -36,6 +36,14 @@ public class DeploymentCard {
         }
         int drawX = getDrawX();
         int drawY = getDrawY();
+        Screen screen = Constants.screen;
+        if (screen != null) {
+            int availableWidth = Math.max(240, screen.getSidebarCardWidth());
+            int cappedWidth = Math.min(xSize, availableWidth);
+            float scale = cappedWidth / (float) xSize;
+            xSize = cappedWidth;
+            ySize = Math.round(ySize * scale);
+        }
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
         g2.setColor(new Color(0, 0, 0, 130));
@@ -80,6 +88,14 @@ public class DeploymentCard {
     public Rectangle getBounds() {
         int xSize = rebel ? heroXSize : imperialXSize;
         int ySize = rebel ? heroYSize : imperialYSize;
+        Screen screen = Constants.screen;
+        if (screen != null) {
+            int availableWidth = Math.max(240, screen.getSidebarCardWidth());
+            int cappedWidth = Math.min(xSize, availableWidth);
+            float scale = cappedWidth / (float) xSize;
+            xSize = cappedWidth;
+            ySize = Math.round(ySize * scale);
+        }
         return new Rectangle(getDrawX(), getDrawY(), xSize, ySize);
     }
 

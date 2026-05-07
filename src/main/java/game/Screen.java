@@ -812,16 +812,17 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 
     private void positionLobbyButtons() {
         int y = 900;
-        missionOneButton.setBounds(getSidebarLeft(), y, 200, 44);
-        missionTwoButton.setBounds(getSidebarLeft() + 220, y, 200, 44);
+        int buttonWidth = Math.min(200, Math.max(140, (getSidebarWidth() - 20) / 2));
+        missionOneButton.setBounds(getSidebarLeft(), y, buttonWidth, 44);
+        missionTwoButton.setBounds(getSidebarLeft() + buttonWidth + 20, y, buttonWidth, 44);
     }
 
     public int getSidebarLeft() {
-        return getBoardRightEdge() + 20;
+        return getMapImageWidth();
     }
 
     public int getSidebarWidth() {
-        return getPreferredSize().width - getSidebarLeft() - 20;
+        return Math.max(0, getScreenWidth() - getSidebarLeft());
     }
 
     public int getSidebarCardX() {
@@ -832,12 +833,16 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         return getSidebarContentTop();
     }
 
+    public int getSidebarCardWidth() {
+        return Math.max(0, Math.min(560, getSidebarWidth() / 2));
+    }
+
     public int getSidebarDetailX() {
-        return getSidebarLeft() + 620;
+        return getSidebarLeft() + getSidebarCardWidth() + 20;
     }
 
     public int getSidebarDetailWidth() {
-        return Math.max(240, getSidebarWidth() - 620);
+        return Math.max(240, getSidebarWidth() - getSidebarCardWidth() - 20);
     }
 
     public int getSidebarDiceX() {
@@ -860,7 +865,12 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         return 670;
     }
 
-    private int getBoardRightEdge() {
-        return Constants.tileSize * Constants.tileMatrix[0].length;
+    private int getScreenWidth() {
+        int currentWidth = getWidth();
+        return currentWidth > 0 ? currentWidth : getPreferredSize().width;
+    }
+
+    private int getMapImageWidth() {
+        return game != null ? game.getMapDrawWidth() : Constants.tileSize * Constants.tileMatrix[0].length;
     }
 }
