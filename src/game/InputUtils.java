@@ -15,6 +15,9 @@ public class InputUtils {
     }
 
     public static int showMultipleChoiceDialog(String name, String explanation, Object[] options) {
+        if (Constants.screen != null) {
+            return Constants.screen.promptMultipleChoice(name, explanation, options);
+        }
         int selectedIndex;
         do {
             selectedIndex = JOptionPane.showOptionDialog(
@@ -40,6 +43,9 @@ public class InputUtils {
     }
 
     public static boolean showYesNoDialog(String name, String explanation) {
+        if (Constants.screen != null) {
+            return Constants.screen.promptYesNo(name, explanation);
+        }
         int response = JOptionPane.showConfirmDialog(
                 Constants.frame,
                 explanation,
@@ -62,6 +68,9 @@ public class InputUtils {
     }
 
     public static int showNumericChoiceDialog(String name, String explanation, int minValue, int maxValue) {
+        if (Constants.screen != null) {
+            return Constants.screen.promptNumericChoice(name, explanation, minValue, maxValue);
+        }
         int input = Integer.MIN_VALUE;
         String message = explanation == null || explanation.isBlank() ? name : explanation;
         message += " (" + minValue + " to " + maxValue + ")";

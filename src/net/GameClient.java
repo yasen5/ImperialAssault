@@ -11,7 +11,6 @@ import javax.swing.SwingUtilities;
 import src.Constants;
 import src.Screen;
 import src.game.Game;
-import src.game.InputUtils;
 import src.game.PlayerSeat;
 
 public class GameClient {
@@ -61,11 +60,10 @@ public class GameClient {
         try {
             String value = switch (prompt.type()) {
                 case MULTIPLE_CHOICE -> String.valueOf(
-                        InputUtils.showMultipleChoiceDialog(prompt.title(), prompt.message(),
-                                prompt.optionLabels().toArray()));
-                case YES_NO -> String.valueOf(InputUtils.showYesNoDialog(prompt.title(), prompt.message()));
+                        screen.promptMultipleChoice(prompt.title(), prompt.message(), prompt.optionLabels().toArray()));
+                case YES_NO -> String.valueOf(screen.promptYesNo(prompt.title(), prompt.message()));
                 case NUMERIC -> String.valueOf(
-                        InputUtils.showNumericChoiceDialog(prompt.title(), prompt.message(), prompt.minValue(),
+                        screen.promptNumericChoice(prompt.title(), prompt.message(), prompt.minValue(),
                                 prompt.maxValue()));
                 case DIRECTION, TARGET -> {
                     CompletableFuture<String> selection;

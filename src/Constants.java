@@ -87,4 +87,5 @@ public class Constants {
     };
 
     public static JFrame frame;
+    public static Screen screen;
 }

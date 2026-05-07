@@ -1,8 +1,13 @@
 package src;
 
+import java.awt.AlphaComposite;
+import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Composite;
 import java.awt.Desktop;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.event.ActionEvent;
@@ -14,12 +19,19 @@ import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
 
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JEditorPane;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 
 import src.game.BiMap;
 import src.game.DeploymentCard;
@@ -47,6 +59,20 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     private boolean rebelsWin = true;
     private CompletableFuture<String> remoteBoardSelection;
     private RemotePrompt activeRemotePrompt;
+    private CompletableFuture<String> activePromptResponse;
+    private PromptKind activePromptKind;
+    private final JPanel promptPanel = new JPanel(new BorderLayout(8, 8));
+    private final JLabel promptTitleLabel = new JLabel();
+    private final JTextArea promptMessageArea = new JTextArea();
+    private final JPanel promptActionsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+    private final JTextField numericPromptField = new JTextField();
+    private final JButton numericSubmitButton = new JButton("Submit");
+    private int numericPromptMinValue;
+    private int numericPromptMaxValue;
+    private final AtomicLong bannerToken = new AtomicLong(0L);
+    private volatile String statusText = "Turn: --";
+    private volatile String bannerText;
+    private volatile long bannerExpiresAt;
 
     private static String[] dialogChain = new String[] {
             "<html><body style='width: 300px; padding: 10px;'>" +
@@ -82,6 +108,12 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         SPECIAL
     }
 
+    private static enum PromptKind {
+        MULTIPLE_CHOICE,
+        YES_NO,
+        NUMERIC
+    }
+
     public Screen() {
         this(new Game(null), false);
         game.setUi(this);
@@ -91,12 +123,14 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         this.game = game;
         this.remoteMode = remoteMode;
         this.game.setUi(this);
+        Constants.screen = this;
         setFocusable(true);
         setLayout(null);
         if (!remoteMode) {
             showInstructionsChain();
         }
         initializeButtons();
+        initializePromptPanel();
         addMouseListener(this);
         addKeyListener(this);
         setBackground(new Color(0, 0, 0));
@@ -110,6 +144,44 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         } else {
             animate();
         }
+    }
+
+    private void initializePromptPanel() {
+        promptPanel.setBounds(980, 760, 900, 260);
+        promptPanel.setBackground(new Color(18, 18, 18));
+        promptPanel.setBorder(BorderFactory.createLineBorder(new Color(90, 90, 90), 2));
+        promptPanel.setVisible(false);
+
+        promptTitleLabel.setForeground(Color.WHITE);
+        promptTitleLabel.setFont(promptTitleLabel.getFont().deriveFont(Font.BOLD, 18f));
+
+        promptMessageArea.setEditable(false);
+        promptMessageArea.setLineWrap(true);
+        promptMessageArea.setWrapStyleWord(true);
+        promptMessageArea.setOpaque(false);
+        promptMessageArea.setForeground(Color.WHITE);
+        promptMessageArea.setFont(promptMessageArea.getFont().deriveFont(15f));
+
+        JPanel promptTextPanel = new JPanel();
+        promptTextPanel.setOpaque(false);
+        promptTextPanel.setLayout(new BoxLayout(promptTextPanel, BoxLayout.Y_AXIS));
+        promptTextPanel.add(promptTitleLabel);
+        promptTextPanel.add(promptMessageArea);
+
+        promptActionsPanel.setOpaque(false);
+
+        JPanel numericPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        numericPanel.setOpaque(false);
+        numericPromptField.setColumns(8);
+        numericPanel.add(numericPromptField);
+        numericSubmitButton.addActionListener(e -> submitNumericPrompt());
+        numericPromptField.addActionListener(e -> submitNumericPrompt());
+        numericPanel.add(numericSubmitButton);
+
+        promptPanel.add(promptTextPanel, BorderLayout.NORTH);
+        promptPanel.add(promptActionsPanel, BorderLayout.CENTER);
+        promptPanel.add(numericPanel, BorderLayout.SOUTH);
+        add(promptPanel);
     }
 
     private void initializeButtons() {
@@ -167,6 +239,84 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         }
     }
 
+    private CompletableFuture<String> beginPrompt(PromptKind kind, String name, String explanation) {
+        CompletableFuture<String> future = new CompletableFuture<>();
+        Runnable setup = () -> {
+            activePromptKind = kind;
+            activePromptResponse = future;
+            promptTitleLabel.setText(name);
+            promptMessageArea.setText(explanation);
+            promptActionsPanel.removeAll();
+            numericPromptField.setText("");
+            numericPromptField.setVisible(kind == PromptKind.NUMERIC);
+            numericSubmitButton.setVisible(kind == PromptKind.NUMERIC);
+            promptPanel.setVisible(true);
+            revalidate();
+            repaint();
+            if (kind == PromptKind.NUMERIC) {
+                numericPromptField.requestFocusInWindow();
+            }
+        };
+        future.whenComplete((value, error) -> SwingUtilities.invokeLater(() -> {
+            if (activePromptResponse == future) {
+                clearPromptPanel();
+            }
+        }));
+        if (SwingUtilities.isEventDispatchThread()) {
+            setup.run();
+        } else {
+            SwingUtilities.invokeLater(setup);
+        }
+        return future;
+    }
+
+    private void clearPromptPanel() {
+        activePromptKind = null;
+        activePromptResponse = null;
+        promptActionsPanel.removeAll();
+        numericPromptField.setText("");
+        promptPanel.setVisible(false);
+        revalidate();
+        repaint();
+    }
+
+    private void completePrompt(String value) {
+        if (activePromptResponse != null && !activePromptResponse.isDone()) {
+            activePromptResponse.complete(value);
+        }
+    }
+
+    private void submitNumericPrompt() {
+        if (activePromptKind != PromptKind.NUMERIC) {
+            return;
+        }
+        String rawValue = numericPromptField.getText();
+        if (rawValue == null) {
+            return;
+        }
+        String trimmed = rawValue.trim();
+        try {
+            int parsed = Integer.parseInt(trimmed);
+            if (parsed < numericPromptMinValue || parsed > numericPromptMaxValue) {
+                promptMessageArea.setText("Enter a value from " + numericPromptMinValue + " to "
+                        + numericPromptMaxValue + ".");
+                numericPromptField.requestFocusInWindow();
+                return;
+            }
+            completePrompt(trimmed);
+        } catch (NumberFormatException ex) {
+            promptMessageArea.setText("Enter a valid number from " + numericPromptMinValue + " to "
+                    + numericPromptMaxValue + ".");
+            numericPromptField.requestFocusInWindow();
+        }
+    }
+
+    private void addPromptButton(String label, String value) {
+        JButton button = new JButton(label);
+        button.addActionListener(e -> completePrompt(value));
+        promptActionsPanel.add(button);
+    }
+
     @Override
     public Dimension getPreferredSize() {
         return new Dimension(1920, 1080);
@@ -185,12 +335,54 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
             g.fillRect(getPreferredSize().width / 2 - 200, 0, getPreferredSize().width / 2 + 200,
                     getPreferredSize().height);
             game.drawGame(g);
+            drawTurnHud(g);
         } else {
             g.drawImage(startScreenimage, 0, 0, getPreferredSize().width, getPreferredSize().height, 0, 0,
                     startScreenimage.getWidth(null), startScreenimage.getHeight(null), null);
             g.setColor(new Color(0, 0, 0));
             g.drawString("Woo animation yeah", animationTextPos, 50);
         }
+    }
+
+    private void drawTurnHud(Graphics g) {
+        updateTurnStatus();
+        g.setFont(g.getFont().deriveFont(Font.BOLD, 22f));
+        g.setColor(new Color(0, 0, 0, 180));
+        g.fillRoundRect(20, 20, 280, 54, 18, 18);
+        g.setColor(Color.WHITE);
+        g.drawRoundRect(20, 20, 280, 54, 18, 18);
+        g.drawString(statusText, 38, 54);
+
+        long remaining = bannerExpiresAt - System.currentTimeMillis();
+        if (bannerText == null || remaining <= 0) {
+            return;
+        }
+        float alpha = Math.max(0f, Math.min(1f, remaining / 1400f));
+        java.awt.Graphics2D g2 = (java.awt.Graphics2D) g;
+        Composite original = g2.getComposite();
+        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+        int width = 560;
+        int x = getPreferredSize().width / 2 - width / 2;
+        int y = 18;
+        g2.setColor(new Color(15, 15, 15));
+        g2.fillRoundRect(x, y, width, 56, 20, 20);
+        g2.setColor(new Color(255, 255, 255));
+        g2.drawRoundRect(x, y, width, 56, 20, 20);
+        g2.drawString(bannerText, x + 24, y + 35);
+        g2.setComposite(original);
+    }
+
+    private void updateTurnStatus() {
+        statusText = "Turn: " + formatSeat(game.getActingSeat());
+        repaint();
+    }
+
+    private String formatSeat(src.game.PlayerSeat seat) {
+        return switch (seat) {
+            case IMPERIAL -> "Imperial";
+            case REBEL_1 -> "Rebel 1";
+            case REBEL_2 -> "Rebel 2";
+        };
     }
 
     @Override
@@ -303,6 +495,42 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         movementButtonOutput = output;
     }
 
+    public int promptMultipleChoice(String name, String explanation, Object[] options) {
+        CompletableFuture<String> future = beginPrompt(PromptKind.MULTIPLE_CHOICE, name, explanation);
+        SwingUtilities.invokeLater(() -> {
+            promptActionsPanel.removeAll();
+            for (int i = 0; i < options.length; i++) {
+                addPromptButton(String.valueOf(options[i]), String.valueOf(i));
+            }
+            promptPanel.revalidate();
+            promptPanel.repaint();
+        });
+        return Integer.parseInt(future.join());
+    }
+
+    public boolean promptYesNo(String name, String explanation) {
+        CompletableFuture<String> future = beginPrompt(PromptKind.YES_NO, name, explanation);
+        SwingUtilities.invokeLater(() -> {
+            promptActionsPanel.removeAll();
+            addPromptButton("No", String.valueOf(false));
+            addPromptButton("Yes", String.valueOf(true));
+            promptPanel.revalidate();
+            promptPanel.repaint();
+        });
+        return Boolean.parseBoolean(future.join());
+    }
+
+    public int promptNumericChoice(String name, String explanation, int minValue, int maxValue) {
+        numericPromptMinValue = minValue;
+        numericPromptMaxValue = maxValue;
+        CompletableFuture<String> future = beginPrompt(PromptKind.NUMERIC, name,
+                explanation + " (" + minValue + " to " + maxValue + ")");
+        SwingUtilities.invokeLater(() -> {
+            numericPromptField.setToolTipText("Enter a value from " + minValue + " to " + maxValue);
+        });
+        return Integer.parseInt(future.join());
+    }
+
     public void deactivateMovementButton(Directions dir) {
         movementButtons.get(dir).setVisible(false);
         movementButtons.get(dir).setEnabled(false);
@@ -395,6 +623,46 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         deactiveateMovementButtons();
         setSelectionType(SelectingType.EXPLANATION);
         repaint();
+    }
+
+    public void setTurnStatus(src.game.PlayerSeat seat) {
+        statusText = "Turn: " + formatSeat(seat);
+        repaint();
+    }
+
+    public void showBanner(String text) {
+        showBanner(text, 1400L);
+    }
+
+    public void showBanner(String text, long durationMs) {
+        long token = bannerToken.incrementAndGet();
+        bannerText = text;
+        bannerExpiresAt = System.currentTimeMillis() + Math.max(1L, durationMs);
+        repaint();
+        Thread bannerThread = new Thread(() -> {
+            try {
+                while (System.currentTimeMillis() < bannerExpiresAt && bannerToken.get() == token) {
+                    Thread.sleep(33);
+                    SwingUtilities.invokeLater(this::repaint);
+                }
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            } finally {
+                if (bannerToken.get() == token) {
+                    bannerText = null;
+                    SwingUtilities.invokeLater(this::repaint);
+                }
+            }
+        });
+        bannerThread.setDaemon(true);
+        bannerThread.start();
+    }
+
+    public void showBannerFromSnapshot(String text, long remainingMs) {
+        if (text == null || remainingMs <= 0) {
+            return;
+        }
+        showBanner(text, remainingMs);
     }
 
     public Game getGame() {

@@ -43,6 +43,10 @@ public class Game {
     private boolean gameEnd;
     private boolean rebelsWin = true;
     private PlayerSeat actingSeat = PlayerSeat.REBEL_1;
+    private long bannerId;
+    private String bannerText;
+    private long bannerExpiresAt;
+    private long lastAppliedBannerId;
     private final GameSessionConfig sessionConfig;
     private final boolean authoritative;
 
@@ -140,18 +144,24 @@ public class Game {
         for (PlayerSeat rebelSeat : sessionConfig.rebelTurnOrder()) {
             ArrayList<Hero> seatOptions = getHeroExhaustOptions(rebelSeat);
             if (!seatOptions.isEmpty()) {
+                announceTurnStart(rebelSeat);
                 activateHero(rebelSeat, seatOptions);
                 if (gameEnd) {
                     return;
                 }
+                announceTurnEnd(rebelSeat);
             }
         }
         ArrayList<DeploymentGroup<? extends Imperial>> imperialExhaustOptions = getImperialExhaustOptions();
         if (!imperialExhaustOptions.isEmpty()) {
+            actingSeat = PlayerSeat.IMPERIAL;
+            updateTurnStatus();
+            announceTurnStart(PlayerSeat.IMPERIAL);
             activateImperials(imperialExhaustOptions);
             if (gameEnd) {
                 return;
             }
+            announceTurnEnd(PlayerSeat.IMPERIAL);
         }
         repaint();
         if (getHeroExhaustOptions().isEmpty() && imperialExhaustOptions.isEmpty()) {
@@ -162,6 +172,7 @@ public class Game {
 
     private void activateHero(PlayerSeat rebelSeat, ArrayList<Hero> seatOptions) {
         actingSeat = rebelSeat;
+        updateTurnStatus();
         Hero activeFigure = seatOptions
                 .remove(promptMultipleChoice(rebelSeat, "Deployment Selection",
                         "Choose deployment card to exhaust", seatOptions.toArray()));
@@ -188,6 +199,7 @@ public class Game {
 
     private void activateImperials(ArrayList<DeploymentGroup<? extends Imperial>> imperialExhaustOptions) {
         actingSeat = PlayerSeat.IMPERIAL;
+        updateTurnStatus();
         DeploymentGroup<? extends Imperial> deploymentGroup = imperialExhaustOptions
                 .remove(promptMultipleChoice(PlayerSeat.IMPERIAL, "Deployment Selection",
                         "Choose deployment card to exhaust", imperialExhaustOptions.toArray()));
@@ -570,6 +582,7 @@ public class Game {
 
     public void repaint() {
         if (ui != null) {
+            ui.setTurnStatus(actingSeat);
             ui.repaint();
         }
         if (snapshotListener != null) {
@@ -668,8 +681,8 @@ public class Game {
         for (GraphicDefenseDieResult die : defenseResults) {
             defense.add(die.die().name() + ":" + die.face());
         }
-        return new MatchSnapshot(sessionConfig, heroSnapshots, groupSnapshots, interactableStates, offense, defense,
-                gameEnd, rebelsWin);
+        return new MatchSnapshot(sessionConfig, actingSeat, bannerId, bannerText, bannerExpiresAt, heroSnapshots,
+                groupSnapshots, interactableStates, offense, defense, gameEnd, rebelsWin);
     }
 
     public void loadSnapshot(MatchSnapshot snapshot) {
@@ -706,7 +719,54 @@ public class Game {
         }
         this.gameEnd = snapshot.gameEnd();
         this.rebelsWin = snapshot.rebelsWin();
+        this.actingSeat = snapshot.actingSeat();
+        if (snapshot.bannerId() > lastAppliedBannerId && ui != null) {
+            lastAppliedBannerId = snapshot.bannerId();
+            long remaining = snapshot.bannerExpiresAt() - System.currentTimeMillis();
+            ui.showBannerFromSnapshot(snapshot.bannerText(), remaining);
+        }
+        if (ui != null) {
+            ui.setTurnStatus(actingSeat);
+        }
         repaint();
+    }
+
+    private void updateTurnStatus() {
+        if (ui != null) {
+            ui.setTurnStatus(actingSeat);
+        }
+    }
+
+    private void announceTurnStart(PlayerSeat seat) {
+        triggerBanner(formatSeat(seat) + " turn begins");
+        if (ui != null) {
+            ui.setTurnStatus(actingSeat);
+        }
+    }
+
+    private void announceTurnEnd(PlayerSeat seat) {
+        triggerBanner(formatSeat(seat) + " turn ends");
+        if (ui != null) {
+            ui.setTurnStatus(actingSeat);
+        }
+    }
+
+    private void triggerBanner(String text) {
+        bannerId++;
+        bannerText = text;
+        bannerExpiresAt = System.currentTimeMillis() + 1400L;
+        if (ui != null) {
+            ui.showBanner(text);
+        }
+        repaint();
+    }
+
+    private String formatSeat(PlayerSeat seat) {
+        return switch (seat) {
+            case IMPERIAL -> "Imperial";
+            case REBEL_1 -> "Rebel 1";
+            case REBEL_2 -> "Rebel 2";
+        };
     }
 
     private Hero createHero(FigureSnapshot heroSnapshot) {
