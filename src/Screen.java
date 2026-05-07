@@ -31,6 +31,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.Timer;
 import javax.swing.SwingUtilities;
 
 import src.game.BiMap;
@@ -70,6 +71,8 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     private int numericPromptMinValue;
     private int numericPromptMaxValue;
     private final AtomicLong bannerToken = new AtomicLong(0L);
+    private Timer startScreenTimer;
+    private Timer bannerTimer;
     private volatile String statusText = "Turn: --";
     private volatile String bannerText;
     private volatile long bannerExpiresAt;
@@ -345,7 +348,6 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     }
 
     private void drawTurnHud(Graphics g) {
-        updateTurnStatus();
         g.setFont(g.getFont().deriveFont(Font.BOLD, 22f));
         g.setColor(new Color(0, 0, 0, 180));
         g.fillRoundRect(20, 20, 280, 54, 18, 18);
@@ -370,11 +372,6 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         g2.drawRoundRect(x, y, width, 56, 20, 20);
         g2.drawString(bannerText, x + 24, y + 35);
         g2.setComposite(original);
-    }
-
-    private void updateTurnStatus() {
-        statusText = "Turn: " + formatSeat(game.getActingSeat());
-        repaint();
     }
 
     private String formatSeat(src.game.PlayerSeat seat) {
@@ -409,6 +406,9 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     public void mouseReleased(MouseEvent e) {
         if (!gameStarted && !remoteMode) {
             gameStarted = true;
+            if (startScreenTimer != null) {
+                startScreenTimer.stop();
+            }
             repaint();
             mainGameLoop = new Thread(() -> game.playRound());
             mainGameLoop.start();
@@ -569,21 +569,21 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     }
 
     public void animate() {
-        Thread animationThread = new Thread(() -> {
-            while (!gameStarted) {
+        if (startScreenTimer == null) {
+            startScreenTimer = new Timer(50, e -> {
+                if (gameStarted) {
+                    ((Timer) e.getSource()).stop();
+                    return;
+                }
                 animationTextPos += 5;
                 if (animationTextPos > 800) {
                     animationTextPos = 0;
                 }
-                try {
-                    Thread.sleep(50);
-                    javax.swing.SwingUtilities.invokeLater(() -> repaint());
-                } catch (Exception e) {
-                    break;
-                }
-            }
-        });
-        animationThread.start();
+                repaint();
+            });
+            startScreenTimer.setRepeats(true);
+        }
+        startScreenTimer.start();
     }
 
     public CompletableFuture<String> beginRemoteBoardPrompt(RemotePrompt prompt) {
@@ -626,8 +626,13 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     }
 
     public void setTurnStatus(src.game.PlayerSeat seat) {
-        statusText = "Turn: " + formatSeat(seat);
-        repaint();
+        String newStatus = "Turn: " + formatSeat(seat);
+        if (!newStatus.equals(statusText)) {
+            statusText = newStatus;
+            repaint();
+            return;
+        }
+        statusText = newStatus;
     }
 
     public void showBanner(String text) {
@@ -639,23 +644,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         bannerText = text;
         bannerExpiresAt = System.currentTimeMillis() + Math.max(1L, durationMs);
         repaint();
-        Thread bannerThread = new Thread(() -> {
-            try {
-                while (System.currentTimeMillis() < bannerExpiresAt && bannerToken.get() == token) {
-                    Thread.sleep(33);
-                    SwingUtilities.invokeLater(this::repaint);
-                }
-            } catch (InterruptedException ex) {
-                Thread.currentThread().interrupt();
-            } finally {
-                if (bannerToken.get() == token) {
-                    bannerText = null;
-                    SwingUtilities.invokeLater(this::repaint);
-                }
-            }
-        });
-        bannerThread.setDaemon(true);
-        bannerThread.start();
+        SwingUtilities.invokeLater(() -> startBannerTimer(token));
     }
 
     public void showBannerFromSnapshot(String text, long remainingMs) {
@@ -667,5 +656,26 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 
     public Game getGame() {
         return game;
+    }
+
+    private void startBannerTimer(long token) {
+        if (bannerTimer != null) {
+            bannerTimer.stop();
+        }
+        bannerTimer = new Timer(33, e -> {
+            if (bannerToken.get() != token) {
+                ((Timer) e.getSource()).stop();
+                return;
+            }
+            if (System.currentTimeMillis() >= bannerExpiresAt) {
+                bannerText = null;
+                repaint();
+                ((Timer) e.getSource()).stop();
+                return;
+            }
+            repaint();
+        });
+        bannerTimer.setRepeats(true);
+        bannerTimer.start();
     }
 }
