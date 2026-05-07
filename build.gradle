@@ -1,9 +1,8 @@
 plugins {
-    id 'application'
     id 'java'
 }
 
-import org.gradle.jvm.application.tasks.CreateStartScripts
+import org.gradle.api.tasks.JavaExec
 
 group = 'com.yasen.quarter4project'
 version = '1.0-SNAPSHOT'
@@ -24,6 +23,7 @@ sourceSets {
             include '*.java'
             include 'src/**/*.java'
         }
+
         resources {
             srcDirs = ['src']
             include 'game/images/**'
@@ -32,74 +32,32 @@ sourceSets {
     }
 }
 
-def applications = [
-    server: [
-        mainClass  : 'ServerRunner',
-        description: 'Runs the multiplayer server.'
-    ],
-    client: [
-        mainClass  : 'ClientRunner',
-        description: 'Runs the multiplayer client.'
-    ]
-]
-
-application {
-    // Keep the default `run` task usable by pointing it at one concrete app.
-    mainClass = applications.server.mainClass
-}
-
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
-tasks.named('jar') {
-    manifest {
-        attributes('Main-Class': application.mainClass.get())
-    }
+jar {
+    archiveBaseName = project.name
 }
 
-applications.each { appName, appConfig ->
-    def taskSuffix = appName.capitalize()
-
-    tasks.register("run${taskSuffix}", JavaExec) {
-        group = 'application'
-        description = appConfig.description
-        classpath = sourceSets.main.runtimeClasspath
-        mainClass = appConfig.mainClass
-    }
-
-    tasks.register("${appName}StartScripts", CreateStartScripts) {
-        group = 'application'
-        description = "Creates start scripts for the ${appName} application."
-        applicationName = appName
-        mainClass = appConfig.mainClass
-        classpath = files(tasks.named('jar').flatMap { it.archiveFile }) + configurations.runtimeClasspath
-        outputDir = layout.buildDirectory.dir("scripts/${appName}").get().asFile
-    }
-}
-
-distributions {
-    applications.each { appName, appConfig ->
-        create(appName) {
-            distributionBaseName = "${project.name}-${appName}"
-            contents {
-                from(tasks.named("${appName}StartScripts")) {
-                    into 'bin'
-                }
-                from(tasks.named('jar')) {
-                    into 'lib'
-                }
-                from(configurations.runtimeClasspath) {
-                    into 'lib'
-                }
-            }
-        }
-    }
-}
-
-tasks.register('runPathTest', JavaExec) {
+tasks.register('runServer', JavaExec) {
     group = 'application'
-    description = 'Runs the Pathfinder smoke test main class.'
+    description = 'Runs the multiplayer server.'
+
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'Test'
+    mainClass = 'ServerRunner'
+
+    // Pass args with:
+    // ./gradlew runServer --args="arg1 arg2"
+}
+
+tasks.register('runClient', JavaExec) {
+    group = 'application'
+    description = 'Runs the multiplayer client.'
+
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'ClientRunner'
+
+    // Pass args with:
+    // ./gradlew runClient --args="localhost 1234"
 }
