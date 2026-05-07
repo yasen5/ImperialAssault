@@ -329,6 +329,10 @@ public abstract class Personnel {
         return health;
     }
 
+    public int getStartingHealth() {
+        return startingHealth;
+    }
+
     public int getStrain() {
         return strain;
     }
