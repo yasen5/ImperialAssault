@@ -1,9 +1,11 @@
-package game;
+package net;
 
 import java.util.ArrayList;
 
 import game.Screen.SelectingType;
 import game.Personnel.Directions;
+import game.PlayerSeat;
+import game.Personnel;
 
 public interface GameDecisionProvider {
     int chooseMultipleChoice(PlayerSeat seat, String name, String explanation, Object[] options);

@@ -5,9 +5,9 @@ import java.util.concurrent.CompletableFuture;
 
 import javax.swing.SwingUtilities;
 
-import game.Screen;
 import game.Screen.SelectingType;
 import game.Personnel.Directions;
+import net.GameDecisionProvider;
 
 public class LocalGameDecisionProvider implements GameDecisionProvider {
     private final Screen ui;

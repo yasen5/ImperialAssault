@@ -13,7 +13,14 @@ import game.MissionOption;
 import game.Screen;
 import game.Game;
 import game.PlayerSeat;
-import net.LobbySnapshot;
+import net.structs.LobbySnapshot;
+import net.structs.JoinRequest;
+import net.structs.JoinResponse;
+import net.structs.MatchSnapshot;
+import net.structs.RemotePrompt;
+import net.structs.PromptResponse;
+import net.structs.ClientMissionSelection;
+import net.structs.GameSessionConfig;
 
 public class GameClient {
     private final String host;

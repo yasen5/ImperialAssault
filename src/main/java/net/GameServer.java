@@ -24,13 +24,19 @@ import javax.swing.SwingUtilities;
 import game.Constants;
 import game.Screen.SelectingType;
 import game.Game;
-import game.GameDecisionProvider;
-import game.GameSessionConfig;
 import game.MissionOption;
 import game.Personnel;
 import game.PlayerSeat;
 import game.Personnel.Directions;
-import net.LobbySnapshot;
+import net.GameDecisionProvider;
+import net.structs.ClientMissionSelection;
+import net.structs.GameSessionConfig;
+import net.structs.JoinRequest;
+import net.structs.JoinResponse;
+import net.structs.LobbySnapshot;
+import net.structs.MatchSnapshot;
+import net.structs.PromptResponse;
+import net.structs.RemotePrompt;
 
 public class GameServer {
     private final int port;

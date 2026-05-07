@@ -1,8 +1,10 @@
-package game;
+package net.structs;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+
+import game.PlayerSeat;
 
 public record GameSessionConfig(int rebelPlayerCount) implements Serializable {
     public GameSessionConfig {
