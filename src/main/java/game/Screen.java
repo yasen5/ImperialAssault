@@ -20,6 +20,7 @@ import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -38,9 +39,11 @@ import game.BiMap;
 import game.DeploymentCard;
 import game.Game;
 import game.LoaderUtils;
+import game.MissionOption;
 import game.Personnel;
 import game.Personnel.Directions;
 import game.Pos;
+import net.LobbySnapshot;
 import net.RemotePrompt;
 import net.RemotePrompt.PromptType;
 
@@ -56,7 +59,6 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     private static SelectingType currentSelectionType = SelectingType.EXPLANATION;
     private static DeploymentCard previousSelectedCard;
     private JEditorPane editorPane;
-    private int animationTextPos = 0;
     private boolean rebelsWin = true;
     private CompletableFuture<String> remoteBoardSelection;
     private RemotePrompt activeRemotePrompt;
@@ -68,14 +70,20 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     private final JPanel promptActionsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
     private final JTextField numericPromptField = new JTextField();
     private final JButton numericSubmitButton = new JButton("Submit");
+    private final JButton missionOneButton = new JButton("Mission 1");
+    private final JButton missionTwoButton = new JButton("Mission 2");
     private int numericPromptMinValue;
     private int numericPromptMaxValue;
     private final AtomicLong bannerToken = new AtomicLong(0L);
-    private Timer startScreenTimer;
     private Timer bannerTimer;
     private volatile String statusText = "Turn: --";
     private volatile String bannerText;
     private volatile long bannerExpiresAt;
+    private volatile LobbySnapshot lobbySnapshot;
+    private MissionOption localMissionSelection;
+    private Consumer<MissionOption> missionSelectionAction = mission -> {
+    };
+    private game.PlayerSeat localSeat;
 
     private static String[] dialogChain = new String[] {
             "<html><body style='width: 300px; padding: 10px;'>" +
@@ -143,10 +151,20 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
             previousSelectedCard.setVisible(true);
         }
         if (remoteMode) {
-            gameStarted = true;
-        } else {
-            animate();
+            initializeLobbyControls();
         }
+    }
+
+    private void initializeLobbyControls() {
+        missionOneButton.setVisible(false);
+        missionOneButton.addActionListener(e -> submitMissionSelection(MissionOption.MISSION_ONE));
+        missionOneButton.setBounds(getPreferredSize().width / 2 - 210, 900, 200, 44);
+        add(missionOneButton);
+
+        missionTwoButton.setVisible(false);
+        missionTwoButton.addActionListener(e -> submitMissionSelection(MissionOption.MISSION_TWO));
+        missionTwoButton.setBounds(getPreferredSize().width / 2 + 10, 900, 200, 44);
+        add(missionTwoButton);
     }
 
     private void initializePromptPanel() {
@@ -320,6 +338,33 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         promptActionsPanel.add(button);
     }
 
+    private void submitMissionSelection(MissionOption mission) {
+        localMissionSelection = mission;
+        missionSelectionAction.accept(mission);
+        refreshLobbyControls();
+    }
+
+    private void refreshLobbyControls() {
+        if (!remoteMode) {
+            return;
+        }
+        boolean showControls = lobbySnapshot != null && !gameStarted && !lobbySnapshot.allMissionsMatch();
+        missionOneButton.setVisible(showControls);
+        missionTwoButton.setVisible(showControls);
+        missionOneButton.setEnabled(showControls);
+        missionTwoButton.setEnabled(showControls);
+        if (localMissionSelection == MissionOption.MISSION_ONE) {
+            missionOneButton.setText("Mission 1 selected");
+            missionTwoButton.setText("Mission 2");
+        } else if (localMissionSelection == MissionOption.MISSION_TWO) {
+            missionOneButton.setText("Mission 1");
+            missionTwoButton.setText("Mission 2 selected");
+        } else {
+            missionOneButton.setText("Mission 1");
+            missionTwoButton.setText("Mission 2");
+        }
+    }
+
     @Override
     public Dimension getPreferredSize() {
         return new Dimension(1920, 1080);
@@ -342,8 +387,54 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         } else {
             g.drawImage(startScreenimage, 0, 0, getPreferredSize().width, getPreferredSize().height, 0, 0,
                     startScreenimage.getWidth(null), startScreenimage.getHeight(null), null);
-            g.setColor(new Color(0, 0, 0));
-            g.drawString("Woo animation yeah", animationTextPos, 50);
+            drawLobbyOverlay(g);
+        }
+    }
+
+    private void drawLobbyOverlay(Graphics g) {
+        java.awt.Graphics2D g2 = (java.awt.Graphics2D) g;
+        Composite original = g2.getComposite();
+        int panelWidth = 760;
+        int panelHeight = 430;
+        int x = getPreferredSize().width / 2 - panelWidth / 2;
+        int y = 170;
+        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.82f));
+        g2.setColor(new Color(10, 10, 10));
+        g2.fillRoundRect(x, y, panelWidth, panelHeight, 28, 28);
+        g2.setComposite(original);
+        g2.setColor(Color.WHITE);
+        g2.setFont(g2.getFont().deriveFont(Font.BOLD, 28f));
+        g2.drawString("Lobby", x + 28, y + 44);
+
+        g2.setFont(g2.getFont().deriveFont(Font.PLAIN, 20f));
+        String header;
+        if (lobbySnapshot == null) {
+            header = "Waiting for players to connect";
+        } else if (!lobbySnapshot.allSeatsFilled()) {
+            header = "Waiting for all seats to fill";
+        } else if (lobbySnapshot.allMissionsMatch()) {
+            header = "All players chose " + formatMission(lobbySnapshot.selectedMission());
+        } else if (lobbySnapshot.allMissionsSelected()) {
+            header = "All seats filled. Pick the same mission to begin";
+        } else {
+            header = "All seats filled. Choose a mission";
+        }
+        g2.drawString(header, x + 28, y + 82);
+
+        if (lobbySnapshot == null) {
+            g2.drawString("Connecting...", x + 28, y + 128);
+            return;
+        }
+
+        int rowY = y + 132;
+        for (game.PlayerSeat seat : lobbySnapshot.config().requiredSeats()) {
+            boolean occupied = lobbySnapshot.occupiedSeats().contains(seat);
+            String label = formatSeat(seat);
+            MissionOption mission = lobbySnapshot.missionSelections().get(seat);
+            String state = occupied ? (mission == null ? "joined" : formatMission(mission)) : "open";
+            g2.drawString(label, x + 28, rowY);
+            g2.drawString(state, x + panelWidth - 120, rowY);
+            rowY += 42;
         }
     }
 
@@ -382,6 +473,10 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         };
     }
 
+    private String formatMission(MissionOption mission) {
+        return mission == null ? "a mission" : mission.displayName();
+    }
+
     @Override
     public void actionPerformed(ActionEvent e) {
         Object source = e.getSource();
@@ -406,9 +501,6 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     public void mouseReleased(MouseEvent e) {
         if (!gameStarted && !remoteMode) {
             gameStarted = true;
-            if (startScreenTimer != null) {
-                startScreenTimer.stop();
-            }
             repaint();
             mainGameLoop = new Thread(() -> game.playRound());
             mainGameLoop.start();
@@ -568,24 +660,6 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         LoaderUtils.playSound("Applause");
     }
 
-    public void animate() {
-        if (startScreenTimer == null) {
-            startScreenTimer = new Timer(50, e -> {
-                if (gameStarted) {
-                    ((Timer) e.getSource()).stop();
-                    return;
-                }
-                animationTextPos += 5;
-                if (animationTextPos > 800) {
-                    animationTextPos = 0;
-                }
-                repaint();
-            });
-            startScreenTimer.setRepeats(true);
-        }
-        startScreenTimer.start();
-    }
-
     public CompletableFuture<String> beginRemoteBoardPrompt(RemotePrompt prompt) {
         activeRemotePrompt = prompt;
         remoteBoardSelection = new CompletableFuture<>();
@@ -654,6 +728,36 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         showBanner(text, remainingMs);
     }
 
+    public void updateLobbySnapshot(LobbySnapshot lobbySnapshot) {
+        this.lobbySnapshot = lobbySnapshot;
+        if (localSeat != null && lobbySnapshot != null) {
+            localMissionSelection = lobbySnapshot.missionSelections().get(localSeat);
+        }
+        refreshLobbyControls();
+        repaint();
+    }
+
+    public void setMissionSelectionAction(Consumer<MissionOption> missionSelectionAction) {
+        this.missionSelectionAction = missionSelectionAction == null ? mission -> {
+        } : missionSelectionAction;
+    }
+
+    public void setLocalSeat(game.PlayerSeat localSeat) {
+        this.localSeat = localSeat;
+        refreshLobbyControls();
+    }
+
+    public void markGameStarted() {
+        gameStarted = true;
+        missionOneButton.setVisible(false);
+        missionTwoButton.setVisible(false);
+        repaint();
+    }
+
+    public boolean isGameStarted() {
+        return gameStarted;
+    }
+
     public Game getGame() {
         return game;
     }
@@ -662,7 +766,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         if (bannerTimer != null) {
             bannerTimer.stop();
         }
-        bannerTimer = new Timer(33, e -> {
+        bannerTimer = new Timer(1000, e -> {
             if (bannerToken.get() != token) {
                 ((Timer) e.getSource()).stop();
                 return;

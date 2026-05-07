@@ -73,6 +73,10 @@ public class Game {
         return new Game(null, sessionConfig, null, false);
     }
 
+    public GameSessionConfig getSessionConfig() {
+        return sessionConfig;
+    }
+
     public static Game current() {
         return currentGame.get();
     }

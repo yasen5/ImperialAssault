@@ -9,9 +9,11 @@ import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
 import game.Constants;
+import game.MissionOption;
 import game.Screen;
 import game.Game;
 import game.PlayerSeat;
+import net.LobbySnapshot;
 
 public class GameClient {
     private final String host;
@@ -40,6 +42,17 @@ public class GameClient {
         game = Game.createRemoteView(response.config());
         SwingUtilities.invokeAndWait(() -> {
             screen = new Screen(game, true);
+            screen.setLocalSeat(response.seat());
+            screen.setMissionSelectionAction((MissionOption mission) -> {
+                try {
+                    send(new ClientMissionSelection(mission));
+                } catch (Exception ex) {
+                    throw new RuntimeException(ex);
+                }
+            });
+            if (response.lobbySnapshot() != null) {
+                screen.updateLobbySnapshot(response.lobbySnapshot());
+            }
             Constants.frame = new JFrame("Imperial Assault Client - " + response.seat());
             Constants.frame.add(screen);
             Constants.frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -48,8 +61,15 @@ public class GameClient {
         });
         while (true) {
             Object message = in.readObject();
+            if (message instanceof LobbySnapshot lobbySnapshot) {
+                SwingUtilities.invokeLater(() -> screen.updateLobbySnapshot(lobbySnapshot));
+                continue;
+            }
             if (message instanceof MatchSnapshot snapshot) {
-                SwingUtilities.invokeLater(() -> game.loadSnapshot(snapshot));
+                SwingUtilities.invokeLater(() -> {
+                    screen.markGameStarted();
+                    game.loadSnapshot(snapshot);
+                });
             } else if (message instanceof RemotePrompt prompt) {
                 handlePrompt(prompt);
             }
