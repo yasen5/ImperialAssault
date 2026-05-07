@@ -41,6 +41,7 @@ import game.LoaderUtils;
 import game.Personnel;
 import game.Personnel.Directions;
 import game.Pos;
+import net.LobbySnapshot;
 import net.RemotePrompt;
 import net.RemotePrompt.PromptType;
 
@@ -56,7 +57,6 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     private static SelectingType currentSelectionType = SelectingType.EXPLANATION;
     private static DeploymentCard previousSelectedCard;
     private JEditorPane editorPane;
-    private int animationTextPos = 0;
     private boolean rebelsWin = true;
     private CompletableFuture<String> remoteBoardSelection;
     private RemotePrompt activeRemotePrompt;
@@ -68,14 +68,18 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     private final JPanel promptActionsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
     private final JTextField numericPromptField = new JTextField();
     private final JButton numericSubmitButton = new JButton("Submit");
+    private final JButton readyButton = new JButton("Ready");
     private int numericPromptMinValue;
     private int numericPromptMaxValue;
     private final AtomicLong bannerToken = new AtomicLong(0L);
-    private Timer startScreenTimer;
     private Timer bannerTimer;
     private volatile String statusText = "Turn: --";
     private volatile String bannerText;
     private volatile long bannerExpiresAt;
+    private volatile LobbySnapshot lobbySnapshot;
+    private boolean readySubmitted;
+    private Runnable readyAction = () -> {
+    };
 
     private static String[] dialogChain = new String[] {
             "<html><body style='width: 300px; padding: 10px;'>" +
@@ -143,10 +147,20 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
             previousSelectedCard.setVisible(true);
         }
         if (remoteMode) {
-            gameStarted = true;
-        } else {
-            animate();
+            initializeLobbyControls();
         }
+    }
+
+    private void initializeLobbyControls() {
+        readyButton.setVisible(false);
+        readyButton.addActionListener(e -> {
+            readySubmitted = true;
+            readyButton.setEnabled(false);
+            readyButton.setText("Ready sent");
+            readyAction.run();
+        });
+        readyButton.setBounds(getPreferredSize().width / 2 - 90, 900, 180, 44);
+        add(readyButton);
     }
 
     private void initializePromptPanel() {
@@ -342,8 +356,46 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         } else {
             g.drawImage(startScreenimage, 0, 0, getPreferredSize().width, getPreferredSize().height, 0, 0,
                     startScreenimage.getWidth(null), startScreenimage.getHeight(null), null);
-            g.setColor(new Color(0, 0, 0));
-            g.drawString("Woo animation yeah", animationTextPos, 50);
+            drawLobbyOverlay(g);
+        }
+    }
+
+    private void drawLobbyOverlay(Graphics g) {
+        java.awt.Graphics2D g2 = (java.awt.Graphics2D) g;
+        Composite original = g2.getComposite();
+        int panelWidth = 760;
+        int panelHeight = 430;
+        int x = getPreferredSize().width / 2 - panelWidth / 2;
+        int y = 170;
+        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.82f));
+        g2.setColor(new Color(10, 10, 10));
+        g2.fillRoundRect(x, y, panelWidth, panelHeight, 28, 28);
+        g2.setComposite(original);
+        g2.setColor(Color.WHITE);
+        g2.setFont(g2.getFont().deriveFont(Font.BOLD, 28f));
+        g2.drawString("Lobby", x + 28, y + 44);
+
+        g2.setFont(g2.getFont().deriveFont(Font.PLAIN, 20f));
+        String header = lobbySnapshot == null ? "Waiting for players to connect"
+                : lobbySnapshot.allSeatsFilled() ? (lobbySnapshot.allReady() ? "All players are ready"
+                        : "All seats filled. Press Ready to begin")
+                        : "Waiting for all seats to fill";
+        g2.drawString(header, x + 28, y + 82);
+
+        if (lobbySnapshot == null) {
+            g2.drawString("Connecting...", x + 28, y + 128);
+            return;
+        }
+
+        int rowY = y + 132;
+        for (game.PlayerSeat seat : lobbySnapshot.config().requiredSeats()) {
+            boolean occupied = lobbySnapshot.occupiedSeats().contains(seat);
+            boolean ready = lobbySnapshot.readySeats().contains(seat);
+            String label = formatSeat(seat);
+            String state = occupied ? (ready ? "ready" : "joined") : "open";
+            g2.drawString(label, x + 28, rowY);
+            g2.drawString(state, x + panelWidth - 120, rowY);
+            rowY += 42;
         }
     }
 
@@ -406,9 +458,6 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     public void mouseReleased(MouseEvent e) {
         if (!gameStarted && !remoteMode) {
             gameStarted = true;
-            if (startScreenTimer != null) {
-                startScreenTimer.stop();
-            }
             repaint();
             mainGameLoop = new Thread(() -> game.playRound());
             mainGameLoop.start();
@@ -568,24 +617,6 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         LoaderUtils.playSound("Applause");
     }
 
-    public void animate() {
-        if (startScreenTimer == null) {
-            startScreenTimer = new Timer(50, e -> {
-                if (gameStarted) {
-                    ((Timer) e.getSource()).stop();
-                    return;
-                }
-                animationTextPos += 5;
-                if (animationTextPos > 800) {
-                    animationTextPos = 0;
-                }
-                repaint();
-            });
-            startScreenTimer.setRepeats(true);
-        }
-        startScreenTimer.start();
-    }
-
     public CompletableFuture<String> beginRemoteBoardPrompt(RemotePrompt prompt) {
         activeRemotePrompt = prompt;
         remoteBoardSelection = new CompletableFuture<>();
@@ -654,6 +685,35 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         showBanner(text, remainingMs);
     }
 
+    public void updateLobbySnapshot(LobbySnapshot lobbySnapshot) {
+        this.lobbySnapshot = lobbySnapshot;
+        if (!gameStarted) {
+            boolean canReady = lobbySnapshot != null && lobbySnapshot.allSeatsFilled() && !lobbySnapshot.allReady()
+                    && !readySubmitted;
+            readyButton.setVisible(canReady);
+            readyButton.setEnabled(canReady);
+            readyButton.setText("Ready");
+        }
+        repaint();
+    }
+
+    public void setReadyAction(Runnable readyAction) {
+        this.readyAction = readyAction == null ? () -> {
+        } : readyAction;
+    }
+
+    public void markGameStarted() {
+        gameStarted = true;
+        readySubmitted = true;
+        readyButton.setVisible(false);
+        readyButton.setEnabled(false);
+        repaint();
+    }
+
+    public boolean isGameStarted() {
+        return gameStarted;
+    }
+
     public Game getGame() {
         return game;
     }
@@ -662,7 +722,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         if (bannerTimer != null) {
             bannerTimer.stop();
         }
-        bannerTimer = new Timer(33, e -> {
+        bannerTimer = new Timer(1000, e -> {
             if (bannerToken.get() != token) {
                 ((Timer) e.getSource()).stop();
                 return;
