@@ -18,9 +18,11 @@ import game.Die.GraphicDefenseDieResult;
 import game.Die.GraphicOffenseDieResult;
 import game.Personnel.Actions;
 import game.Personnel.Directions;
-import net.DeploymentGroupSnapshot;
-import net.FigureSnapshot;
-import net.MatchSnapshot;
+import net.structs.DeploymentGroupSnapshot;
+import net.structs.FigureSnapshot;
+import net.structs.MatchSnapshot;
+import net.structs.GameSessionConfig;
+import net.GameDecisionProvider;
 
 public class Game {
     private static final ThreadLocal<Game> currentGame = new ThreadLocal<>();

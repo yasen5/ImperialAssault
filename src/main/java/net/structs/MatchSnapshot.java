@@ -1,9 +1,8 @@
-package net;
+package net.structs;
 
 import java.io.Serializable;
 import java.util.List;
 
-import game.GameSessionConfig;
 import game.PlayerSeat;
 
 public record MatchSnapshot(

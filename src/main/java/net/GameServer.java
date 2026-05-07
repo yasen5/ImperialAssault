@@ -21,16 +21,23 @@ import java.util.concurrent.atomic.AtomicLong;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
-import game.Constants;
 import game.Screen.SelectingType;
 import game.Game;
-import game.GameDecisionProvider;
-import game.GameSessionConfig;
 import game.MissionOption;
 import game.Personnel;
 import game.PlayerSeat;
+import game.UiContext;
 import game.Personnel.Directions;
-import net.LobbySnapshot;
+import net.GameDecisionProvider;
+import net.NetworkConfig;
+import net.structs.ClientMissionSelection;
+import net.structs.GameSessionConfig;
+import net.structs.JoinRequest;
+import net.structs.JoinResponse;
+import net.structs.LobbySnapshot;
+import net.structs.MatchSnapshot;
+import net.structs.PromptResponse;
+import net.structs.RemotePrompt;
 
 public class GameServer {
     private final int port;
@@ -50,7 +57,8 @@ public class GameServer {
     public void run() throws Exception {
         hostAddress = resolveHostAddress();
         startSpectatorDisplay();
-        try (ServerSocket serverSocket = new ServerSocket(port)) {
+        try (ServerSocket serverSocket = new ServerSocket(port, 50,
+                InetAddress.getByName(NetworkConfig.SERVER_BIND_ADDRESS))) {
             while (true) {
                 ClientConnection connection;
                 Socket socket = serverSocket.accept();
@@ -212,11 +220,12 @@ public class GameServer {
         SwingUtilities.invokeAndWait(() -> {
             spectatorScreen = new game.Screen(spectatorGame, true, true);
             spectatorScreen.setServerStatusText("Hosting on " + hostAddress + ":" + port + " | read-only spectator");
-            Constants.frame = new JFrame("Imperial Assault Server - " + hostAddress + ":" + port);
-            Constants.frame.add(spectatorScreen);
-            Constants.frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            Constants.frame.pack();
-            Constants.frame.setVisible(true);
+            JFrame frame = new JFrame("Imperial Assault Server - " + hostAddress + ":" + port);
+            UiContext.setFrame(frame);
+            frame.add(spectatorScreen);
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.pack();
+            frame.setVisible(true);
             spectatorScreen.updateLobbySnapshot(createLobbySnapshot());
         });
     }

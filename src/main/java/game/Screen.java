@@ -43,9 +43,9 @@ import game.MissionOption;
 import game.Personnel;
 import game.Personnel.Directions;
 import game.Pos;
-import net.LobbySnapshot;
-import net.RemotePrompt;
-import net.RemotePrompt.PromptType;
+import net.structs.LobbySnapshot;
+import net.structs.RemotePrompt;
+import net.structs.RemotePrompt.PromptType;
 
 public class Screen extends JPanel implements ActionListener, MouseListener, KeyListener {
     private final boolean remoteMode;
@@ -155,7 +155,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         this.remoteMode = remoteMode;
         this.readOnly = readOnly;
         this.game.setUi(this);
-        Constants.screen = this;
+        UiContext.setScreen(this);
         setFocusable(true);
         setLayout(null);
         promptPanel.setOpaque(false);

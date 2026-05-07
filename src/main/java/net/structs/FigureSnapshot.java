@@ -1,4 +1,4 @@
-package net;
+package net.structs;
 
 import java.io.Serializable;
 

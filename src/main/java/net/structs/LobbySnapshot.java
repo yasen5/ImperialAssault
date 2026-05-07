@@ -1,10 +1,9 @@
-package net;
+package net.structs;
 
 import java.io.Serializable;
 import java.util.Map;
 import java.util.List;
 
-import game.GameSessionConfig;
 import game.MissionOption;
 import game.PlayerSeat;
 
