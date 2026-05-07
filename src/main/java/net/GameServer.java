@@ -8,6 +8,7 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
@@ -19,12 +20,14 @@ import game.GameSessionConfig;
 import game.Personnel;
 import game.PlayerSeat;
 import game.Personnel.Directions;
+import net.LobbySnapshot;
 
 public class GameServer {
     private final int port;
     private final GameSessionConfig config;
     private final EnumMap<PlayerSeat, ClientConnection> clients = new EnumMap<>(PlayerSeat.class);
     private final AtomicLong promptIds = new AtomicLong(1);
+    private final Object lobbyLock = new Object();
 
     public GameServer(int port, int rebelPlayers) {
         this.port = port;
@@ -33,23 +36,35 @@ public class GameServer {
 
     public void run() throws Exception {
         try (ServerSocket serverSocket = new ServerSocket(port)) {
-            while (clients.size() < config.requiredSeats().size()) {
+            while (true) {
+                ClientConnection connection;
                 Socket socket = serverSocket.accept();
-                ClientConnection connection = new ClientConnection(socket);
+                connection = new ClientConnection(socket);
                 JoinRequest request = (JoinRequest) connection.in.readObject();
-                if (!config.requiredSeats().contains(request.requestedSeat()) || clients.containsKey(request.requestedSeat())) {
+                if (!config.requiredSeats().contains(request.requestedSeat()) || hasClient(request.requestedSeat())) {
+                    JoinResponse response = new JoinResponse(false, "Seat unavailable", request.requestedSeat(), config,
+                            createLobbySnapshot());
                     connection.out.writeObject(
-                            new JoinResponse(false, "Seat unavailable", request.requestedSeat(), config));
+                            response);
                     connection.out.flush();
                     socket.close();
                     continue;
                 }
-                clients.put(request.requestedSeat(), connection);
-                connection.seat = request.requestedSeat();
-                connection.out.writeObject(new JoinResponse(true, "Joined", request.requestedSeat(), config));
+                synchronized (lobbyLock) {
+                    clients.put(request.requestedSeat(), connection);
+                    connection.seat = request.requestedSeat();
+                    connection.ready = false;
+                }
+                connection.out.writeObject(
+                        new JoinResponse(true, "Joined", request.requestedSeat(), config, createLobbySnapshot()));
                 connection.out.flush();
                 connection.startReader();
+                broadcastLobbyState();
+                if (allSeatsFilled()) {
+                    break;
+                }
             }
+            waitForAllReady();
             Game game = new Game(null, config, new RemoteDecisionProvider(), true);
             game.setSnapshotListener(this::broadcastSnapshot);
             broadcastSnapshot(game.createSnapshot());
@@ -59,8 +74,78 @@ public class GameServer {
         }
     }
 
+    private boolean hasClient(PlayerSeat seat) {
+        synchronized (lobbyLock) {
+            return clients.containsKey(seat);
+        }
+    }
+
+    private boolean allSeatsFilled() {
+        synchronized (lobbyLock) {
+            return clients.size() >= config.requiredSeats().size();
+        }
+    }
+
+    private void waitForAllReady() throws InterruptedException {
+        synchronized (lobbyLock) {
+            while (!allReadyLocked()) {
+                lobbyLock.wait();
+            }
+        }
+    }
+
+    private boolean allReadyLocked() {
+        if (clients.size() < config.requiredSeats().size()) {
+            return false;
+        }
+        for (PlayerSeat seat : config.requiredSeats()) {
+            ClientConnection connection = clients.get(seat);
+            if (connection == null || !connection.ready) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private LobbySnapshot createLobbySnapshot() {
+        synchronized (lobbyLock) {
+            ArrayList<PlayerSeat> occupiedSeats = new ArrayList<>(clients.keySet());
+            ArrayList<PlayerSeat> readySeats = new ArrayList<>();
+            for (Map.Entry<PlayerSeat, ClientConnection> entry : clients.entrySet()) {
+                if (entry.getValue().ready) {
+                    readySeats.add(entry.getKey());
+                }
+            }
+            return new LobbySnapshot(config, occupiedSeats, readySeats,
+                    clients.size() >= config.requiredSeats().size(), allReadyLocked());
+        }
+    }
+
+    private void broadcastLobbyState() {
+        LobbySnapshot snapshot = createLobbySnapshot();
+        ArrayList<ClientConnection> connections;
+        synchronized (lobbyLock) {
+            connections = new ArrayList<>(clients.values());
+        }
+        for (ClientConnection connection : connections) {
+            connection.send(snapshot);
+        }
+    }
+
+    private void handleClientReady(ClientConnection connection, ClientReady ready) {
+        synchronized (lobbyLock) {
+            connection.ready = ready.ready();
+            lobbyLock.notifyAll();
+        }
+        broadcastLobbyState();
+    }
+
     private void broadcastSnapshot(MatchSnapshot snapshot) {
-        for (ClientConnection connection : clients.values()) {
+        ArrayList<ClientConnection> connections;
+        synchronized (lobbyLock) {
+            connections = new ArrayList<>(clients.values());
+        }
+        for (ClientConnection connection : connections) {
             connection.send(snapshot);
         }
     }
@@ -133,12 +218,13 @@ public class GameServer {
         }
     }
 
-    private static class ClientConnection {
+    private class ClientConnection {
         private final Socket socket;
         private final ObjectOutputStream out;
         private final ObjectInputStream in;
         private final BlockingQueue<PromptResponse> responses = new LinkedBlockingQueue<>();
         private PlayerSeat seat;
+        private volatile boolean ready;
 
         private ClientConnection(Socket socket) throws Exception {
             this.socket = socket;
@@ -154,6 +240,8 @@ public class GameServer {
                         Object object = in.readObject();
                         if (object instanceof PromptResponse response) {
                             responses.put(response);
+                        } else if (object instanceof ClientReady clientReady) {
+                            handleClientReady(this, clientReady);
                         }
                         
                     }
