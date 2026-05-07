@@ -2,8 +2,6 @@ package game;
 
 import java.util.ArrayList;
 
-import javax.swing.JFrame;
-
 import game.Pathfinder;
 import game.Pathfinder.FullPos;
 import game.Personnel.Directions;
@@ -85,7 +83,4 @@ public class Constants {
             new WallLine(new Pos(8, 12), false, false, true, true),
             new WallLine(new Pos(4, 4), true, true, true, true),
     };
-
-    public static JFrame frame;
-    public static Screen screen;
 }

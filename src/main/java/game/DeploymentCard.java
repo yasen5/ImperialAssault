@@ -36,7 +36,7 @@ public class DeploymentCard {
         }
         int drawX = getDrawX();
         int drawY = getDrawY();
-        Screen screen = Constants.screen;
+        Screen screen = UiContext.getScreen();
         if (screen != null) {
             int availableWidth = Math.max(240, screen.getSidebarCardWidth());
             int cappedWidth = Math.min(xSize, availableWidth);
@@ -70,7 +70,7 @@ public class DeploymentCard {
     }
 
     public int getDrawX() {
-        Screen screen = Constants.screen;
+        Screen screen = UiContext.getScreen();
         if (screen == null) {
             return x;
         }
@@ -78,7 +78,7 @@ public class DeploymentCard {
     }
 
     public int getDrawY() {
-        Screen screen = Constants.screen;
+        Screen screen = UiContext.getScreen();
         if (screen == null) {
             return y;
         }
@@ -88,7 +88,7 @@ public class DeploymentCard {
     public Rectangle getBounds() {
         int xSize = rebel ? heroXSize : imperialXSize;
         int ySize = rebel ? heroYSize : imperialYSize;
-        Screen screen = Constants.screen;
+        Screen screen = UiContext.getScreen();
         if (screen != null) {
             int availableWidth = Math.max(240, screen.getSidebarCardWidth());
             int cappedWidth = Math.min(xSize, availableWidth);

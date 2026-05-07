@@ -8,11 +8,11 @@ import java.util.concurrent.CompletableFuture;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
-import game.Constants;
 import game.MissionOption;
 import game.Screen;
 import game.Game;
 import game.PlayerSeat;
+import game.UiContext;
 import net.structs.LobbySnapshot;
 import net.structs.JoinRequest;
 import net.structs.JoinResponse;
@@ -60,11 +60,12 @@ public class GameClient {
             if (response.lobbySnapshot() != null) {
                 screen.updateLobbySnapshot(response.lobbySnapshot());
             }
-            Constants.frame = new JFrame("Imperial Assault Client - " + response.seat());
-            Constants.frame.add(screen);
-            Constants.frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            Constants.frame.pack();
-            Constants.frame.setVisible(true);
+            JFrame frame = new JFrame("Imperial Assault Client - " + response.seat());
+            UiContext.setFrame(frame);
+            frame.add(screen);
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.pack();
+            frame.setVisible(true);
         });
         while (true) {
             Object message = in.readObject();

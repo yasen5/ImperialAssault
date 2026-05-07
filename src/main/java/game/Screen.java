@@ -155,7 +155,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         this.remoteMode = remoteMode;
         this.readOnly = readOnly;
         this.game.setUi(this);
-        Constants.screen = this;
+        UiContext.setScreen(this);
         setFocusable(true);
         setLayout(null);
         promptPanel.setOpaque(false);

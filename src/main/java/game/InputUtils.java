@@ -2,8 +2,6 @@ package game;
 
 import javax.swing.JOptionPane;
 
-import game.Constants;
-
 public class InputUtils {
     // Get which response they chose, keep asking until response is valid
     public static int getMultipleChoice(String name, String explanation, Object[] options) {
@@ -15,13 +13,14 @@ public class InputUtils {
     }
 
     public static int showMultipleChoiceDialog(String name, String explanation, Object[] options) {
-        if (Constants.screen != null) {
-            return Constants.screen.promptMultipleChoice(name, explanation, options);
+        Screen screen = UiContext.getScreen();
+        if (screen != null) {
+            return screen.promptMultipleChoice(name, explanation, options);
         }
         int selectedIndex;
         do {
             selectedIndex = JOptionPane.showOptionDialog(
-                    Constants.frame,
+                    UiContext.getFrame(),
                     explanation,
                     name,
                     JOptionPane.DEFAULT_OPTION,
@@ -43,11 +42,12 @@ public class InputUtils {
     }
 
     public static boolean showYesNoDialog(String name, String explanation) {
-        if (Constants.screen != null) {
-            return Constants.screen.promptYesNo(name, explanation);
+        Screen screen = UiContext.getScreen();
+        if (screen != null) {
+            return screen.promptYesNo(name, explanation);
         }
         int response = JOptionPane.showConfirmDialog(
-                Constants.frame,
+                UiContext.getFrame(),
                 explanation,
                 name,
                 JOptionPane.YES_NO_OPTION);
@@ -68,14 +68,16 @@ public class InputUtils {
     }
 
     public static int showNumericChoiceDialog(String name, String explanation, int minValue, int maxValue) {
-        if (Constants.screen != null) {
-            return Constants.screen.promptNumericChoice(name, explanation, minValue, maxValue);
+        Screen screen = UiContext.getScreen();
+        if (screen != null) {
+            return screen.promptNumericChoice(name, explanation, minValue, maxValue);
         }
         int input = Integer.MIN_VALUE;
         String message = explanation == null || explanation.isBlank() ? name : explanation;
         message += " (" + minValue + " to " + maxValue + ")";
         do {
-            String rawInput = JOptionPane.showInputDialog(Constants.frame, message, name, JOptionPane.QUESTION_MESSAGE);
+            String rawInput = JOptionPane.showInputDialog(UiContext.getFrame(), message, name,
+                    JOptionPane.QUESTION_MESSAGE);
             if (rawInput != null) {
                 try {
                     input = Integer.valueOf(rawInput.trim());

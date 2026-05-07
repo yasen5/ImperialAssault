@@ -46,7 +46,7 @@ interface FullDeployment {
 
     // Draw all the collective statuses
     public default void drawStats(Graphics g) {
-        Screen screen = Constants.screen;
+        Screen screen = UiContext.getScreen();
         if (screen == null) {
             return;
         }
