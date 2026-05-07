@@ -1,15 +1,19 @@
 package net;
 
 import java.io.Serializable;
+import java.util.Map;
 import java.util.List;
 
 import game.GameSessionConfig;
+import game.MissionOption;
 import game.PlayerSeat;
 
 public record LobbySnapshot(
         GameSessionConfig config,
         List<PlayerSeat> occupiedSeats,
-        List<PlayerSeat> readySeats,
+        Map<PlayerSeat, MissionOption> missionSelections,
         boolean allSeatsFilled,
-        boolean allReady) implements Serializable {
+        boolean allMissionsSelected,
+        boolean allMissionsMatch,
+        MissionOption selectedMission) implements Serializable {
 }

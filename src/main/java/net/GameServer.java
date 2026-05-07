@@ -17,6 +17,7 @@ import game.Screen.SelectingType;
 import game.Game;
 import game.GameDecisionProvider;
 import game.GameSessionConfig;
+import game.MissionOption;
 import game.Personnel;
 import game.PlayerSeat;
 import game.Personnel.Directions;
@@ -53,7 +54,7 @@ public class GameServer {
                 synchronized (lobbyLock) {
                     clients.put(request.requestedSeat(), connection);
                     connection.seat = request.requestedSeat();
-                    connection.ready = false;
+                    connection.mission = null;
                 }
                 connection.out.writeObject(
                         new JoinResponse(true, "Joined", request.requestedSeat(), config, createLobbySnapshot()));
@@ -64,8 +65,8 @@ public class GameServer {
                     break;
                 }
             }
-            waitForAllReady();
-            Game game = new Game(null, config, new RemoteDecisionProvider(), true);
+            waitForAllMissionSelections();
+            Game game = createGameForMission(getSelectedMission());
             game.setSnapshotListener(this::broadcastSnapshot);
             broadcastSnapshot(game.createSnapshot());
             Thread gameThread = new Thread(game::playRound);
@@ -86,21 +87,27 @@ public class GameServer {
         }
     }
 
-    private void waitForAllReady() throws InterruptedException {
+    private void waitForAllMissionSelections() throws InterruptedException {
         synchronized (lobbyLock) {
-            while (!allReadyLocked()) {
+            while (!allMissionSelectionsLocked()) {
                 lobbyLock.wait();
             }
         }
     }
 
-    private boolean allReadyLocked() {
+    private boolean allMissionSelectionsLocked() {
         if (clients.size() < config.requiredSeats().size()) {
             return false;
         }
+        MissionOption mission = null;
         for (PlayerSeat seat : config.requiredSeats()) {
             ClientConnection connection = clients.get(seat);
-            if (connection == null || !connection.ready) {
+            if (connection == null || connection.mission == null) {
+                return false;
+            }
+            if (mission == null) {
+                mission = connection.mission;
+            } else if (mission != connection.mission) {
                 return false;
             }
         }
@@ -110,14 +117,30 @@ public class GameServer {
     private LobbySnapshot createLobbySnapshot() {
         synchronized (lobbyLock) {
             ArrayList<PlayerSeat> occupiedSeats = new ArrayList<>(clients.keySet());
-            ArrayList<PlayerSeat> readySeats = new ArrayList<>();
+            EnumMap<PlayerSeat, MissionOption> missionSelections = new EnumMap<>(PlayerSeat.class);
+            MissionOption selectedMission = null;
+            boolean allMissionSelections = true;
             for (Map.Entry<PlayerSeat, ClientConnection> entry : clients.entrySet()) {
-                if (entry.getValue().ready) {
-                    readySeats.add(entry.getKey());
+                MissionOption mission = entry.getValue().mission;
+                if (mission != null) {
+                    missionSelections.put(entry.getKey(), mission);
+                    if (selectedMission == null) {
+                        selectedMission = mission;
+                    } else if (selectedMission != mission) {
+                        allMissionSelections = false;
+                    }
+                } else {
+                    allMissionSelections = false;
                 }
             }
-            return new LobbySnapshot(config, occupiedSeats, readySeats,
-                    clients.size() >= config.requiredSeats().size(), allReadyLocked());
+            boolean allSeatsFilled = clients.size() >= config.requiredSeats().size();
+            boolean allMissionSelectionsMatch = allSeatsFilled && allMissionSelections && allMissionSelectionsLocked();
+            if (!allMissionSelectionsMatch) {
+                selectedMission = null;
+            }
+            return new LobbySnapshot(config, occupiedSeats, missionSelections,
+                    allSeatsFilled, allMissionSelections && allSeatsFilled, allMissionSelectionsMatch,
+                    selectedMission);
         }
     }
 
@@ -132,12 +155,30 @@ public class GameServer {
         }
     }
 
-    private void handleClientReady(ClientConnection connection, ClientReady ready) {
+    private void handleClientMissionSelection(ClientConnection connection, ClientMissionSelection missionSelection) {
         synchronized (lobbyLock) {
-            connection.ready = ready.ready();
+            connection.mission = missionSelection.mission();
             lobbyLock.notifyAll();
         }
         broadcastLobbyState();
+    }
+
+    private Game createGameForMission(MissionOption mission) {
+        return switch (mission) {
+            case MISSION_ONE, MISSION_TWO -> new Game(null, config, new RemoteDecisionProvider(), true);
+        };
+    }
+
+    private MissionOption getSelectedMission() {
+        synchronized (lobbyLock) {
+            for (PlayerSeat seat : config.requiredSeats()) {
+                ClientConnection connection = clients.get(seat);
+                if (connection != null && connection.mission != null) {
+                    return connection.mission;
+                }
+            }
+        }
+        throw new IllegalStateException("No mission selected");
     }
 
     private void broadcastSnapshot(MatchSnapshot snapshot) {
@@ -224,7 +265,7 @@ public class GameServer {
         private final ObjectInputStream in;
         private final BlockingQueue<PromptResponse> responses = new LinkedBlockingQueue<>();
         private PlayerSeat seat;
-        private volatile boolean ready;
+        private volatile MissionOption mission;
 
         private ClientConnection(Socket socket) throws Exception {
             this.socket = socket;
@@ -240,8 +281,8 @@ public class GameServer {
                         Object object = in.readObject();
                         if (object instanceof PromptResponse response) {
                             responses.put(response);
-                        } else if (object instanceof ClientReady clientReady) {
-                            handleClientReady(this, clientReady);
+                        } else if (object instanceof ClientMissionSelection clientMissionSelection) {
+                            handleClientMissionSelection(this, clientMissionSelection);
                         }
                         
                     }

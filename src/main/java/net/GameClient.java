@@ -9,6 +9,7 @@ import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
 import game.Constants;
+import game.MissionOption;
 import game.Screen;
 import game.Game;
 import game.PlayerSeat;
@@ -41,9 +42,10 @@ public class GameClient {
         game = Game.createRemoteView(response.config());
         SwingUtilities.invokeAndWait(() -> {
             screen = new Screen(game, true);
-            screen.setReadyAction(() -> {
+            screen.setLocalSeat(response.seat());
+            screen.setMissionSelectionAction((MissionOption mission) -> {
                 try {
-                    send(new ClientReady(true));
+                    send(new ClientMissionSelection(mission));
                 } catch (Exception ex) {
                     throw new RuntimeException(ex);
                 }
