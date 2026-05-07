@@ -54,14 +54,26 @@ public class InputUtils {
         if (currentGame != null && currentGame.hasDecisionProvider()) {
             return currentGame.promptNumericChoice(currentGame.getActingSeat(), name, minValue, maxValue);
         }
-        return showNumericChoiceDialog(name, minValue, maxValue);
+        return showNumericChoiceDialog(name, name, minValue, maxValue);
     }
 
     public static int showNumericChoiceDialog(String name, int minValue, int maxValue) {
-        int input;
+        return showNumericChoiceDialog(name, name, minValue, maxValue);
+    }
+
+    public static int showNumericChoiceDialog(String name, String explanation, int minValue, int maxValue) {
+        int input = Integer.MIN_VALUE;
+        String message = explanation == null || explanation.isBlank() ? name : explanation;
+        message += " (" + minValue + " to " + maxValue + ")";
         do {
-            input = Integer
-                    .valueOf(JOptionPane.showInputDialog(name));
+            String rawInput = JOptionPane.showInputDialog(Constants.frame, message, name, JOptionPane.QUESTION_MESSAGE);
+            if (rawInput != null) {
+                try {
+                    input = Integer.valueOf(rawInput.trim());
+                } catch (NumberFormatException ex) {
+                    input = Integer.MIN_VALUE;
+                }
+            }
         } while (input < minValue || input > maxValue);
         return input;
     }

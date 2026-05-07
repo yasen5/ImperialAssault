@@ -65,7 +65,8 @@ public class GameClient {
                                 prompt.optionLabels().toArray()));
                 case YES_NO -> String.valueOf(InputUtils.showYesNoDialog(prompt.title(), prompt.message()));
                 case NUMERIC -> String.valueOf(
-                        InputUtils.showNumericChoiceDialog(prompt.title(), prompt.minValue(), prompt.maxValue()));
+                        InputUtils.showNumericChoiceDialog(prompt.title(), prompt.message(), prompt.minValue(),
+                                prompt.maxValue()));
                 case DIRECTION, TARGET -> {
                     CompletableFuture<String> selection;
                     if (screen == null) {

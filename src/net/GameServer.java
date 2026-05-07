@@ -87,7 +87,8 @@ public class GameServer {
         @Override
         public int chooseNumericChoice(PlayerSeat seat, String name, int minValue, int maxValue) {
             RemotePrompt prompt = new RemotePrompt(promptIds.getAndIncrement(), seat, RemotePrompt.PromptType.NUMERIC,
-                    name, name, List.of(), minValue, maxValue, List.of(), null, null);
+                    name, name + " (" + minValue + " to " + maxValue + ")", List.of(), minValue, maxValue, List.of(),
+                    null, null);
             return Integer.parseInt(requestResponse(prompt));
         }
 
