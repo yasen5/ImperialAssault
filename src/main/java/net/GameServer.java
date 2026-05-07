@@ -21,11 +21,11 @@ import java.util.concurrent.atomic.AtomicLong;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
-import game.Screen.SelectingType;
 import game.Game;
 import game.MissionOption;
 import game.Personnel;
 import game.PlayerSeat;
+import game.SelectionType;
 import game.UiContext;
 import game.Personnel.Directions;
 import net.GameDecisionProvider;
@@ -221,6 +221,7 @@ public class GameServer {
         spectatorGame = new Game(null, config, null, false);
         SwingUtilities.invokeAndWait(() -> {
             spectatorScreen = new game.Screen(spectatorGame, true, true);
+            spectatorGame.setUi(spectatorScreen);
             spectatorScreen.setServerStatusText("Hosting on " + hostAddress + ":" + port + " | read-only spectator");
             JFrame frame = new JFrame("Imperial Assault Server - " + hostAddress + ":" + port);
             UiContext.setFrame(frame);
@@ -324,7 +325,7 @@ public class GameServer {
         }
 
         @Override
-        public Personnel chooseTarget(PlayerSeat seat, SelectingType selectionType, ArrayList<Personnel> availableTargets) {
+        public Personnel chooseTarget(PlayerSeat seat, SelectionType selectionType, ArrayList<Personnel> availableTargets) {
             ArrayList<String> values = new ArrayList<>();
             ArrayList<String> labels = new ArrayList<>();
             for (Personnel target : availableTargets) {

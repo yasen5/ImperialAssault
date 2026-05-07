@@ -37,27 +37,27 @@ import javax.swing.SwingUtilities;
 
 import game.BiMap;
 import game.DeploymentCard;
-import game.Game;
 import game.LoaderUtils;
 import game.MissionOption;
 import game.Personnel;
 import game.Personnel.Directions;
 import game.Pos;
+import game.SelectionType;
 import net.structs.LobbySnapshot;
 import net.structs.RemotePrompt;
 import net.structs.RemotePrompt.PromptType;
 
-public class Screen extends JPanel implements ActionListener, MouseListener, KeyListener {
+public class Screen extends JPanel implements ActionListener, MouseListener, KeyListener, GameUi {
     private final boolean remoteMode;
     private final boolean readOnly;
-    private final Game game;
+    private final GameView game;
     private boolean gameStarted = false;
     private BufferedImage startScreenimage;
     private static int buttonSize = 20;
     private CompletableFuture<Directions> movementButtonOutput;
     private static boolean gameEnd = false;
     private Thread mainGameLoop;
-    private static SelectingType currentSelectionType = SelectingType.EXPLANATION;
+    private static SelectionType currentSelectionType = SelectionType.EXPLANATION;
     private static DeploymentCard previousSelectedCard;
     private JEditorPane editorPane;
     private boolean rebelsWin = true;
@@ -129,32 +129,20 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 
     public static BiMap<Directions, JButton> movementButtons = new BiMap<>();
 
-    public static enum SelectingType {
-        EXPLANATION,
-        COMBAT,
-        SPECIAL
-    }
-
     private static enum PromptKind {
         MULTIPLE_CHOICE,
         YES_NO,
         NUMERIC
     }
 
-    public Screen() {
-        this(new Game(null), false, false);
-        game.setUi(this);
-    }
-
-    public Screen(Game game, boolean remoteMode) {
+    public Screen(GameView game, boolean remoteMode) {
         this(game, remoteMode, false);
     }
 
-    public Screen(Game game, boolean remoteMode, boolean readOnly) {
+    public Screen(GameView game, boolean remoteMode, boolean readOnly) {
         this.game = game;
         this.remoteMode = remoteMode;
         this.readOnly = readOnly;
-        this.game.setUi(this);
         UiContext.setScreen(this);
         setFocusable(true);
         setLayout(null);
@@ -573,7 +561,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         if (remoteMode && activeRemotePrompt != null && remoteBoardSelection != null) {
             if (activeRemotePrompt.type() == PromptType.TARGET) {
                 Personnel personnel = game
-                        .getPersonnelAtPosInternal(new Pos(e.getX() / Constants.tileSize, e.getY() / Constants.tileSize));
+                        .getPersonnelAtPos(new Pos(e.getX() / Constants.tileSize, e.getY() / Constants.tileSize));
                 if (personnel != null && activeRemotePrompt.allowedValues().contains(personnel.getId())) {
                     remoteBoardSelection.complete(personnel.getId());
                     return;
@@ -584,9 +572,9 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
             case COMBAT:
             case SPECIAL:
                 Personnel personnel = game
-                        .getPersonnelAtPosInternal(new Pos(e.getX() / Constants.tileSize, e.getY() / Constants.tileSize));
+                        .getPersonnelAtPos(new Pos(e.getX() / Constants.tileSize, e.getY() / Constants.tileSize));
                 if (!remoteMode && personnel != null && game.trySetTarget(personnel)) {
-                    currentSelectionType = SelectingType.EXPLANATION;
+                    currentSelectionType = SelectionType.EXPLANATION;
                 }
                 break;
             case EXPLANATION:
@@ -712,11 +700,12 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         repaint();
     }
 
-    public void setSelectionType(SelectingType value) {
+    public void setSelectionType(SelectionType value) {
         currentSelectionType = value;
+        UiContext.setSelectionType(value);
     }
 
-    public static SelectingType getSelectionType() {
+    public static SelectionType getSelectionType() {
         return currentSelectionType;
     }
 
@@ -765,7 +754,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         activeRemotePrompt = null;
         remoteBoardSelection = null;
         deactiveateMovementButtons();
-        setSelectionType(SelectingType.EXPLANATION);
+        setSelectionType(SelectionType.EXPLANATION);
         repaint();
     }
 
@@ -833,7 +822,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         return gameStarted;
     }
 
-    public Game getGame() {
+    public GameView getGame() {
         return game;
     }
 
@@ -928,6 +917,6 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     }
 
     private int getMapImageWidth() {
-        return game != null ? game.getMapDrawWidth() : Constants.tileSize * Constants.tileMatrix[0].length;
+        return game.getMapDrawWidth();
     }
 }

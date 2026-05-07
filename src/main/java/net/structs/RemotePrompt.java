@@ -3,8 +3,8 @@ package net.structs;
 import java.io.Serializable;
 import java.util.List;
 
-import game.Screen.SelectingType;
 import game.PlayerSeat;
+import game.SelectionType;
 
 public record RemotePrompt(
         long promptId,
@@ -17,7 +17,7 @@ public record RemotePrompt(
         int maxValue,
         List<String> allowedValues,
         String subjectId,
-        SelectingType selectionType) implements Serializable {
+        SelectionType selectionType) implements Serializable {
     public static enum PromptType {
         MULTIPLE_CHOICE,
         YES_NO,

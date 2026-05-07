@@ -12,19 +12,18 @@ import java.util.function.Consumer;
 
 import game.Constants;
 import game.Constants.WallLine;
-import game.Screen;
-import game.Screen.SelectingType;
 import game.Die.GraphicDefenseDieResult;
 import game.Die.GraphicOffenseDieResult;
 import game.Personnel.Actions;
 import game.Personnel.Directions;
+import game.SelectionType;
 import net.structs.DeploymentGroupSnapshot;
 import net.structs.FigureSnapshot;
 import net.structs.MatchSnapshot;
 import net.structs.GameSessionConfig;
 import net.GameDecisionProvider;
 
-public class Game {
+public class Game implements GameView {
     private final MapTile mapTile;
     private final ArrayList<DeploymentGroup<? extends Imperial>> imperialDeployments = new ArrayList<>();
     private final ArrayList<Hero> heroes = new ArrayList<>();
@@ -38,7 +37,7 @@ public class Game {
             new Door<Personnel>(new Pos(6, 8), Personnel.class)
     };
 
-    private Screen ui;
+    private GameUi ui;
     private GameDecisionProvider decisionProvider;
     private Consumer<MatchSnapshot> snapshotListener;
     private CompletableFuture<Personnel> currentSelected = new CompletableFuture<>();
@@ -56,12 +55,11 @@ public class Game {
     public static record MapTile(BufferedImage img, int[][] tileArray) {
     }
 
-    public Game(Screen ui) {
+    public Game(GameUi ui) {
         this(ui, new GameSessionConfig(1), null, true);
-        this.decisionProvider = new LocalGameDecisionProvider(ui);
     }
 
-    public Game(Screen ui, GameSessionConfig sessionConfig, GameDecisionProvider decisionProvider, boolean authoritative) {
+    public Game(GameUi ui, GameSessionConfig sessionConfig, GameDecisionProvider decisionProvider, boolean authoritative) {
         this.ui = ui;
         this.sessionConfig = sessionConfig;
         this.decisionProvider = decisionProvider;
@@ -80,11 +78,8 @@ public class Game {
         return actingSeat;
     }
 
-    public void setUi(Screen ui) {
+    public void setUi(GameUi ui) {
         this.ui = ui;
-        if (this.authoritative) {
-            this.decisionProvider = new LocalGameDecisionProvider(ui);
-        }
     }
 
     public void setDecisionProvider(GameDecisionProvider decisionProvider) {
@@ -95,6 +90,7 @@ public class Game {
         this.snapshotListener = snapshotListener;
     }
 
+    @Override
     public void drawGame(Graphics g) {
         g.drawImage(mapTile.img(), 0, 0, Constants.tileSize * mapTile.tileArray()[0].length,
                 Constants.tileSize * mapTile.tileArray().length,
@@ -112,6 +108,7 @@ public class Game {
         }
     }
 
+    @Override
     public int getMapDrawWidth() {
         return Constants.tileSize * mapTile.tileArray()[0].length;
     }
@@ -153,6 +150,7 @@ public class Game {
         g2.dispose();
     }
 
+    @Override
     public void playRound() {
         while (!gameEnd) {
             playCycle();
@@ -455,7 +453,7 @@ public class Game {
             person.setPossibleTarget(true);
         }
         repaint();
-        Personnel chosenDefender = decisionProvider.chooseTarget(activeFigure.getOwnerSeat(), SelectingType.COMBAT,
+        Personnel chosenDefender = decisionProvider.chooseTarget(activeFigure.getOwnerSeat(), SelectionType.COMBAT,
                 new ArrayList<>(availableTargets));
         for (Personnel person : availableTargets) {
             person.setPossibleTarget(false);
@@ -480,10 +478,12 @@ public class Game {
         return imperials;
     }
 
+    @Override
     public ArrayList<Hero> getHeroes() {
         return heroes;
     }
 
+    @Override
     public void reset() {
         gameEnd = false;
         rebelsWin = true;
@@ -577,6 +577,7 @@ public class Game {
         return null;
     }
 
+    @Override
     public Personnel getPersonnelById(String id) {
         for (Hero hero : heroes) {
             if (id.equals(hero.getId())) {
@@ -651,7 +652,7 @@ public class Game {
             person.setPossibleTarget(true);
         }
         repaint();
-        Personnel chosenDefender = decisionProvider.chooseTarget(activeFigure.getOwnerSeat(), SelectingType.SPECIAL,
+        Personnel chosenDefender = decisionProvider.chooseTarget(activeFigure.getOwnerSeat(), SelectionType.SPECIAL,
                 new ArrayList<>(availableTargets));
         for (Personnel person : availableTargets) {
             person.setPossibleTarget(false);
@@ -907,10 +908,12 @@ public class Game {
         this.availableTargets = availableTargets;
     }
 
+    @Override
     public CompletableFuture<Personnel> getCurrentSelection() {
         return currentSelected;
     }
 
+    @Override
     public void setCurrentSelection(CompletableFuture<Personnel> currentSelected) {
         this.currentSelected = currentSelected;
     }

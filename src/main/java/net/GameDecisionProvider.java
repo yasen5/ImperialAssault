@@ -2,10 +2,10 @@ package net;
 
 import java.util.ArrayList;
 
-import game.Screen.SelectingType;
 import game.Personnel.Directions;
 import game.PlayerSeat;
 import game.Personnel;
+import game.SelectionType;
 
 public interface GameDecisionProvider {
     int chooseMultipleChoice(PlayerSeat seat, String name, String explanation, Object[] options);
@@ -16,5 +16,5 @@ public interface GameDecisionProvider {
 
     Directions chooseDirection(PlayerSeat seat, Personnel activeFigure, ArrayList<Directions> allowedDirections);
 
-    Personnel chooseTarget(PlayerSeat seat, SelectingType selectionType, ArrayList<Personnel> availableTargets);
+    Personnel chooseTarget(PlayerSeat seat, SelectionType selectionType, ArrayList<Personnel> availableTargets);
 }

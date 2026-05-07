@@ -48,6 +48,7 @@ public class GameClient {
         game = new Game(null, response.config(), null, false);
         SwingUtilities.invokeAndWait(() -> {
             screen = new Screen(game, true);
+            game.setUi(screen);
             screen.setLocalSeat(response.seat());
             screen.setMissionSelectionAction((MissionOption mission) -> {
                 try {

@@ -7,11 +7,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import game.Constants;
-import game.Screen;
 import game.Constants.WallLine;
-import game.Screen.SelectingType;
 import game.Die.*;
 import game.FullDeployment.PersonnelStatus;
+import game.SelectionType;
 
 public abstract class Personnel {
     // Instance variables
@@ -173,7 +172,7 @@ public abstract class Personnel {
                 Constants.tileSize * (pos.getY() + ySize) - imageSideSpace, 0, 0, image.getWidth(null),
                 image.getHeight(null),
                 null);
-        if ((Screen.getSelectionType() == SelectingType.COMBAT || Screen.getSelectionType() == SelectingType.SPECIAL)
+        if ((UiContext.getSelectionType() == SelectionType.COMBAT || UiContext.getSelectionType() == SelectionType.SPECIAL)
                 && !possibleTarget) {
             g.setColor(new Color(0, 0, 0, 70));
             g.fillRect(pos.getFullX() + imageSideSpace,

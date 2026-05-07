@@ -5,7 +5,6 @@ import java.util.concurrent.CompletableFuture;
 
 import javax.swing.SwingUtilities;
 
-import game.Screen.SelectingType;
 import game.Personnel.Directions;
 import net.GameDecisionProvider;
 
@@ -52,7 +51,7 @@ public class LocalGameDecisionProvider implements GameDecisionProvider {
     }
 
     @Override
-    public Personnel chooseTarget(PlayerSeat seat, SelectingType selectionType, ArrayList<Personnel> availableTargets) {
+    public Personnel chooseTarget(PlayerSeat seat, SelectionType selectionType, ArrayList<Personnel> availableTargets) {
         ui.getGame().setCurrentSelection(new CompletableFuture<>());
         ui.setSelectionType(selectionType);
         ui.repaint();
