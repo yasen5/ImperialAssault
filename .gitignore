@@ -1,2 +1,55 @@
+# Gradle
 .gradle/
 build/
+out/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+.DS_Store/
+
+# Eclipse
+.project
+.classpath
+.settings/
+bin/
+
+# NetBeans
+nbproject/private/
+nbbuild/
+dist/
+nbdist/
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+hs_err_pid*
+replay_pid*
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment / local config
+.env
+local.properties
+
+# Generated files
+generated/
+tmp/
+
+# Maven wrapper (if present)
+.mvn/wrapper/maven-wrapper.jar
+
+# Gradle wrapper binaries should usually be committed
+!gradle/wrapper/gradle-wrapper.jar
+!gradlew
+!gradlew.bat
