@@ -1,6 +1,9 @@
 package game;
 
+import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
@@ -114,23 +117,52 @@ public class Game {
         for (DeploymentGroup<? extends Imperial> deployment : imperialDeployments) {
             deployment.draw(g);
         }
-        for (int i = 0; i < offenseResults.size(); i++) {
-            BufferedImage image = Die.offenseDieFaces.get(offenseResults.get(i));
-            int startX = 960 + i * (Die.xSize + 10);
-            int startY = 670;
-            g.drawImage(image, startX, startY, startX + Die.xSize, startY + Die.ySize, 0, 0,
-                    image.getWidth(null), image.getHeight(null), null);
-        }
-        for (int i = 0; i < defenseResults.size(); i++) {
-            BufferedImage image = Die.defenseDieFaces.get(defenseResults.get(i));
-            int startX = 960 + i * (Die.xSize + 10);
-            int startY = 820;
-            g.drawImage(image, startX, startY, startX + Die.xSize, startY + Die.ySize, 0, 0,
-                    image.getWidth(null), image.getHeight(null), null);
-        }
+        drawDiceSection(g, offenseResults, true);
+        drawDiceSection(g, defenseResults, false);
         for (Interactable<? extends Personnel> interactable : interactables) {
             interactable.draw(g);
         }
+    }
+
+    public int getMapDrawWidth() {
+        return Constants.tileSize * mapTile.tileArray()[0].length;
+    }
+
+    private <T> void drawDiceSection(Graphics g, ArrayList<T> dice, boolean offense) {
+        if (dice.isEmpty()) {
+            return;
+        }
+        int startX = 960;
+        int startY = offense ? 670 : 820;
+        int rowSpacing = Die.ySize + 14;
+        int columnSpacing = Die.xSize + 10;
+        if (ui != null) {
+            startX = ui.getSidebarDiceX();
+            startY = offense ? ui.getDiceStartY() : ui.getDiceStartY() + 150;
+        }
+        int availableWidth = ui != null ? ui.getSidebarDetailWidth() : 300;
+        int maxPerRow = Math.max(1, (availableWidth + 10) / columnSpacing);
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g2.setColor(new Color(0, 0, 0, 90));
+        int rows = (dice.size() + maxPerRow - 1) / maxPerRow;
+        int panelHeight = rows * rowSpacing + 22;
+        g2.fillRoundRect(startX - 12, startY - 18, Math.min(availableWidth + 24, maxPerRow * columnSpacing + 14),
+                panelHeight, 22, 22);
+        g2.setColor(new Color(255, 255, 255, 30));
+        g2.drawRoundRect(startX - 12, startY - 18, Math.min(availableWidth + 24, maxPerRow * columnSpacing + 14),
+                panelHeight, 22, 22);
+        for (int i = 0; i < dice.size(); i++) {
+            BufferedImage image = offense ? Die.offenseDieFaces.get(offenseResults.get(i))
+                    : Die.defenseDieFaces.get(defenseResults.get(i));
+            int column = i % maxPerRow;
+            int row = i / maxPerRow;
+            int x = startX + column * columnSpacing;
+            int y = startY + row * rowSpacing;
+            g2.drawImage(image, x, y, x + Die.xSize, y + Die.ySize, 0, 0, image.getWidth(null),
+                    image.getHeight(null), null);
+        }
+        g2.dispose();
     }
 
     public void playRound() {

@@ -62,6 +62,11 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
         return members.get(0).getName();
     }
 
+    @Override
+    public String getDisplayName() {
+        return toString();
+    }
+
     // Draw all members
     public void draw(Graphics g) {
         for (T member : members) {
@@ -79,6 +84,25 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
 
     public DeploymentCard getDeploymentCard() {
         return deploymentCard;
+    }
+
+    @Override
+    public String[] getStatusLabels() {
+        String[] labels = new String[members.size()];
+        for (int i = 0; i < members.size(); i++) {
+            labels[i] = members.get(i).getName() + (members.size() > 1 ? " " + (i + 1) : "");
+        }
+        return labels;
+    }
+
+    @Override
+    public int getMaxHealth() {
+        return members.isEmpty() ? -1 : members.get(0).getStartingHealth();
+    }
+
+    @Override
+    public boolean isExhausted() {
+        return exhausted;
     }
 
     // Get the statuses of all members

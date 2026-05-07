@@ -64,7 +64,21 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     private RemotePrompt activeRemotePrompt;
     private CompletableFuture<String> activePromptResponse;
     private PromptKind activePromptKind;
-    private final JPanel promptPanel = new JPanel(new BorderLayout(8, 8));
+    private final JPanel promptPanel = new JPanel(new BorderLayout(8, 8)) {
+        @Override
+        protected void paintComponent(Graphics g) {
+            java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
+            g2.setColor(new Color(8, 8, 10, 245));
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), 28, 28);
+            g2.setPaint(new java.awt.GradientPaint(0, 0, new Color(255, 255, 255, 24), 0, getHeight(),
+                    new Color(255, 255, 255, 0)));
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), 28, 28);
+            g2.setColor(new Color(120, 120, 120, 180));
+            g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 28, 28);
+            g2.dispose();
+            super.paintComponent(g);
+        }
+    };
     private final JLabel promptTitleLabel = new JLabel();
     private final JTextArea promptMessageArea = new JTextArea();
     private final JPanel promptActionsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
@@ -137,6 +151,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         Constants.screen = this;
         setFocusable(true);
         setLayout(null);
+        promptPanel.setOpaque(false);
         if (!remoteMode) {
             showInstructionsChain();
         }
@@ -158,17 +173,17 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     private void initializeLobbyControls() {
         missionOneButton.setVisible(false);
         missionOneButton.addActionListener(e -> submitMissionSelection(MissionOption.MISSION_ONE));
-        missionOneButton.setBounds(getPreferredSize().width / 2 - 210, 900, 200, 44);
+        missionOneButton.setBounds(getSidebarLeft(), 900, 200, 44);
         add(missionOneButton);
 
         missionTwoButton.setVisible(false);
         missionTwoButton.addActionListener(e -> submitMissionSelection(MissionOption.MISSION_TWO));
-        missionTwoButton.setBounds(getPreferredSize().width / 2 + 10, 900, 200, 44);
+        missionTwoButton.setBounds(getSidebarLeft() + 220, 900, 200, 44);
         add(missionTwoButton);
     }
 
     private void initializePromptPanel() {
-        promptPanel.setBounds(980, 760, 900, 260);
+        promptPanel.setBounds(getSidebarLeft(), getPromptPanelTop(), getSidebarWidth(), 230);
         promptPanel.setBackground(new Color(18, 18, 18));
         promptPanel.setBorder(BorderFactory.createLineBorder(new Color(90, 90, 90), 2));
         promptPanel.setVisible(false);
@@ -271,6 +286,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
             numericPromptField.setText("");
             numericPromptField.setVisible(kind == PromptKind.NUMERIC);
             numericSubmitButton.setVisible(kind == PromptKind.NUMERIC);
+            positionPromptPanel();
             promptPanel.setVisible(true);
             revalidate();
             repaint();
@@ -297,6 +313,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         promptActionsPanel.removeAll();
         numericPromptField.setText("");
         promptPanel.setVisible(false);
+        positionPromptPanel();
         revalidate();
         repaint();
     }
@@ -373,6 +390,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     @Override
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
+        positionOverlayComponents();
         if (gameEnd) {
             g.setColor(new Color(0, 0, 0));
             g.drawRect(0, 0, 1920, 1080);
@@ -781,5 +799,78 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         });
         bannerTimer.setRepeats(true);
         bannerTimer.start();
+    }
+
+    private void positionOverlayComponents() {
+        positionPromptPanel();
+        positionLobbyButtons();
+    }
+
+    private void positionPromptPanel() {
+        promptPanel.setBounds(getSidebarLeft(), getPromptPanelTop(), getSidebarWidth(), 230);
+    }
+
+    private void positionLobbyButtons() {
+        int y = 900;
+        int buttonWidth = Math.min(200, Math.max(140, (getSidebarWidth() - 20) / 2));
+        missionOneButton.setBounds(getSidebarLeft(), y, buttonWidth, 44);
+        missionTwoButton.setBounds(getSidebarLeft() + buttonWidth + 20, y, buttonWidth, 44);
+    }
+
+    public int getSidebarLeft() {
+        return getMapImageWidth();
+    }
+
+    public int getSidebarWidth() {
+        return Math.max(0, getScreenWidth() - getSidebarLeft());
+    }
+
+    public int getSidebarCardX() {
+        return getSidebarLeft();
+    }
+
+    public int getSidebarCardY() {
+        return getSidebarContentTop();
+    }
+
+    public int getSidebarCardWidth() {
+        return Math.max(0, Math.min(560, getSidebarWidth() / 2));
+    }
+
+    public int getSidebarDetailX() {
+        return getSidebarLeft() + getSidebarCardWidth() + 20;
+    }
+
+    public int getSidebarDetailWidth() {
+        return Math.max(240, getSidebarWidth() - getSidebarCardWidth() - 20);
+    }
+
+    public int getSidebarDiceX() {
+        return getSidebarDetailX();
+    }
+
+    public int getPromptPanelTop() {
+        return 18;
+    }
+
+    public boolean isPromptVisible() {
+        return promptPanel.isVisible();
+    }
+
+    public int getSidebarContentTop() {
+        return isPromptVisible() ? getPromptPanelTop() + 248 : 18;
+    }
+
+    public int getDiceStartY() {
+        return 670;
+    }
+
+    private int getScreenWidth() {
+        int currentWidth = getWidth();
+        return currentWidth > 0 ? currentWidth : getPreferredSize().width;
+    }
+
+    private int getMapImageWidth() {
+        return game != null ? game.getMapDrawWidth() : Constants.tileSize * Constants.tileMatrix[0].length;
     }
 }

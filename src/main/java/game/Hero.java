@@ -45,6 +45,26 @@ public abstract class Hero extends Personnel implements FullDeployment {
     }
 
     @Override
+    public String getDisplayName() {
+        return getName();
+    }
+
+    @Override
+    public Integer getMaxStrain() {
+        return endurance;
+    }
+
+    @Override
+    public int getMaxHealth() {
+        return getStartingHealth();
+    }
+
+    @Override
+    public boolean isExhausted() {
+        return exhausted;
+    }
+
+    @Override
     public void draw(Graphics g) {
         super.draw(g);
         deploymentCard.draw(g);
@@ -74,6 +94,11 @@ public abstract class Hero extends Personnel implements FullDeployment {
 
     public DeploymentCard getDeploymentCard() {
         return deploymentCard;
+    }
+
+    @Override
+    public String[] getStatusLabels() {
+        return new String[] { getName() };
     }
 
     public int getEndurance() {
