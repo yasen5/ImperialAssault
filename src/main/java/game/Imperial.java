@@ -31,10 +31,10 @@ public abstract class Imperial extends Personnel {
     public OffenseRoll[] getOffense() {
         OffenseRoll[] results = new OffenseRoll[offenseDice.length + (focused ? 1 : 0)];
         for (int i = 0; i < offenseDice.length; i++) {
-            results[i] = offenseDice[i].roll();
+            results[i] = offenseDice[i].roll(game);
         }
         if (focused) {
-            results[results.length - 1] = OffenseDieType.GREEN.roll();
+            results[results.length - 1] = OffenseDieType.GREEN.roll(game);
             focused = false;
         }
         return results;

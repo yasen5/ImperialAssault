@@ -58,8 +58,14 @@ public class Die {
 
         // Roll, play the sound, show the die in the game
         public OffenseRoll roll() {
+            return roll(null);
+        }
+
+        public OffenseRoll roll(Game game) {
             int face = (int) (Math.random() * 6);
-            Game.addOffenseResult(new GraphicOffenseDieResult(face, this));
+            if (game != null) {
+                game.addOffenseResult(new GraphicOffenseDieResult(face, this));
+            }
             LoaderUtils.playSound("DieRoll");
             return new OffenseRoll(face, results[face]);
         }
@@ -89,8 +95,14 @@ public class Die {
         }
 
         public DefenseRoll roll() {
+            return roll(null);
+        }
+
+        public DefenseRoll roll(Game game) {
             int face = (int) (Math.random() * 6);
-            Game.addDefenseResult(new GraphicDefenseDieResult(face, this));
+            if (game != null) {
+                game.addDefenseResult(new GraphicDefenseDieResult(face, this));
+            }
             LoaderUtils.playSound("DieRoll");
             return new DefenseRoll(face, results[face]);
         }

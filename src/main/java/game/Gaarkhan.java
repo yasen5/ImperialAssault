@@ -16,8 +16,8 @@ public class Gaarkhan extends Hero {
     // Gaarkhan special: move and then attack
     @Override
     public void performSpecial() {
-        Game.handleMoves(this, getSpeed());
-        Game.handleAttack(this);
+        game.handleMoves(this, getSpeed());
+        game.handleAttack(this);
     }
 
     // Gaarkhan ability: when hit for 3 or more damage, he becomes focused

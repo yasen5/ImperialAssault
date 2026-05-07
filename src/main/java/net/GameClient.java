@@ -20,7 +20,6 @@ import net.structs.MatchSnapshot;
 import net.structs.RemotePrompt;
 import net.structs.PromptResponse;
 import net.structs.ClientMissionSelection;
-import net.structs.GameSessionConfig;
 
 public class GameClient {
     private final String host;
@@ -46,7 +45,7 @@ public class GameClient {
         if (!response.accepted()) {
             throw new IllegalStateException(response.message());
         }
-        game = Game.createRemoteView(response.config());
+        game = new Game(null, response.config(), null, false);
         SwingUtilities.invokeAndWait(() -> {
             screen = new Screen(game, true);
             screen.setLocalSeat(response.seat());

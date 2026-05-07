@@ -44,7 +44,7 @@ public class Pos {
     // Determines whether you can move in that direction
     // Respect figures: check if you are moving through figures
     // RespectSoftBarriers: check if you are moving through dotted red lines
-    public boolean canMove(Directions dir, boolean respectFigures, boolean respectSoftBarriers) {
+    public boolean canMove(Directions dir, boolean respectFigures, boolean respectSoftBarriers, Game game) {
         int newX = getX();
         int newY = getY();
         switch (dir) {
@@ -95,19 +95,21 @@ public class Pos {
                 }
             }
         }
-        for (Interactable<? extends Personnel> interactable : Game.getInteractables()) {
-            if (interactable.blocking()) {
-                for (WallLine wallLine : interactable.getWallLines()) {
-                    if (wallLine.intersects(thisCenterPos,
-                            nextCenterPos,
-                            true)) {
-                        return false;
+        if (game != null) {
+            for (Interactable<? extends Personnel> interactable : game.getInteractables()) {
+                if (interactable.blocking()) {
+                    for (WallLine wallLine : interactable.getWallLines()) {
+                        if (wallLine.intersects(thisCenterPos,
+                                nextCenterPos,
+                                true)) {
+                            return false;
+                        }
                     }
                 }
             }
         }
-        return (Constants.tileMatrix[newY][newX] == 1
-                && (!respectFigures || Game.isSpaceAvailable(new Pos(newX, newY))));
+        return Constants.tileMatrix[newY][newX] == 1
+                && (!respectFigures || game == null || game.isSpaceAvailable(new Pos(newX, newY)));
     }
 
     // Move in a direction
@@ -137,8 +139,8 @@ public class Pos {
     }
 
     // Unsafe because it might return null if you can't move there
-    public Pos getNextPosUnsafe(Directions dir, boolean respectFigures, boolean respectSoftBarriers) {
-        if (!canMove(dir, respectFigures, respectSoftBarriers)) {
+    public Pos getNextPosUnsafe(Directions dir, boolean respectFigures, boolean respectSoftBarriers, Game game) {
+        if (!canMove(dir, respectFigures, respectSoftBarriers, game)) {
             return null;
         }
         return getNextPos(dir);

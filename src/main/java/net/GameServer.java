@@ -187,9 +187,11 @@ public class GameServer {
     }
 
     private Game createGameForMission(MissionOption mission) {
-        return switch (mission) {
-            case MISSION_ONE, MISSION_TWO -> new Game(null, config, new RemoteDecisionProvider(), true);
+        Game game = switch (mission) {
+            case MISSION_ONE, MISSION_TWO -> new Game(null, config, null, true);
         };
+        game.setDecisionProvider(new RemoteDecisionProvider(game));
+        return game;
     }
 
     private MissionOption getSelectedMission() {
@@ -216,7 +218,7 @@ public class GameServer {
     }
 
     private void startSpectatorDisplay() throws Exception {
-        spectatorGame = Game.createRemoteView(config);
+        spectatorGame = new Game(null, config, null, false);
         SwingUtilities.invokeAndWait(() -> {
             spectatorScreen = new game.Screen(spectatorGame, true, true);
             spectatorScreen.setServerStatusText("Hosting on " + hostAddress + ":" + port + " | read-only spectator");
@@ -278,6 +280,12 @@ public class GameServer {
     }
 
     private class RemoteDecisionProvider implements GameDecisionProvider {
+        private final Game game;
+
+        private RemoteDecisionProvider(Game game) {
+            this.game = game;
+        }
+
         @Override
         public int chooseMultipleChoice(PlayerSeat seat, String name, String explanation, Object[] options) {
             ArrayList<String> labels = new ArrayList<>();
@@ -326,7 +334,7 @@ public class GameServer {
             RemotePrompt prompt = new RemotePrompt(promptIds.getAndIncrement(), seat, RemotePrompt.PromptType.TARGET,
                     "Target Selection", "Choose a target", labels, 0, 0, values, null, selectionType);
             String response = requestResponse(prompt);
-            Personnel target = Game.current().getPersonnelById(response);
+            Personnel target = game.getPersonnelById(response);
             if (target == null) {
                 throw new IllegalStateException("Unknown target id " + response);
             }
@@ -335,7 +343,7 @@ public class GameServer {
 
         private String requestResponse(RemotePrompt prompt) {
             ClientConnection connection = clients.get(prompt.seat());
-            connection.send(Game.current().createSnapshot());
+            connection.send(game.createSnapshot());
             connection.send(prompt);
             PromptResponse response;
             do {

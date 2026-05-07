@@ -8,6 +8,8 @@ public class Terminal<ValidInteractors extends Personnel> extends Interactable<V
     // Interactable that ends the game if interacted with (in the imperials favor)
     @Override
     public void safeInteract(ValidInteractors interactor) {
-        Game.endGame(false);
+        if (game != null) {
+            game.endGame(false);
+        }
     }
 }

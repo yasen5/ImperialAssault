@@ -24,17 +24,24 @@ public class StormTrooper extends Imperial {
     public OffenseRoll[] getOffense() {
         OffenseRoll[] results = new OffenseRoll[offenseDice.length + (focused ? 1 : 0)];
         for (int i = 0; i < offenseDice.length; i++) {
-            results[i] = offenseDice[i].roll();
+            results[i] = offenseDice[i].roll(game);
         }
         if (focused) {
-            results[results.length - 1] = OffenseDieType.GREEN.roll();
+            results[results.length - 1] = OffenseDieType.GREEN.roll(game);
             focused = false;
         }
-        Game.repaintScreen();
-        if (trooperNear() && InputUtils.getYesNo("Ability", "Reroll an attack die?")) {
-            int chosenDie = InputUtils.getMultipleChoice("Reroll", "Choose which die to reroll", offenseDice);
-            Game.removeOffenseDie(chosenDie);
-            results[chosenDie] = offenseDice[chosenDie].roll();
+        if (game != null) {
+            game.repaint();
+        }
+        if (trooperNear() && (game != null ? game.promptYesNo(getOwnerSeat(), "Ability", "Reroll an attack die?")
+                : InputUtils.getYesNo("Ability", "Reroll an attack die?"))) {
+            int chosenDie = game != null
+                    ? game.promptMultipleChoice(getOwnerSeat(), "Reroll", "Choose which die to reroll", offenseDice)
+                    : InputUtils.getMultipleChoice("Reroll", "Choose which die to reroll", offenseDice);
+            if (game != null) {
+                game.removeOffenseDie(chosenDie);
+            }
+            results[chosenDie] = offenseDice[chosenDie].roll(game);
         }
         return results;
     }
@@ -42,7 +49,7 @@ public class StormTrooper extends Imperial {
     // Checks if there are adjacent troopers
     public boolean trooperNear() {
         for (Directions dir : Directions.values()) {
-            Personnel adjacentPersonnel = Game.getPersonnelAtPos(getPos().getNextPos(dir));
+            Personnel adjacentPersonnel = game != null ? game.getPersonnelAtPos(getPos().getNextPos(dir)) : null;
             if (adjacentPersonnel instanceof Imperial && ((Imperial) (adjacentPersonnel)).getType() == getType()) {
                 return true;
             }

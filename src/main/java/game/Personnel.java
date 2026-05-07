@@ -30,6 +30,7 @@ public abstract class Personnel {
     private boolean specialRequiresSelection;
     private String id;
     private PlayerSeat ownerSeat = PlayerSeat.IMPERIAL;
+    protected Game game;
 
     public static enum Directions {
         UP,
@@ -72,7 +73,9 @@ public abstract class Personnel {
     // your results, and then doing surge effects, then figuring out if you had
     // enough range
     public void performAttack(Personnel other) {
-        Game.clearDice();
+        if (game != null) {
+            game.clearDice();
+        }
         int surges = 0;
         TotalAttackResult totalResults = new TotalAttackResult();
         for (DefenseRoll roll : getDefense(other)) {
@@ -91,7 +94,9 @@ public abstract class Personnel {
             surges += result.surge();
             totalResults.addAccuracy(result.accuracy());
         }
-        Game.repaintScreen();
+        if (game != null) {
+            game.repaint();
+        }
         ArrayList<Equipment.SurgeOptions> surgeOptions = new ArrayList<Equipment.SurgeOptions>();
         Equipment.SurgeOptions[] possibleActions = getSurgeOptions();
         for (Equipment.SurgeOptions option : possibleActions) {
@@ -99,8 +104,11 @@ public abstract class Personnel {
         }
         // Do all the surge options
         while (surges > 0 && !surgeOptions.isEmpty()) {
-            int selectedIndex = InputUtils.getMultipleChoice("Surge Selection", "Spend Surges: " + surges,
-                    surgeOptions.toArray());
+            int selectedIndex = game != null
+                    ? game.promptMultipleChoice(getOwnerSeat(), "Surge Selection", "Spend Surges: " + surges,
+                            surgeOptions.toArray())
+                    : InputUtils.getMultipleChoice("Surge Selection", "Spend Surges: " + surges,
+                            surgeOptions.toArray());
             if (selectedIndex < 0 || selectedIndex >= surgeOptions.size()) {
                 break;
             }
@@ -111,7 +119,7 @@ public abstract class Personnel {
         totalResults.addDamage(postPierceDamage);
         // Check if there is high enough accuracy
         if ((getRange() != Integer.MAX_VALUE
-                || Pathfinder.canReachPoint(pos, other.getPos(), totalResults.getAccuracy(), false))
+                || Pathfinder.canReachPoint(pos, other.getPos(), totalResults.getAccuracy(), false, game))
                 && totalResults.getDamage() > 0) {
             other.dealDamage(totalResults.getDamage());
         }
@@ -121,7 +129,7 @@ public abstract class Personnel {
     public DefenseRoll[] getDefense() {
         DefenseRoll[] results = new DefenseRoll[defenseDice.length];
         for (int i = 0; i < defenseDice.length; i++) {
-            results[0] = defenseDice[i].roll();
+            results[0] = defenseDice[i].roll(game);
         }
         return results;
     }
@@ -189,7 +197,7 @@ public abstract class Personnel {
     }
 
     public boolean canMove(Directions dir) {
-        return pos.canMove(dir, true, true);
+        return pos.canMove(dir, true, true, game);
     }
 
     public Pos getPos() {
@@ -217,7 +225,7 @@ public abstract class Personnel {
     // spaces away
     public boolean canAttack(Personnel other) {
         int range = getRange();
-        if (range != Integer.MAX_VALUE && !Pathfinder.canReachPoint(pos, other.getPos(), range, false)) {
+        if (range != Integer.MAX_VALUE && !Pathfinder.canReachPoint(pos, other.getPos(), range, false, game)) {
             return false;
         }
         for (Pos corner : corners) {
@@ -233,7 +241,7 @@ public abstract class Personnel {
                         }
                     }
                 }
-                if (Pathfinder.straightlineToPos(corner, enemyCorner)) {
+                if (Pathfinder.straightlineToPos(corner, enemyCorner, game)) {
                     cornersUsed[sightCount >= 2 ? 0 : sightCount] = enemyCorner;
                     sightCount++;
                     if (sightCount >= 2) {
@@ -343,6 +351,10 @@ public abstract class Personnel {
 
     public void setOwnerSeat(PlayerSeat ownerSeat) {
         this.ownerSeat = ownerSeat;
+    }
+
+    public void setGame(Game game) {
+        this.game = game;
     }
 
     public String getId() {

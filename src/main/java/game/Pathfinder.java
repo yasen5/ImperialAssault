@@ -23,7 +23,11 @@ public class Pathfinder {
     }
 
     public static boolean canReachPoint(Pos start, Pos end, int maxMoves, boolean respectFigures) {
-        return canReachPoint(start, end, maxMoves, respectFigures, true);
+        return canReachPoint(start, end, maxMoves, respectFigures, true, null);
+    }
+
+    public static boolean canReachPoint(Pos start, Pos end, int maxMoves, boolean respectFigures, Game game) {
+        return canReachPoint(start, end, maxMoves, respectFigures, true, game);
     }
 
     // Breadth-first search to figure out whether you can get to a space in a
@@ -32,6 +36,15 @@ public class Pathfinder {
     // Respect soft barriers: determines whether you respect the dotted red lines
     public static boolean canReachPoint(Pos start, Pos end, int maxMoves, boolean respectFigures,
             boolean respectSoftBarriers) {
+        return canReachPoint(start, end, maxMoves, respectFigures, respectSoftBarriers, null);
+    }
+
+    // Breadth-first search to figure out whether you can get to a space in a
+    // specified number of moves
+    // Respect figures: determines whether you can move through figures
+    // Respect soft barriers: determines whether you respect the dotted red lines
+    public static boolean canReachPoint(Pos start, Pos end, int maxMoves, boolean respectFigures,
+            boolean respectSoftBarriers, Game game) {
         if (!start.isOnGrid()) {
             return false;
         }
@@ -55,7 +68,7 @@ public class Pathfinder {
         queue.add(new Point(start, null));
         do {
             currentPoint = queue.poll();
-            visited[currentPoint.pos().getY()][currentPoint.pos().getX()] = true;
+                visited[currentPoint.pos().getY()][currentPoint.pos().getX()] = true;
 
             if (currentPoint.pos().getX() == end.getX() && currentPoint.pos().getY() == end.getY()) {
                 ArrayList<Point> bestPath = new ArrayList<>();
@@ -69,7 +82,7 @@ public class Pathfinder {
                 return reachableUnderMax;
             } else {
                 for (Directions dir : validDirections) {
-                    Pos nextPos = currentPoint.pos().getNextPosUnsafe(dir, respectFigures, respectSoftBarriers);
+                    Pos nextPos = currentPoint.pos().getNextPosUnsafe(dir, respectFigures, respectSoftBarriers, game);
                     if (nextPos != null && !visited[nextPos.getY()][nextPos.getX()]) {
                         queue.add(new Point(nextPos, currentPoint));
                     }
@@ -82,6 +95,10 @@ public class Pathfinder {
     // Determines whether you can draw a straightl line from A to B without
     // intersecting any walls
     public static boolean straightlineToPos(Pos startingLocation, Pos endingLocation) {
+        return straightlineToPos(startingLocation, endingLocation, null);
+    }
+
+    public static boolean straightlineToPos(Pos startingLocation, Pos endingLocation, Game game) {
         if (startingLocation.isEqualTo(endingLocation)) {
             return true;
         }
@@ -112,11 +129,13 @@ public class Pathfinder {
                 }
             }
         }
-        for (Interactable<? extends Personnel> interactable : Game.getInteractables()) {
-            if (interactable.blocking()) {
-                for (WallLine line : interactable.getWallLines()) {
-                    if (line.intersects(startingLocation.getFullPos(), endingLocation.getFullPos(), false)) {
-                        return false;
+        if (game != null) {
+            for (Interactable<? extends Personnel> interactable : game.getInteractables()) {
+                if (interactable.blocking()) {
+                    for (WallLine line : interactable.getWallLines()) {
+                        if (line.intersects(startingLocation.getFullPos(), endingLocation.getFullPos(), false)) {
+                            return false;
+                        }
                     }
                 }
             }

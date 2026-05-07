@@ -16,10 +16,15 @@ public class DialaPassil extends Hero {
     @Override
     public DefenseRoll[] getDefense() {
         DefenseRoll[] result = super.getDefense();
-        Game.repaintScreen();
-        if (InputUtils.getYesNo("Ability Selection", "Would you like to reroll? (1 strain)")) {
+        if (game != null) {
+            game.repaint();
+        }
+        if (game != null ? game.promptYesNo(getOwnerSeat(), "Ability Selection", "Would you like to reroll? (1 strain)")
+                : InputUtils.getYesNo("Ability Selection", "Would you like to reroll? (1 strain)")) {
             ApplyStrain(1);
-            Game.clearDice();
+            if (game != null) {
+                game.clearDice();
+            }
             result = super.getDefense();
         }
         return result;
@@ -29,7 +34,8 @@ public class DialaPassil extends Hero {
     // 2 strain
     @Override
     public DefenseRoll[] getDefense(Personnel other) {
-        if (InputUtils.getYesNo("Ability", "Remove a die from defense pool? (2 Strain)")) {
+        if (game != null ? game.promptYesNo(getOwnerSeat(), "Ability", "Remove a die from defense pool? (2 Strain)")
+                : InputUtils.getYesNo("Ability", "Remove a die from defense pool? (2 Strain)")) {
             ApplyStrain(2);
             DefenseRoll[] defense = other.getDefense();
             DefenseRoll[] modifiedDefense = new DefenseRoll[defense.length - 1];

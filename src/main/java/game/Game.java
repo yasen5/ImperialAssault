@@ -25,8 +25,6 @@ import net.structs.GameSessionConfig;
 import net.GameDecisionProvider;
 
 public class Game {
-    private static final ThreadLocal<Game> currentGame = new ThreadLocal<>();
-
     private final MapTile mapTile;
     private final ArrayList<DeploymentGroup<? extends Imperial>> imperialDeployments = new ArrayList<>();
     private final ArrayList<Hero> heroes = new ArrayList<>();
@@ -74,18 +72,6 @@ public class Game {
         }
     }
 
-    public static Game createRemoteView(GameSessionConfig sessionConfig) {
-        return new Game(null, sessionConfig, null, false);
-    }
-
-    public GameSessionConfig getSessionConfig() {
-        return sessionConfig;
-    }
-
-    public static Game current() {
-        return currentGame.get();
-    }
-
     public boolean hasDecisionProvider() {
         return decisionProvider != null;
     }
@@ -96,7 +82,7 @@ public class Game {
 
     public void setUi(Screen ui) {
         this.ui = ui;
-        if (this.authoritative && this.decisionProvider == null) {
+        if (this.authoritative) {
             this.decisionProvider = new LocalGameDecisionProvider(ui);
         }
     }
@@ -168,13 +154,8 @@ public class Game {
     }
 
     public void playRound() {
-        currentGame.set(this);
-        try {
-            while (!gameEnd) {
-                playCycle();
-            }
-        } finally {
-            currentGame.remove();
+        while (!gameEnd) {
+            playCycle();
         }
     }
 
@@ -504,21 +485,16 @@ public class Game {
     }
 
     public void reset() {
-        currentGame.set(this);
-        try {
-            gameEnd = false;
-            rebelsWin = true;
-            heroes.clear();
-            imperialDeployments.clear();
-            clearDiceInternal();
-            for (Interactable<? extends Personnel> interactable : interactables) {
-                interactable.applySnapshotState(true);
-            }
-            setup();
-            playRound();
-        } finally {
-            currentGame.remove();
+        gameEnd = false;
+        rebelsWin = true;
+        heroes.clear();
+        imperialDeployments.clear();
+        clearDiceInternal();
+        for (Interactable<? extends Personnel> interactable : interactables) {
+            interactable.applySnapshotState(true);
         }
+        setup();
+        playRound();
     }
 
     public void setup() {
@@ -541,7 +517,22 @@ public class Game {
         configureDeploymentGroup(officers, "imperial-officer", PlayerSeat.IMPERIAL);
         imperialDeployments.add(troopers);
         imperialDeployments.add(officers);
+        bindGameReferences();
         repaint();
+    }
+
+    private void bindGameReferences() {
+        for (Hero hero : heroes) {
+            hero.setGame(this);
+        }
+        for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
+            for (Imperial imperial : group.getMembers()) {
+                imperial.setGame(this);
+            }
+        }
+        for (Interactable<? extends Personnel> interactable : interactables) {
+            interactable.setGame(this);
+        }
     }
 
     private void configureHero(Hero hero, String id, PlayerSeat seat) {
@@ -766,6 +757,7 @@ public class Game {
         if (ui != null) {
             ui.setTurnStatus(actingSeat);
         }
+        bindGameReferences();
         repaint();
     }
 
@@ -851,75 +843,75 @@ public class Game {
         return rebelsWin;
     }
 
-    public static boolean isSpaceAvailable(Pos pos) {
-        return current().isSpaceAvailableInternal(pos);
+    public boolean isSpaceAvailable(Pos pos) {
+        return isSpaceAvailableInternal(pos);
     }
 
-    public static void addOffenseResult(GraphicOffenseDieResult offenseResult) {
-        current().addOffenseResultInternal(offenseResult);
+    public void addOffenseResult(GraphicOffenseDieResult offenseResult) {
+        addOffenseResultInternal(offenseResult);
     }
 
-    public static void addDefenseResult(GraphicDefenseDieResult defenseResult) {
-        current().addDefenseResultInternal(defenseResult);
+    public void addDefenseResult(GraphicDefenseDieResult defenseResult) {
+        addDefenseResultInternal(defenseResult);
     }
 
-    public static void handleMoves(Personnel activeFigure, int numMoves) {
-        current().handleMovesInternal(activeFigure, numMoves);
+    public void handleMoves(Personnel activeFigure, int numMoves) {
+        handleMovesInternal(activeFigure, numMoves);
     }
 
-    public static Personnel getPersonnelAtPos(Pos pos) {
-        return current().getPersonnelAtPosInternal(pos);
+    public Personnel getPersonnelAtPos(Pos pos) {
+        return getPersonnelAtPosInternal(pos);
     }
 
-    public static void handleAttack(Personnel activeFigure) {
-        current().handleAttackInternal(activeFigure);
+    public void handleAttack(Personnel activeFigure) {
+        handleAttackInternal(activeFigure);
     }
 
-    public static boolean setTarget(Personnel defender) {
-        return current().trySetTarget(defender);
+    public boolean setTarget(Personnel defender) {
+        return trySetTarget(defender);
     }
 
-    public static void repaintScreen() {
-        current().repaint();
+    public void repaintScreen() {
+        repaint();
     }
 
-    public static void clearDice() {
-        current().clearDiceInternal();
+    public void clearDice() {
+        clearDiceInternal();
     }
 
-    public static void endGame(boolean rebelsWin) {
-        current().endGameInternal(rebelsWin);
+    public void endGame(boolean rebelsWin) {
+        endGameInternal(rebelsWin);
     }
 
-    public static void removeOffenseDie(int die) {
-        current().removeOffenseDieInternal(die);
+    public void removeOffenseDie(int die) {
+        removeOffenseDieInternal(die);
     }
 
-    public static void removeDefenseDie(int die) {
-        current().removeDefenseDieInternal(die);
+    public void removeDefenseDie(int die) {
+        removeDefenseDieInternal(die);
     }
 
-    public static void performSpecial(Personnel activeFigure) {
-        current().performSpecialInternal(activeFigure);
+    public void performSpecial(Personnel activeFigure) {
+        performSpecialInternal(activeFigure);
     }
 
-    public static ArrayList<DeploymentGroup<? extends Imperial>> getDeploymentGroups() {
-        return current().getDeploymentGroupsInternal();
+    public ArrayList<DeploymentGroup<? extends Imperial>> getDeploymentGroups() {
+        return getDeploymentGroupsInternal();
     }
 
-    public static Interactable<? extends Personnel>[] getInteractables() {
-        return current().interactables;
+    public Interactable<? extends Personnel>[] getInteractables() {
+        return interactables;
     }
 
-    public static void setAvailableTargets(ArrayList<Personnel> availableTargets) {
-        current().availableTargets = availableTargets;
+    public void setAvailableTargets(ArrayList<Personnel> availableTargets) {
+        this.availableTargets = availableTargets;
     }
 
-    public static CompletableFuture<Personnel> getCurrentSelection() {
-        return current().currentSelected;
+    public CompletableFuture<Personnel> getCurrentSelection() {
+        return currentSelected;
     }
 
-    public static void setCurrentSelection(CompletableFuture<Personnel> currentSelected) {
-        current().currentSelected = currentSelected;
+    public void setCurrentSelection(CompletableFuture<Personnel> currentSelected) {
+        this.currentSelected = currentSelected;
     }
 }

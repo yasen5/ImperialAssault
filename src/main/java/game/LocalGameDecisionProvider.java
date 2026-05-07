@@ -53,10 +53,10 @@ public class LocalGameDecisionProvider implements GameDecisionProvider {
 
     @Override
     public Personnel chooseTarget(PlayerSeat seat, SelectingType selectionType, ArrayList<Personnel> availableTargets) {
-        Game.setCurrentSelection(new CompletableFuture<>());
+        ui.getGame().setCurrentSelection(new CompletableFuture<>());
         ui.setSelectionType(selectionType);
         ui.repaint();
-        Personnel chosenDefender = Game.getCurrentSelection().join();
+        Personnel chosenDefender = ui.getGame().getCurrentSelection().join();
         return chosenDefender;
     }
 }

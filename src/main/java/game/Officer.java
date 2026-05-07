@@ -24,7 +24,7 @@ public class Officer extends Imperial {
     // Give another friendly figure two moves
     @Override
     public void performSpecial(Personnel selected) {
-        Game.handleMoves(selected, 2);
+        game.handleMoves(selected, 2);
     }
 
     // Find all imperial figures within two spaces
@@ -32,12 +32,12 @@ public class Officer extends Imperial {
     public ArrayList<Personnel> getSpecialTargets() {
         ArrayList<Personnel> targets = new ArrayList<>();
         Pos thisPos = getPos();
-        for (DeploymentGroup<? extends Imperial> group : Game.getDeploymentGroups()) {
+        for (DeploymentGroup<? extends Imperial> group : game.getDeploymentGroups()) {
             for (Imperial imperial : group.getMembers()) {
                 if (imperial.equals(this)) {
                     continue;
                 }
-                if (Pathfinder.canReachPoint(thisPos, imperial.getPos(), 2, false, false)) {
+                if (Pathfinder.canReachPoint(thisPos, imperial.getPos(), 2, false, false, game)) {
                     targets.add(imperial);
                 }
             }
@@ -50,10 +50,13 @@ public class Officer extends Imperial {
     public DefenseRoll[] getDefense() {
         DefenseRoll[] results = new DefenseRoll[defenseDice.length];
         for (int i = 0; i < defenseDice.length; i++) {
-            results[0] = defenseDice[i].roll();
+            results[0] = defenseDice[i].roll(game);
         }
-        Game.repaintScreen();
-        if (InputUtils.getYesNo("Ability", "Reroll defense?")) {
+        if (game != null) {
+            game.repaint();
+        }
+        if (game != null ? game.promptYesNo(getOwnerSeat(), "Ability", "Reroll defense?")
+                : InputUtils.getYesNo("Ability", "Reroll defense?")) {
             results = super.getDefense();
         }
         return results;

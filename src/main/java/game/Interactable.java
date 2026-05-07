@@ -13,6 +13,7 @@ public abstract class Interactable<ValidInteractors extends Personnel> {
     private BufferedImage image;
     private final Class<ValidInteractors> validInteractorClass;
     private final WallLine[] wallLines;
+    protected Game game;
 
     // Constructor for if you want to specify the size
     public Interactable(Pos pos, Class<ValidInteractors> validInteractorClass, String imgName, int xSize, int ySize,
@@ -66,6 +67,10 @@ public abstract class Interactable<ValidInteractors extends Personnel> {
     }
 
     public void applySnapshotState(boolean active) {
+    }
+
+    public void setGame(Game game) {
+        this.game = game;
     }
 
     // Return whether it interferes with movement/line of sight
