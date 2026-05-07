@@ -154,6 +154,7 @@ public class GameServer {
                         if (object instanceof PromptResponse response) {
                             responses.put(response);
                         }
+                        
                     }
                 } catch (EOFException eof) {
                 } catch (Exception ex) {

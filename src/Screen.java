@@ -114,29 +114,29 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 
     private void initializeButtons() {
         movementButtons.put(Directions.UP,
-                new JButton(new ImageIcon(new ImageIcon(Constants.baseImgFilePath + "ArrowButtonUp.png").getImage()
+                new JButton(new ImageIcon(LoaderUtils.getImageIcon("ArrowButtonUp").getImage()
                         .getScaledInstance(buttonSize, buttonSize, Image.SCALE_SMOOTH))));
         movementButtons.put(Directions.UPLEFT,
-                new JButton(new ImageIcon(new ImageIcon(Constants.baseImgFilePath + "ArrowButtonUpLeft.png").getImage()
+                new JButton(new ImageIcon(LoaderUtils.getImageIcon("ArrowButtonUpLeft").getImage()
                         .getScaledInstance(buttonSize, buttonSize, Image.SCALE_SMOOTH))));
         movementButtons.put(Directions.LEFT,
-                new JButton(new ImageIcon(new ImageIcon(Constants.baseImgFilePath + "ArrowButtonLeft.png").getImage()
+                new JButton(new ImageIcon(LoaderUtils.getImageIcon("ArrowButtonLeft").getImage()
                         .getScaledInstance(buttonSize, buttonSize, Image.SCALE_SMOOTH))));
         movementButtons.put(Directions.DOWNLEFT,
-                new JButton(new ImageIcon(new ImageIcon(Constants.baseImgFilePath + "ArrowButtonDownLeft.png")
-                        .getImage().getScaledInstance(buttonSize, buttonSize, Image.SCALE_SMOOTH))));
+                new JButton(new ImageIcon(LoaderUtils.getImageIcon("ArrowButtonDownLeft").getImage()
+                        .getScaledInstance(buttonSize, buttonSize, Image.SCALE_SMOOTH))));
         movementButtons.put(Directions.DOWN,
-                new JButton(new ImageIcon(new ImageIcon(Constants.baseImgFilePath + "ArrowButtonDown.png").getImage()
+                new JButton(new ImageIcon(LoaderUtils.getImageIcon("ArrowButtonDown").getImage()
                         .getScaledInstance(buttonSize, buttonSize, Image.SCALE_SMOOTH))));
         movementButtons.put(Directions.DOWNRIGHT,
-                new JButton(new ImageIcon(new ImageIcon(Constants.baseImgFilePath + "ArrowButtonDownRight.png")
-                        .getImage().getScaledInstance(buttonSize, buttonSize, Image.SCALE_SMOOTH))));
+                new JButton(new ImageIcon(LoaderUtils.getImageIcon("ArrowButtonDownRight").getImage()
+                        .getScaledInstance(buttonSize, buttonSize, Image.SCALE_SMOOTH))));
         movementButtons.put(Directions.RIGHT,
-                new JButton(new ImageIcon(new ImageIcon(Constants.baseImgFilePath + "ArrowButtonRight.png").getImage()
+                new JButton(new ImageIcon(LoaderUtils.getImageIcon("ArrowButtonRight").getImage()
                         .getScaledInstance(buttonSize, buttonSize, Image.SCALE_SMOOTH))));
         movementButtons.put(Directions.UPRIGHT,
-                new JButton(new ImageIcon(new ImageIcon(Constants.baseImgFilePath + "ArrowButtonUpRight.png")
-                        .getImage().getScaledInstance(buttonSize, buttonSize, Image.SCALE_SMOOTH))));
+                new JButton(new ImageIcon(LoaderUtils.getImageIcon("ArrowButtonUpRight").getImage()
+                        .getScaledInstance(buttonSize, buttonSize, Image.SCALE_SMOOTH))));
         for (JButton button : movementButtons.map.values()) {
             add(button);
             button.addActionListener(this);

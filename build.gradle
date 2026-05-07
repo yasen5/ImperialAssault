@@ -1,0 +1,66 @@
+plugins {
+    id 'application'
+    id 'java'
+}
+
+group = 'com.yasen.quarter4project'
+version = '1.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    mavenCentral()
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['.', 'src']
+            include '*.java'
+            include 'src/**/*.java'
+        }
+        resources {
+            srcDirs = ['src']
+            include 'game/images/**'
+            include 'game/sounds/**'
+        }
+    }
+}
+
+application {
+    mainClass = 'Runner'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.named('jar') {
+    manifest {
+        attributes('Main-Class': application.mainClass.get())
+    }
+}
+
+tasks.register('runServer', JavaExec) {
+    group = 'application'
+    description = 'Runs the multiplayer server.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'ServerRunner'
+}
+
+tasks.register('runClient', JavaExec) {
+    group = 'application'
+    description = 'Runs the multiplayer client.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'ClientRunner'
+}
+
+tasks.register('runPathTest', JavaExec) {
+    group = 'application'
+    description = 'Runs the Pathfinder smoke test main class.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'Test'
+}
