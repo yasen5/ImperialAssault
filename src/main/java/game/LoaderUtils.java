@@ -1,8 +1,7 @@
 package game;
 
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
+import java.net.URL;
 
 import javax.imageio.ImageIO;
 import javax.sound.sampled.AudioSystem;
@@ -11,26 +10,37 @@ import javax.swing.ImageIcon;
 
 public class LoaderUtils {
     public static BufferedImage getImage(String name) {
+        URL resource = findImageResource(name);
+        if (resource == null) {
+            throw new RuntimeException("Couldn't find image resource for " + name);
+        }
         try {
-            return ImageIO.read(new File("src/game/images/" + name + ".jpg"));
-        } catch (IOException ex) {
-            try {
-                return ImageIO.read(new File("src/game/images/" + name + ".png"));
-            } catch (IOException e) {
-                throw new java.lang.RuntimeException(
-                        "Couldn't read either jpg or png image for " + name, ex);
-            }
+            return ImageIO.read(resource);
+        } catch (Exception ex) {
+            throw new RuntimeException("Couldn't read image resource for " + name, ex);
         }
     }
 
     public static ImageIcon getImageIcon(String name) {
-        return new ImageIcon("src/game/images/" + name + ".jpg");
+        URL resource = findImageResource(name);
+        if (resource == null) {
+            throw new RuntimeException("Couldn't find image icon resource for " + name);
+        }
+        return new ImageIcon(resource);
+    }
+
+    private static URL findImageResource(String name) {
+        URL resource = LoaderUtils.class.getResource("/images/" + name + ".jpg");
+        if (resource != null) {
+            return resource;
+        }
+        return LoaderUtils.class.getResource("/images/" + name + ".png");
     }
 
     public static void playSound(String name) {
         try {
             Clip clip = AudioSystem.getClip();
-            clip.open(AudioSystem.getAudioInputStream(new File("src/game/sounds/" + name + ".wav")));
+            clip.open(AudioSystem.getAudioInputStream(LoaderUtils.class.getResource("/sounds/" + name + ".wav")));
             clip.start();
         } catch (Exception exc) {
             exc.printStackTrace(System.out);
