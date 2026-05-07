@@ -16,22 +16,6 @@ repositories {
     mavenCentral()
 }
 
-sourceSets {
-    main {
-        java {
-            srcDirs = ['.', 'src']
-            include '*.java'
-            include 'src/**/*.java'
-        }
-
-        resources {
-            srcDirs = ['src']
-            include 'game/images/**'
-            include 'game/sounds/**'
-        }
-    }
-}
-
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
@@ -43,21 +27,13 @@ jar {
 tasks.register('runServer', JavaExec) {
     group = 'application'
     description = 'Runs the multiplayer server.'
-
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'ServerRunner'
-
-    // Pass args with:
-    // ./gradlew runServer --args="arg1 arg2"
+    mainClass = 'runners.ServerRunner'
 }
 
 tasks.register('runClient', JavaExec) {
     group = 'application'
     description = 'Runs the multiplayer client.'
-
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'ClientRunner'
-
-    // Pass args with:
-    // ./gradlew runClient --args="localhost 1234"
+    mainClass = 'runners.ClientRunner'
 }
