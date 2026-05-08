@@ -8,6 +8,7 @@ import game.PlayerSeat;
 public record MatchSnapshot(
         GameSessionConfig config,
         PlayerSeat actingSeat,
+        int threatDial,
         long bannerId,
         String bannerText,
         long bannerExpiresAt,

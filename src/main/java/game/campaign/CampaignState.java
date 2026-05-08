@@ -17,12 +17,14 @@ public final class CampaignState implements Serializable {
     private final GameSessionConfig config;
     private final ArrayList<CampaignLogEntry> campaignLog = new ArrayList<>();
     private final ArrayList<MissionOption> activeMissions = new ArrayList<>();
+    private final ArrayList<ImperialDeploymentCardState> imperialDeploymentCards = new ArrayList<>();
     private final EnumMap<PlayerSeat, PlayerProgress> playerProgress = new EnumMap<>(PlayerSeat.class);
     private final DeckState supplyDeck = new DeckState("Supply");
     private final DeckState agendaDeck = new DeckState("Agenda");
     private final DeckState imperialClassDeck = new DeckState("Imperial Class");
     private CampaignStage currentStage = CampaignStage.SETUP;
     private int threatLevel;
+    private int threatDial;
     private int roundDial = 1;
     private int rebelCredits;
     private int imperialInfluence;
@@ -57,6 +59,30 @@ public final class CampaignState implements Serializable {
 
     public void adjustThreatLevel(int delta) {
         setThreatLevel(threatLevel + delta);
+    }
+
+    public int getThreatDial() {
+        return threatDial;
+    }
+
+    public void setThreatDial(int threatDial) {
+        validateNonNegative("threatDial", threatDial);
+        this.threatDial = threatDial;
+    }
+
+    public void addThreat(int amount) {
+        validateNonNegative("amount", amount);
+        threatDial += amount;
+    }
+
+    public void spendThreat(int amount) {
+        validateNonNegative("amount", amount);
+        ensureSufficient("threatDial", threatDial, amount);
+        threatDial -= amount;
+    }
+
+    public void increaseThreatByLevel() {
+        addThreat(threatLevel);
     }
 
     public int getRoundDial() {
@@ -141,6 +167,48 @@ public final class CampaignState implements Serializable {
 
     public void clearActiveMissions() {
         activeMissions.clear();
+    }
+
+    public List<ImperialDeploymentCardState> getImperialDeploymentCards() {
+        return Collections.unmodifiableList(new ArrayList<>(imperialDeploymentCards));
+    }
+
+    public ImperialDeploymentCardState registerImperialDeploymentCard(String cardId, String displayName,
+            int deploymentCost, int reinforcementCost, boolean unique) {
+        ImperialDeploymentCardState card = new ImperialDeploymentCardState(cardId, displayName, deploymentCost,
+                reinforcementCost, unique);
+        imperialDeploymentCards.add(card);
+        return card;
+    }
+
+    public Optional<ImperialDeploymentCardState> findImperialDeploymentCard(String cardId) {
+        Objects.requireNonNull(cardId, "cardId");
+        return imperialDeploymentCards.stream().filter(card -> card.getCardId().equals(cardId)).findFirst();
+    }
+
+    public boolean canOptionalDeployImperialCard(String cardId) {
+        return findImperialDeploymentCard(cardId)
+                .filter(card -> card.isInHand() && threatDial >= card.getDeploymentCost())
+                .isPresent();
+    }
+
+    public ImperialDeploymentCardState optionalDeployImperialCard(String cardId) {
+        ImperialDeploymentCardState card = findImperialDeploymentCard(cardId)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown imperial deployment card: " + cardId));
+        if (!card.isInHand()) {
+            throw new IllegalStateException("Imperial deployment card is already on the map: " + cardId);
+        }
+        spendThreat(card.getDeploymentCost());
+        card.setInHand(false);
+        card.setOnMap(true);
+        return card;
+    }
+
+    public void returnImperialCardToHand(String cardId) {
+        ImperialDeploymentCardState card = findImperialDeploymentCard(cardId)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown imperial deployment card: " + cardId));
+        card.setOnMap(false);
+        card.setInHand(true);
     }
 
     public Map<PlayerSeat, PlayerProgress> getPlayerProgress() {
@@ -268,6 +336,63 @@ public final class CampaignState implements Serializable {
         public void shuffleDiscardIntoDeck() {
             cards.addAll(discardPile);
             discardPile.clear();
+        }
+    }
+
+    public static final class ImperialDeploymentCardState implements Serializable {
+        private final String cardId;
+        private final String displayName;
+        private final int deploymentCost;
+        private final int reinforcementCost;
+        private final boolean unique;
+        private boolean inHand = true;
+        private boolean onMap;
+
+        private ImperialDeploymentCardState(String cardId, String displayName, int deploymentCost,
+                int reinforcementCost, boolean unique) {
+            this.cardId = Objects.requireNonNull(cardId, "cardId");
+            this.displayName = Objects.requireNonNull(displayName, "displayName");
+            validateNonNegative("deploymentCost", deploymentCost);
+            validateNonNegative("reinforcementCost", reinforcementCost);
+            this.deploymentCost = deploymentCost;
+            this.reinforcementCost = reinforcementCost;
+            this.unique = unique;
+        }
+
+        public String getCardId() {
+            return cardId;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
+
+        public int getDeploymentCost() {
+            return deploymentCost;
+        }
+
+        public int getReinforcementCost() {
+            return reinforcementCost;
+        }
+
+        public boolean isUnique() {
+            return unique;
+        }
+
+        public boolean isInHand() {
+            return inHand;
+        }
+
+        public void setInHand(boolean inHand) {
+            this.inHand = inHand;
+        }
+
+        public boolean isOnMap() {
+            return onMap;
+        }
+
+        public void setOnMap(boolean onMap) {
+            this.onMap = onMap;
         }
     }
 

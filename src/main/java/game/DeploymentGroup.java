@@ -10,11 +10,13 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
     private ArrayList<T> members = new ArrayList<T>();
     private Function<Pos, T> constructor;
     private boolean exhausted = false;
+    private boolean deployed = true;
     private DeploymentCard deploymentCard;
     private boolean displayStats = false;
     private String name;
     private String id;
     private PlayerSeat ownerSeat = PlayerSeat.IMPERIAL;
+    private int deploymentCost = 0;
 
     // Constructor
     public DeploymentGroup(Pos[] poses, Function<Pos, T> constructor, String name) {
@@ -22,6 +24,13 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
         this.deploymentCard = new DeploymentCard(name, false, this);
         this.name = name;
         addMembers(poses);
+    }
+
+    public DeploymentGroup(Pos[] poses, Function<Pos, T> constructor, String name, int deploymentCost,
+            boolean deployed) {
+        this(poses, constructor, name);
+        this.deploymentCost = deploymentCost;
+        this.deployed = deployed;
     }
 
     // Alternate constructor for a single member
@@ -54,6 +63,22 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
         }
     }
 
+    public boolean getDeployed() {
+        return deployed;
+    }
+
+    public void setDeployed(boolean deployed) {
+        this.deployed = deployed;
+    }
+
+    public int getDeploymentCost() {
+        return deploymentCost;
+    }
+
+    public void setDeploymentCost(int deploymentCost) {
+        this.deploymentCost = deploymentCost;
+    }
+
     public String getName() {
         // Safety to make sure you can't selected exhausted deployment
         if (members.isEmpty()) {
@@ -69,6 +94,9 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
 
     // Draw all members
     public void draw(Graphics g) {
+        if (!deployed) {
+            return;
+        }
         for (T member : members) {
             member.draw(g);
         }

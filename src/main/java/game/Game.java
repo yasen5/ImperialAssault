@@ -42,6 +42,7 @@ public class Game implements GameView {
     private Consumer<MatchSnapshot> snapshotListener;
     private CompletableFuture<Personnel> currentSelected = new CompletableFuture<>();
     private ArrayList<Personnel> availableTargets = new ArrayList<>();
+    private int threatDial = 0;
     private boolean gameEnd;
     private boolean rebelsWin = true;
     private PlayerSeat actingSeat = PlayerSeat.REBEL_1;
@@ -101,6 +102,7 @@ public class Game implements GameView {
         for (DeploymentGroup<? extends Imperial> deployment : imperialDeployments) {
             deployment.draw(g);
         }
+        drawThreatHud(g);
         drawDiceSection(g, offenseResults, true);
         drawDiceSection(g, defenseResults, false);
         for (Interactable<? extends Personnel> interactable : interactables) {
@@ -182,7 +184,7 @@ public class Game implements GameView {
         }
         repaint();
         if (getHeroExhaustOptions().isEmpty() && imperialExhaustOptions.isEmpty()) {
-            replenishDeployments();
+            resolveStatusPhase();
         }
         checkEndGame();
     }
@@ -249,6 +251,58 @@ public class Game implements GameView {
             group.setExhausted(false);
         }
         repaint();
+    }
+
+    private void resolveStatusPhase() {
+        threatDial++;
+        triggerBanner("Threat dial increased to " + threatDial);
+        replenishDeployments();
+        resolveImperialOptionalDeployments();
+    }
+
+    private void resolveImperialOptionalDeployments() {
+        while (true) {
+            ArrayList<DeploymentGroup<? extends Imperial>> deployableGroups = getOptionalDeploymentOptions();
+            if (deployableGroups.isEmpty()) {
+                return;
+            }
+            boolean wantsDeploy = promptYesNo(PlayerSeat.IMPERIAL, "Imperial Deployment",
+                    "Spend threat to deploy an additional imperial group?");
+            if (!wantsDeploy) {
+                return;
+            }
+            DeploymentGroup<? extends Imperial> chosenGroup = deployableGroups
+                    .get(promptMultipleChoice(PlayerSeat.IMPERIAL, "Imperial Deployment",
+                            "Choose a group to deploy", deployableGroups.toArray()));
+            deployImperialGroup(chosenGroup);
+        }
+    }
+
+    private ArrayList<DeploymentGroup<? extends Imperial>> getOptionalDeploymentOptions() {
+        ArrayList<DeploymentGroup<? extends Imperial>> deployableGroups = new ArrayList<>();
+        for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
+            if (!group.getDeployed() && group.getDeploymentCost() <= threatDial) {
+                deployableGroups.add(group);
+            }
+        }
+        return deployableGroups;
+    }
+
+    private void deployImperialGroup(DeploymentGroup<? extends Imperial> group) {
+        if (group.getDeployed()) {
+            throw new IllegalStateException("Group is already deployed: " + group);
+        }
+        if (group.getDeploymentCost() > threatDial) {
+            throw new IllegalStateException("Not enough threat to deploy " + group);
+        }
+        threatDial -= group.getDeploymentCost();
+        group.setDeployed(true);
+        group.setExhausted(true);
+        for (Imperial imperial : group.getMembers()) {
+            imperial.setGame(this);
+        }
+        repaint();
+        triggerBanner("Deployed " + group + " for " + group.getDeploymentCost() + " threat");
     }
 
     public void checkEndGame() {
@@ -362,9 +416,11 @@ public class Game implements GameView {
         ArrayList<Personnel> defenders = new ArrayList<>();
         if (rebelAttacker) {
             for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
-                for (Imperial member : group.getMembers()) {
-                    if (attacker.canAttack(member)) {
-                        defenders.add(member);
+                if (group.getDeployed()) {
+                    for (Imperial member : group.getMembers()) {
+                        if (attacker.canAttack(member)) {
+                            defenders.add(member);
+                        }
                     }
                 }
             }
@@ -401,7 +457,7 @@ public class Game implements GameView {
     public ArrayList<DeploymentGroup<? extends Imperial>> getImperialExhaustOptions() {
         ArrayList<DeploymentGroup<? extends Imperial>> readyDeployments = new ArrayList<>();
         for (DeploymentGroup<? extends Imperial> deploymentGroup : imperialDeployments) {
-            if (!deploymentGroup.getExhausted()) {
+            if (deploymentGroup.getDeployed() && !deploymentGroup.getExhausted()) {
                 readyDeployments.add(deploymentGroup);
             }
         }
@@ -415,6 +471,9 @@ public class Game implements GameView {
             }
         }
         for (DeploymentGroup<? extends Imperial> depGroup : imperialDeployments) {
+            if (!depGroup.getDeployed()) {
+                continue;
+            }
             for (Imperial imperial : depGroup.getMembers()) {
                 if (imperial.getPos().equalTo(pos)) {
                     return false;
@@ -473,7 +532,9 @@ public class Game implements GameView {
     public ArrayList<Imperial> getImperials() {
         ArrayList<Imperial> imperials = new ArrayList<>();
         for (DeploymentGroup<? extends Imperial> depGroup : imperialDeployments) {
-            imperials.addAll(depGroup.getMembers());
+            if (depGroup.getDeployed()) {
+                imperials.addAll(depGroup.getMembers());
+            }
         }
         return imperials;
     }
@@ -487,6 +548,7 @@ public class Game implements GameView {
     public void reset() {
         gameEnd = false;
         rebelsWin = true;
+        threatDial = 0;
         heroes.clear();
         imperialDeployments.clear();
         clearDiceInternal();
@@ -498,6 +560,7 @@ public class Game implements GameView {
     }
 
     public void setup() {
+        threatDial = 0;
         heroes.clear();
         imperialDeployments.clear();
         Hero diala = new DialaPassil(new Pos(6, 5));
@@ -511,12 +574,23 @@ public class Game implements GameView {
         DeploymentGroup<StormTrooper> troopers = new DeploymentGroup<>(
                 new Pos[] { new Pos(4, 11), new Pos(4, 12), new Pos(5, 11) },
                 StormTrooper::new, "StormTrooper");
+        troopers.setDeploymentCost(6);
+        troopers.setDeployed(true);
         configureDeploymentGroup(troopers, "imperial-stormtroopers", PlayerSeat.IMPERIAL);
         DeploymentGroup<Officer> officers = new DeploymentGroup<>(
                 new Pos[] { new Pos(7, 11) }, Officer::new, "ImperialOfficer");
+        officers.setDeploymentCost(4);
+        officers.setDeployed(true);
         configureDeploymentGroup(officers, "imperial-officer", PlayerSeat.IMPERIAL);
         imperialDeployments.add(troopers);
         imperialDeployments.add(officers);
+        DeploymentGroup<StormTrooper> reserveTroopers = new DeploymentGroup<>(
+                new Pos[] { new Pos(8, 9), new Pos(9, 9), new Pos(8, 10) },
+                StormTrooper::new, "StormTrooper");
+        reserveTroopers.setDeploymentCost(6);
+        reserveTroopers.setDeployed(false);
+        configureDeploymentGroup(reserveTroopers, "imperial-stormtroopers-reserve", PlayerSeat.IMPERIAL);
+        imperialDeployments.add(reserveTroopers);
         bindGameReferences();
         repaint();
     }
@@ -526,8 +600,10 @@ public class Game implements GameView {
             hero.setGame(this);
         }
         for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
-            for (Imperial imperial : group.getMembers()) {
-                imperial.setGame(this);
+            if (group.getDeployed()) {
+                for (Imperial imperial : group.getMembers()) {
+                    imperial.setGame(this);
+                }
             }
         }
         for (Interactable<? extends Personnel> interactable : interactables) {
@@ -563,9 +639,11 @@ public class Game implements GameView {
 
     public Personnel getPersonnelAtPosInternal(Pos pos) {
         for (DeploymentGroup<? extends Imperial> deployment : imperialDeployments) {
-            for (Imperial imperial : deployment.getMembers()) {
-                if (imperial.getPos().equalTo(pos)) {
-                    return imperial;
+            if (deployment.getDeployed()) {
+                for (Imperial imperial : deployment.getMembers()) {
+                    if (imperial.getPos().equalTo(pos)) {
+                        return imperial;
+                    }
                 }
             }
         }
@@ -585,9 +663,11 @@ public class Game implements GameView {
             }
         }
         for (DeploymentGroup<? extends Imperial> deployment : imperialDeployments) {
-            for (Imperial imperial : deployment.getMembers()) {
-                if (id.equals(imperial.getId())) {
-                    return imperial;
+            if (deployment.getDeployed()) {
+                for (Imperial imperial : deployment.getMembers()) {
+                    if (id.equals(imperial.getId())) {
+                        return imperial;
+                    }
                 }
             }
         }
@@ -596,9 +676,11 @@ public class Game implements GameView {
 
     public DeploymentCard getDeploymentCard(Pos pos) {
         for (DeploymentGroup<? extends Imperial> deployment : imperialDeployments) {
-            for (Imperial imperial : deployment.getMembers()) {
-                if (imperial.getPos().equalTo(pos)) {
-                    return deployment.getDeploymentCard();
+            if (deployment.getDeployed()) {
+                for (Imperial imperial : deployment.getMembers()) {
+                    if (imperial.getPos().equalTo(pos)) {
+                        return deployment.getDeploymentCard();
+                    }
                 }
             }
         }
@@ -697,7 +779,7 @@ public class Game implements GameView {
                         imperial.getOwnerSeat()));
             }
             groupSnapshots.add(new DeploymentGroupSnapshot(group.getId(), group.toString(), group.getExhausted(),
-                    group.getOwnerSeat(), members));
+                    group.getDeployed(), group.getOwnerSeat(), members));
         }
         ArrayList<Boolean> interactableStates = new ArrayList<>();
         for (Interactable<? extends Personnel> interactable : interactables) {
@@ -711,7 +793,8 @@ public class Game implements GameView {
         for (GraphicDefenseDieResult die : defenseResults) {
             defense.add(die.die().name() + ":" + die.face());
         }
-        return new MatchSnapshot(sessionConfig, actingSeat, bannerId, bannerText, bannerExpiresAt, heroSnapshots,
+        return new MatchSnapshot(sessionConfig, actingSeat, threatDial, bannerId, bannerText, bannerExpiresAt,
+                heroSnapshots,
                 groupSnapshots, interactableStates, offense, defense, gameEnd, rebelsWin);
     }
 
@@ -729,6 +812,7 @@ public class Game implements GameView {
             group.setId(groupSnapshot.id());
             group.setOwnerSeat(groupSnapshot.ownerSeat());
             group.setExhausted(groupSnapshot.exhausted());
+            group.setDeployed(groupSnapshot.deployed());
             for (int i = 0; i < group.getMembers().size() && i < groupSnapshot.members().size(); i++) {
                 applyFigureSnapshot(group.getMembers().get(i), groupSnapshot.members().get(i));
             }
@@ -750,6 +834,7 @@ public class Game implements GameView {
         this.gameEnd = snapshot.gameEnd();
         this.rebelsWin = snapshot.rebelsWin();
         this.actingSeat = snapshot.actingSeat();
+        this.threatDial = snapshot.threatDial();
         if (snapshot.bannerId() > lastAppliedBannerId && ui != null) {
             lastAppliedBannerId = snapshot.bannerId();
             long remaining = snapshot.bannerExpiresAt() - System.currentTimeMillis();
@@ -819,6 +904,17 @@ public class Game implements GameView {
             case "ImperialOfficer" -> new DeploymentGroup<Officer>(poses, Officer::new, "ImperialOfficer");
             default -> throw new IllegalArgumentException("Unknown group " + groupSnapshot.name());
         };
+    }
+
+    private void drawThreatHud(Graphics g) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setColor(new Color(0, 0, 0, 180));
+        g2.fillRoundRect(20, 82, 280, 48, 18, 18);
+        g2.setColor(Color.WHITE);
+        g2.drawRoundRect(20, 82, 280, 48, 18, 18);
+        g2.setFont(g2.getFont().deriveFont(java.awt.Font.BOLD, 20f));
+        g2.drawString("Threat Dial: " + threatDial, 38, 113);
+        g2.dispose();
     }
 
     private void applyFigureSnapshot(Personnel personnel, FigureSnapshot snapshot) {
