@@ -78,17 +78,24 @@ public class GameServer {
                     connection.seat = request.requestedSeat();
                     connection.mission = null;
                 }
+                LobbySnapshot lobbySnapshot = config.rebelPlayerCount() == 0 ? null : createLobbySnapshot();
                 connection.out.writeObject(
-                        new JoinResponse(true, "Joined", request.requestedSeat(), config, createLobbySnapshot()));
+                        new JoinResponse(true, "Joined", request.requestedSeat(), config, lobbySnapshot));
                 connection.out.flush();
                 connection.startReader();
-                broadcastLobbyState();
+                if (config.rebelPlayerCount() > 0) {
+                    broadcastLobbyState();
+                }
                 if (allSeatsFilled()) {
                     break;
                 }
             }
-            waitForAllMissionSelections();
-            Game game = createGameForMission(getSelectedMission());
+            if (config.rebelPlayerCount() > 0) {
+                waitForAllMissionSelections();
+            }
+            MissionOption mission = config.rebelPlayerCount() == 0 ? MissionOption.MISSION_ONE
+                    : getSelectedMission();
+            Game game = createGameForMission(mission);
             game.setSnapshotListener(this::broadcastSnapshot);
             broadcastSnapshot(game.createSnapshot());
             Thread gameThread = new Thread(game::playRound);

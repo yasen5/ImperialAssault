@@ -7,6 +7,16 @@ public class ServerRunner {
     public static void main(String[] args) throws Exception {
         int port = NetworkConfig.PORT;
         int rebelPlayers = 1;
+        if (args.length > 0) {
+            String mode = args[0].trim().toLowerCase();
+            if ("single-client".equals(mode) || "--single-client".equals(mode) || "wait-one".equals(mode)) {
+                rebelPlayers = 0;
+            } else if ("1".equals(mode) || "2".equals(mode)) {
+                rebelPlayers = Integer.parseInt(mode);
+            } else {
+                throw new IllegalArgumentException("Usage: ServerRunner [--single-client|1|2]");
+            }
+        }
         new GameServer(port, rebelPlayers).run();
     }
 }

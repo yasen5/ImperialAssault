@@ -17,6 +17,12 @@ public interface GameView {
 
     void reset();
 
+    void increaseThreat();
+
+    void advanceStatusPhase();
+
+    void clearDice();
+
     Personnel getPersonnelById(String id);
 
     Personnel getPersonnelAtPos(Pos pos);

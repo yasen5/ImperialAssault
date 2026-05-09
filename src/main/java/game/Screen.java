@@ -616,6 +616,12 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         }
         if (e.getKeyCode() == KeyEvent.VK_F1) {
             gameEnd = true;
+        } else if (!remoteMode && e.getKeyCode() == KeyEvent.VK_F2) {
+            game.increaseThreat();
+        } else if (!remoteMode && e.getKeyCode() == KeyEvent.VK_F3) {
+            game.advanceStatusPhase();
+        } else if (!remoteMode && e.getKeyCode() == KeyEvent.VK_F4) {
+            game.clearDice();
         } else if (!remoteMode && e.getKeyCode() == KeyEvent.VK_R) {
             reset();
         }

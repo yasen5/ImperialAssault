@@ -260,6 +260,23 @@ public class Game implements GameView {
         resolveImperialOptionalDeployments();
     }
 
+    @Override
+    public void increaseThreat() {
+        if (gameEnd) {
+            return;
+        }
+        threatDial++;
+        triggerBanner("Threat dial increased to " + threatDial);
+    }
+
+    @Override
+    public void advanceStatusPhase() {
+        if (gameEnd) {
+            return;
+        }
+        resolveStatusPhase();
+    }
+
     private void resolveImperialOptionalDeployments() {
         while (true) {
             ArrayList<DeploymentGroup<? extends Imperial>> deployableGroups = getOptionalDeploymentOptions();
@@ -567,7 +584,7 @@ public class Game implements GameView {
         Hero gaarkhan = new Gaarkhan(new Pos(1, 4));
         configureHero(diala, "hero-diala", PlayerSeat.REBEL_1);
         configureHero(gaarkhan, "hero-gaarkhan",
-                sessionConfig.rebelPlayerCount() == 1 ? PlayerSeat.REBEL_1 : PlayerSeat.REBEL_2);
+                sessionConfig.rebelPlayerCount() == 2 ? PlayerSeat.REBEL_2 : PlayerSeat.REBEL_1);
         heroes.add(diala);
         heroes.add(gaarkhan);
 
@@ -909,11 +926,13 @@ public class Game implements GameView {
     private void drawThreatHud(Graphics g) {
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setColor(new Color(0, 0, 0, 180));
-        g2.fillRoundRect(20, 82, 280, 48, 18, 18);
+        g2.fillRoundRect(20, 82, 300, 76, 18, 18);
         g2.setColor(Color.WHITE);
-        g2.drawRoundRect(20, 82, 280, 48, 18, 18);
+        g2.drawRoundRect(20, 82, 300, 76, 18, 18);
         g2.setFont(g2.getFont().deriveFont(java.awt.Font.BOLD, 20f));
         g2.drawString("Threat Dial: " + threatDial, 38, 113);
+        g2.setFont(g2.getFont().deriveFont(java.awt.Font.PLAIN, 14f));
+        g2.drawString("F2 +Threat   F3 Next Round   F4 Clear Dice", 38, 139);
         g2.dispose();
     }
 
@@ -974,6 +993,7 @@ public class Game implements GameView {
 
     public void clearDice() {
         clearDiceInternal();
+        triggerBanner("Dice cleared");
     }
 
     public void endGame(boolean rebelsWin) {

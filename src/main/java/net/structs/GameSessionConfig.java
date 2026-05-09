@@ -8,14 +8,16 @@ import game.PlayerSeat;
 
 public record GameSessionConfig(int rebelPlayerCount) implements Serializable {
     public GameSessionConfig {
-        if (rebelPlayerCount < 1 || rebelPlayerCount > 2) {
-            throw new IllegalArgumentException("Rebel player count must be 1 or 2");
+        if (rebelPlayerCount < 0 || rebelPlayerCount > 2) {
+            throw new IllegalArgumentException("Rebel player count must be between 0 and 2");
         }
     }
 
     public List<PlayerSeat> rebelTurnOrder() {
         ArrayList<PlayerSeat> seats = new ArrayList<>();
-        seats.add(PlayerSeat.REBEL_1);
+        if (rebelPlayerCount >= 1) {
+            seats.add(PlayerSeat.REBEL_1);
+        }
         if (rebelPlayerCount == 2) {
             seats.add(PlayerSeat.REBEL_2);
         }
@@ -25,7 +27,9 @@ public record GameSessionConfig(int rebelPlayerCount) implements Serializable {
     public List<PlayerSeat> requiredSeats() {
         ArrayList<PlayerSeat> seats = new ArrayList<>();
         seats.add(PlayerSeat.IMPERIAL);
-        seats.add(PlayerSeat.REBEL_1);
+        if (rebelPlayerCount >= 1) {
+            seats.add(PlayerSeat.REBEL_1);
+        }
         if (rebelPlayerCount == 2) {
             seats.add(PlayerSeat.REBEL_2);
         }
