@@ -932,7 +932,7 @@ public class Game implements GameView {
         g2.setFont(g2.getFont().deriveFont(java.awt.Font.BOLD, 20f));
         g2.drawString("Threat Dial: " + threatDial, 38, 113);
         g2.setFont(g2.getFont().deriveFont(java.awt.Font.PLAIN, 14f));
-        g2.drawString("F2 +Threat   F3 Next Round   F4 Clear Dice", 38, 139);
+        g2.drawString("Use the + Threat button", 38, 139);
         g2.dispose();
     }
 

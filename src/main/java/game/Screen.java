@@ -10,6 +10,7 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Image;
+import java.awt.KeyboardFocusManager;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
@@ -22,10 +23,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
+import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -33,7 +36,9 @@ import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.Timer;
+import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
+import java.awt.KeyEventDispatcher;
 
 import game.BiMap;
 import game.DeploymentCard;
@@ -85,6 +90,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     private final JPanel promptActionsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
     private final JTextField numericPromptField = new JTextField();
     private final JButton numericSubmitButton = new JButton("Submit");
+    private final JButton increaseThreatButton = new JButton("+ Threat");
     private final JButton missionOneButton = new JButton("Mission 1");
     private final JButton missionTwoButton = new JButton("Mission 2");
     private int numericPromptMinValue;
@@ -100,6 +106,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     };
     private game.PlayerSeat localSeat;
     private volatile String serverStatusText;
+    private final KeyEventDispatcher shortcutDispatcher = this::dispatchShortcutKeyEvent;
 
     private static String[] dialogChain = new String[] {
             "<html><body style='width: 300px; padding: 10px;'>" +
@@ -152,6 +159,8 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         }
         initializeButtons();
         initializePromptPanel();
+        installKeyBindings();
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(shortcutDispatcher);
         if (!readOnly) {
             addMouseListener(this);
             addKeyListener(this);
@@ -165,6 +174,72 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         if (remoteMode && !readOnly) {
             initializeLobbyControls();
         }
+    }
+
+    private void installKeyBindings() {
+        registerKeyBinding(KeyStroke.getKeyStroke(KeyEvent.VK_T, 0), "increaseThreat", () -> {
+            if (!remoteMode) {
+                game.increaseThreat();
+            }
+        });
+        registerKeyBinding(KeyStroke.getKeyStroke(KeyEvent.VK_N, 0), "nextRound", () -> {
+            if (!remoteMode) {
+                game.advanceStatusPhase();
+            }
+        });
+        registerKeyBinding(KeyStroke.getKeyStroke(KeyEvent.VK_C, 0), "clearDice", () -> {
+            if (!remoteMode) {
+                game.clearDice();
+            }
+        });
+        registerKeyBinding(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "endGame", () -> gameEnd = true);
+        registerKeyBinding(KeyStroke.getKeyStroke(KeyEvent.VK_R, 0), "resetGame", () -> {
+            if (!remoteMode) {
+                reset();
+            }
+        });
+    }
+
+    private void registerKeyBinding(KeyStroke keyStroke, String actionName, Runnable action) {
+        getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(keyStroke, actionName);
+        getActionMap().put(actionName, new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (readOnly) {
+                    return;
+                }
+                action.run();
+                repaint();
+            }
+        });
+    }
+
+    private boolean dispatchShortcutKeyEvent(KeyEvent event) {
+        if (event.getID() != KeyEvent.KEY_RELEASED) {
+            return false;
+        }
+        return handleShortcutKeyCode(event.getKeyCode());
+    }
+
+    private boolean handleShortcutKeyCode(int keyCode) {
+        if (readOnly) {
+            return false;
+        }
+        if (keyCode == KeyEvent.VK_ESCAPE) {
+            gameEnd = true;
+        } else if (!remoteMode && keyCode == KeyEvent.VK_T) {
+            game.increaseThreat();
+        } else if (!remoteMode && keyCode == KeyEvent.VK_N) {
+            game.advanceStatusPhase();
+        } else if (!remoteMode && keyCode == KeyEvent.VK_C) {
+            game.clearDice();
+        } else if (!remoteMode && keyCode == KeyEvent.VK_R) {
+            reset();
+        } else {
+            return false;
+        }
+        repaint();
+        return true;
     }
 
     private void initializeLobbyControls() {
@@ -248,6 +323,13 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
             button.setVisible(false);
             button.setBounds(0, 0, buttonSize, buttonSize);
         }
+        increaseThreatButton.addActionListener(e -> {
+            game.increaseThreat();
+        });
+        increaseThreatButton.setVisible(true);
+        increaseThreatButton.setBounds(500, 300, 1000, 1000);
+        add(increaseThreatButton);
+        System.out.println("INITIALIZED BUTTONS");
     }
 
     public void showInstructionsChain() {
@@ -611,21 +693,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 
     @Override
     public void keyReleased(KeyEvent e) {
-        if (readOnly) {
-            return;
-        }
-        if (e.getKeyCode() == KeyEvent.VK_F1) {
-            gameEnd = true;
-        } else if (!remoteMode && e.getKeyCode() == KeyEvent.VK_F2) {
-            game.increaseThreat();
-        } else if (!remoteMode && e.getKeyCode() == KeyEvent.VK_F3) {
-            game.advanceStatusPhase();
-        } else if (!remoteMode && e.getKeyCode() == KeyEvent.VK_F4) {
-            game.clearDice();
-        } else if (!remoteMode && e.getKeyCode() == KeyEvent.VK_R) {
-            reset();
-        }
-        repaint();
+        handleShortcutKeyCode(e.getKeyCode());
     }
 
     @Override
@@ -703,6 +771,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         if (mainGameLoop != null) {
             mainGameLoop.run();
         }
+        positionThreatButton();
         repaint();
     }
 
@@ -719,6 +788,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         this.rebelsWin = rebelsWin;
         deactiveateMovementButtons();
         gameEnd = true;
+        positionThreatButton();
         LoaderUtils.playSound("Applause");
     }
 
@@ -854,8 +924,16 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     }
 
     private void positionOverlayComponents() {
+        positionThreatButton();
         positionPromptPanel();
         positionLobbyButtons();
+    }
+
+    private void positionThreatButton() {
+        int x = getSidebarLeft() + 20;
+        int y = getThreatButtonTop();
+        System.out.println("X: " + x + " Y: " + y);
+        increaseThreatButton.setBounds(x, y, 1000, 1000);
     }
 
     private void positionPromptPanel() {
@@ -910,7 +988,11 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     }
 
     public int getSidebarContentTop() {
-        return isPromptVisible() ? getPromptPanelTop() + 248 : 18;
+        int top = isPromptVisible() ? getPromptPanelTop() + 248 : 18;
+        if (shouldReserveThreatButtonSpace()) {
+            return top + 62;
+        }
+        return top;
     }
 
     public int getDiceStartY() {
@@ -924,5 +1006,13 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 
     private int getMapImageWidth() {
         return game.getMapDrawWidth();
+    }
+
+    private int getThreatButtonTop() {
+        return isPromptVisible() ? getPromptPanelTop() + 248 : 18;
+    }
+
+    private boolean shouldReserveThreatButtonSpace() {
+        return !readOnly && !remoteMode && gameStarted && !gameEnd;
     }
 }

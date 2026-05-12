@@ -386,7 +386,6 @@ public class GameServer {
                         } else if (object instanceof ClientMissionSelection clientMissionSelection) {
                             handleClientMissionSelection(this, clientMissionSelection);
                         }
-                        
                     }
                 } catch (EOFException eof) {
                 } catch (Exception ex) {
