@@ -17,9 +17,12 @@ interface FullDeployment {
   int DETAIL_SMALL_PADDING_DIVISOR = 32;
   int DETAIL_CORNER_DIVISOR = 12;
   int DETAIL_PILL_WIDTH_DIVISOR = 3;
-  int DETAIL_PILL_HEIGHT_DIVISOR = 14;
+  int DETAIL_PILL_HEIGHT_DIVISOR = 28;
   int METRIC_BAR_HEIGHT_DIVISOR = 40;
-  int TEXT_ROW_STEP_DIVISOR = 18;
+  int CHIP_WIDTH_DIVISOR = 5;
+  int TITLE_FONT_DIVISOR = 20;
+  int ROW_FONT_DIVISOR = 24;
+  int METRIC_FONT_DIVISOR = 32;
 
   Color accentColor = new Color(88, 177, 255);
   Color healthColor = new Color(86, 219, 124);
@@ -70,24 +73,38 @@ interface FullDeployment {
     int panelWidth = detailBounds.width;
     int padding = getDetailPadding(panelWidth);
     int smallPadding = getDetailSmallPadding(panelWidth);
-    int headerHeight = Math.max(padding * 2, panelWidth / DETAIL_HEADER_HEIGHT_DIVISOR);
-    int minimumRowHeight = Math.max(padding * 2, panelWidth / DETAIL_ROW_MIN_HEIGHT_DIVISOR);
-    int rowHeight = statuses.length <= 1 ? Math.max(minimumRowHeight, panelWidth / DETAIL_ROW_HEIGHT_DIVISOR)
-        : Math.max(minimumRowHeight, detailBounds.height / Math.max(1, statuses.length));
-    int panelHeight = headerHeight + rowHeight * statuses.length + padding;
-    int cornerArc = Math.max(1, panelWidth / DETAIL_CORNER_DIVISOR);
-
     Graphics2D g2 = (Graphics2D) g.create();
     g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+    float titleFontSize = Math.max(1f, panelWidth / (float) TITLE_FONT_DIVISOR);
+    float rowFontSize = Math.max(1f, panelWidth / (float) ROW_FONT_DIVISOR);
+    float metricFontSize = Math.max(1f, panelWidth / (float) METRIC_FONT_DIVISOR);
+    g2.setFont(g2.getFont().deriveFont(Font.BOLD, titleFontSize));
+    int titleLineHeight = g2.getFontMetrics().getHeight();
+    g2.setFont(g2.getFont().deriveFont(Font.BOLD, rowFontSize));
+    int rowLineHeight = g2.getFontMetrics().getHeight();
+    g2.setFont(g2.getFont().deriveFont(Font.PLAIN, metricFontSize));
+    int metricLineHeight = g2.getFontMetrics().getHeight();
+    int metricBarHeight = Math.max(1, panelWidth / METRIC_BAR_HEIGHT_DIVISOR);
+    int chipHeight = Math.max(1, panelWidth / DETAIL_PILL_HEIGHT_DIVISOR);
+    int headerHeight = Math.max(padding * 2 + titleLineHeight, panelWidth / DETAIL_HEADER_HEIGHT_DIVISOR);
+    int minimumRowHeight = padding * 3 + rowLineHeight + metricLineHeight * 2 + metricBarHeight * 2 + chipHeight
+        + smallPadding * 4;
+    int availableRowsHeight = Math.max(minimumRowHeight, detailBounds.height - headerHeight - padding);
+    int rowHeight = statuses.length <= 1
+        ? Math.min(availableRowsHeight, Math.max(minimumRowHeight, panelWidth / DETAIL_ROW_HEIGHT_DIVISOR))
+        : Math.max(minimumRowHeight, availableRowsHeight / Math.max(1, statuses.length));
+    int panelHeight = headerHeight + rowHeight * statuses.length + padding;
+    int cornerArc = Math.max(1, panelWidth / DETAIL_CORNER_DIVISOR);
 
     g2.setColor(new Color(10, 12, 16, 230));
     g2.fillRoundRect(panelX, panelY, panelWidth, panelHeight, cornerArc, cornerArc);
     g2.setColor(new Color(255, 255, 255, 28));
     g2.drawRoundRect(panelX, panelY, panelWidth, panelHeight, cornerArc, cornerArc);
 
-    g2.setFont(g2.getFont().deriveFont(Font.BOLD, Math.max(1f, panelWidth / 16f)));
+    g2.setFont(g2.getFont().deriveFont(Font.BOLD, titleFontSize));
     g2.setColor(Color.WHITE);
-    g2.drawString(getDisplayName(), panelX + padding, panelY + padding * 2);
+    g2.drawString(getDisplayName(), panelX + padding, panelY + padding + g2.getFontMetrics().getAscent());
     if (isExhausted()) {
       int pillWidth = panelWidth / DETAIL_PILL_WIDTH_DIVISOR;
       int pillHeight = Math.max(1, panelWidth / DETAIL_PILL_HEIGHT_DIVISOR);
@@ -109,27 +126,31 @@ interface FullDeployment {
       g2.setColor(new Color(255, 255, 255, 24));
       g2.drawRoundRect(rowX, currentY, rowWidth, rowHeight - smallPadding, rowArc, rowArc);
 
-      g2.setFont(g2.getFont().deriveFont(Font.BOLD, Math.max(1f, panelWidth / 20f)));
+      g2.setFont(g2.getFont().deriveFont(Font.BOLD, rowFontSize));
       g2.setColor(Color.WHITE);
-      g2.drawString(label, rowX + padding, currentY + padding * 2);
+      int contentY = currentY + padding;
+      g2.drawString(label, rowX + padding, contentY + g2.getFontMetrics().getAscent());
+      contentY += g2.getFontMetrics().getHeight() + smallPadding;
 
       int healthMax = getMaxHealth();
       String healthText = healthMax > 0 ? status.health() + "/" + healthMax : String.valueOf(status.health());
-      int textStep = Math.max(1, panelWidth / TEXT_ROW_STEP_DIVISOR);
-      drawMetric(g2, rowX + padding, currentY + textStep * 2, availableWidth, "Health", healthText, status.health(),
+      contentY = drawMetric(g2, rowX + padding, contentY, availableWidth, metricFontSize, "Health", healthText,
+          status.health(),
           Math.max(1, healthMax), healthColor);
+      contentY += smallPadding;
 
       Integer maxStrain = getMaxStrain();
       int strainBarMax = maxStrain == null ? Math.max(1, Math.max(status.strain(), 1)) : Math.max(1, maxStrain);
       String strainText = maxStrain == null ? String.valueOf(status.strain())
           : status.strain() + "/"
               + maxStrain;
-      drawMetric(g2, rowX + padding, currentY + textStep * 4, availableWidth, "Strain", strainText, status.strain(),
+      contentY = drawMetric(g2, rowX + padding, contentY, availableWidth, metricFontSize, "Strain",
+          strainText, status.strain(),
           strainBarMax, strainColor);
+      contentY += smallPadding;
 
-      int chipsY = currentY + rowHeight - padding * 2;
-      int chipHeight = Math.max(1, panelWidth / DETAIL_PILL_HEIGHT_DIVISOR);
-      int chipWidth = panelWidth / 5;
+      int chipsY = Math.max(contentY, currentY + rowHeight - chipHeight - padding);
+      int chipWidth = panelWidth / CHIP_WIDTH_DIVISOR;
       drawPill(g2, rowX + padding, chipsY, chipWidth, chipHeight,
           status.stunned() ? warningColor : new Color(70, 76, 88), status.stunned() ? "Stunned" : "Clear");
       drawPill(g2, rowX + padding + chipWidth + smallPadding, chipsY, chipWidth, chipHeight,
@@ -138,7 +159,8 @@ interface FullDeployment {
       String evaluation = evaluateStatus(status, healthMax);
       int textWidth = g2.getFontMetrics().stringWidth(evaluation);
       g2.setColor(mutedTextColor);
-      g2.drawString(evaluation, rowX + rowWidth - textWidth - padding, chipsY + chipHeight - smallPadding);
+      g2.drawString(evaluation, rowX + rowWidth - textWidth - padding,
+          chipsY + ((chipHeight - g2.getFontMetrics().getHeight()) / 2) + g2.getFontMetrics().getAscent());
 
       currentY += rowHeight;
     }
@@ -146,13 +168,15 @@ interface FullDeployment {
     g2.dispose();
   }
 
-  private static void drawMetric(Graphics2D g2, int x, int y, int width, String label, String value, int current,
+  private static int drawMetric(Graphics2D g2, int x, int y, int width, float fontSize, String label, String value,
+      int current,
       int max, Color fillColor) {
-    g2.setFont(g2.getFont().deriveFont(Font.PLAIN, 14f));
+    g2.setFont(g2.getFont().deriveFont(Font.PLAIN, fontSize));
     g2.setColor(new Color(255, 255, 255, 190));
-    g2.drawString(label + ": " + value, x, y);
+    FontMetrics metrics = g2.getFontMetrics();
+    g2.drawString(label + ": " + value, x, y + metrics.getAscent());
 
-    int barY = y + Math.max(1, width / 48);
+    int barY = y + metrics.getHeight() + Math.max(1, width / 48);
     int barWidth = Math.max(1, width - Math.max(1, width / 24));
     int barHeight = Math.max(1, width / METRIC_BAR_HEIGHT_DIVISOR);
     g2.setColor(new Color(255, 255, 255, 24));
@@ -160,6 +184,7 @@ interface FullDeployment {
     float ratio = Math.max(0f, Math.min(1f, current / (float) max));
     g2.setColor(fillColor);
     g2.fillRoundRect(x, barY, Math.round(barWidth * ratio), barHeight, barHeight, barHeight);
+    return barY + barHeight;
   }
 
   private static void drawPill(Graphics2D g2, int x, int y, int width, int height, Color fill, String text) {

@@ -11,7 +11,8 @@ public class LayoutHandler {
 
   private static final int SIDEBAR_GAP_DIVISOR = 48;
   private static final int CARD_WIDTH_DIVISOR = 2;
-  private static final int MAX_CARD_WIDTH_DIVISOR = 2;
+  private static final int MAX_CARD_WIDTH_NUMERATOR = 4;
+  private static final int MAX_CARD_WIDTH_DENOMINATOR = 5;
   private static final int MIN_DETAIL_WIDTH_DIVISOR = 4;
   private static final int PROMPT_HEIGHT_DIVISOR = 4;
   private static final int THREAT_BUTTON_WIDTH_DIVISOR = 8;
@@ -105,8 +106,8 @@ public class LayoutHandler {
 
   public Rectangle getSidebarDetailBounds(Rectangle cardBounds) {
     int panelY = cardBounds == null ? getSidebarContentTop() : cardBounds.y;
-    return new Rectangle(getSidebarDetailX(), panelY, getSidebarDetailWidth(),
-        Math.max(0, screenHeight - panelY - getSidebarGap()));
+    int panelBottom = Math.max(panelY, getDiceStartY() - getSidebarGap());
+    return new Rectangle(getSidebarDetailX(), panelY, getSidebarDetailWidth(), panelBottom - panelY);
   }
 
   public Rectangle getPromptPanelBounds() {
@@ -197,7 +198,9 @@ public class LayoutHandler {
   }
 
   public int getSidebarCardWidth() {
-    return Math.max(0, Math.min(getMapScaleWidth(MAX_CARD_WIDTH_DIVISOR), getSidebarWidth() / CARD_WIDTH_DIVISOR));
+    return Math.max(0,
+        Math.min(getMapScaleWidth(MAX_CARD_WIDTH_NUMERATOR, MAX_CARD_WIDTH_DENOMINATOR),
+            getSidebarWidth() / CARD_WIDTH_DIVISOR));
   }
 
   public int getSidebarDetailX() {
@@ -265,5 +268,10 @@ public class LayoutHandler {
   private int getMapScaleWidth(int divisor) {
     int basis = mapWidth > 0 ? mapWidth : screenWidth;
     return Math.max(1, basis / divisor);
+  }
+
+  private int getMapScaleWidth(int numerator, int denominator) {
+    int basis = mapWidth > 0 ? mapWidth : screenWidth;
+    return Math.max(1, basis * numerator / denominator);
   }
 }
