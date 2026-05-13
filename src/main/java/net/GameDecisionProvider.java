@@ -1,6 +1,7 @@
 package net;
 
-import java.util.ArrayList;
+import util.MyArrayList;
+
 
 import game.Personnel.Directions;
 import game.PlayerSeat;
@@ -14,7 +15,7 @@ public interface GameDecisionProvider {
 
     int chooseNumericChoice(PlayerSeat seat, String name, int minValue, int maxValue);
 
-    Directions chooseDirection(PlayerSeat seat, Personnel activeFigure, ArrayList<Directions> allowedDirections);
+    Directions chooseDirection(PlayerSeat seat, Personnel activeFigure, MyArrayList<Directions> allowedDirections);
 
-    Personnel chooseTarget(PlayerSeat seat, SelectionType selectionType, ArrayList<Personnel> availableTargets);
+    Personnel chooseTarget(PlayerSeat seat, SelectionType selectionType, MyArrayList<Personnel> availableTargets);
 }

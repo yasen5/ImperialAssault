@@ -1,6 +1,7 @@
 package visual;
 
-import java.util.ArrayList;
+import util.MyArrayList;
+
 import java.util.concurrent.CompletableFuture;
 
 import javax.swing.SwingUtilities;
@@ -35,7 +36,7 @@ public class LocalGameDecisionProvider implements GameDecisionProvider {
   }
 
   @Override
-  public Directions chooseDirection(PlayerSeat seat, Personnel activeFigure, ArrayList<Directions> allowedDirections) {
+  public Directions chooseDirection(PlayerSeat seat, Personnel activeFigure, MyArrayList<Directions> allowedDirections) {
     CompletableFuture<Directions> dir = new CompletableFuture<>();
     ui.setMovementButtonOutput(dir);
     double[] angleRads = { Math.PI / 4.0 };
@@ -55,7 +56,7 @@ public class LocalGameDecisionProvider implements GameDecisionProvider {
   }
 
   @Override
-  public Personnel chooseTarget(PlayerSeat seat, SelectionType selectionType, ArrayList<Personnel> availableTargets) {
+  public Personnel chooseTarget(PlayerSeat seat, SelectionType selectionType, MyArrayList<Personnel> availableTargets) {
     ui.getGame().setCurrentSelection(new CompletableFuture<>());
     ui.setSelectionType(selectionType);
     ui.repaint();

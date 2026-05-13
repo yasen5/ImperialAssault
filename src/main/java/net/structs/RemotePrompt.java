@@ -1,7 +1,8 @@
 package net.structs;
 
 import java.io.Serializable;
-import java.util.List;
+import util.MyArrayList;
+
 
 import game.PlayerSeat;
 import game.SelectionType;
@@ -12,10 +13,10 @@ public record RemotePrompt(
         PromptType type,
         String title,
         String message,
-        List<String> optionLabels,
+        MyArrayList<String> optionLabels,
         int minValue,
         int maxValue,
-        List<String> allowedValues,
+        MyArrayList<String> allowedValues,
         String subjectId,
         SelectionType selectionType) implements Serializable {
     public static enum PromptType {

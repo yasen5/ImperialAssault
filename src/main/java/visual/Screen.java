@@ -19,7 +19,8 @@ import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
-import java.util.List;
+import util.MyArrayList;
+
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -819,7 +820,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
       return;
     }
     double[] angleRads = { Math.PI / 4.0 };
-    List<String> allowedValues = prompt.allowedValues();
+    MyArrayList<String> allowedValues = prompt.allowedValues();
     for (Directions direction : Directions.values()) {
       angleRads[0] += Math.PI / 4;
       if (allowedValues.contains(direction.name())) {

@@ -1,8 +1,9 @@
 package net.structs;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
+import util.MyArrayList;
+
+
 
 import game.PlayerSeat;
 
@@ -13,8 +14,8 @@ public record GameSessionConfig(int rebelPlayerCount) implements Serializable {
         }
     }
 
-    public List<PlayerSeat> rebelTurnOrder() {
-        ArrayList<PlayerSeat> seats = new ArrayList<>();
+    public MyArrayList<PlayerSeat> rebelTurnOrder() {
+        MyArrayList<PlayerSeat> seats = new MyArrayList<>();
         if (rebelPlayerCount >= 1) {
             seats.add(PlayerSeat.REBEL_1);
         }
@@ -24,8 +25,8 @@ public record GameSessionConfig(int rebelPlayerCount) implements Serializable {
         return seats;
     }
 
-    public List<PlayerSeat> requiredSeats() {
-        ArrayList<PlayerSeat> seats = new ArrayList<>();
+    public MyArrayList<PlayerSeat> requiredSeats() {
+        MyArrayList<PlayerSeat> seats = new MyArrayList<>();
         seats.add(PlayerSeat.IMPERIAL);
         if (rebelPlayerCount >= 1) {
             seats.add(PlayerSeat.REBEL_1);

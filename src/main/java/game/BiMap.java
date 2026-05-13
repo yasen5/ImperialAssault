@@ -1,11 +1,12 @@
 package game;
 
-import java.util.HashMap;
+import util.MyHashMap;
+
 
 // Sourced from https://stackoverflow.com/questions/9783020/bidirectional-map as a simple replacement for the third party google guava
 public class BiMap<K, V> {
-    public HashMap<K, V> map = new HashMap<K, V>();
-    public HashMap<V, K> inversedMap = new HashMap<V, K>();
+    public MyHashMap<K, V> map = new MyHashMap<K, V>();
+    public MyHashMap<V, K> inversedMap = new MyHashMap<V, K>();
 
     public void put(K k, V v) {
         map.put(k, v);

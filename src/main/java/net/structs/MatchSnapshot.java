@@ -1,7 +1,8 @@
 package net.structs;
 
 import java.io.Serializable;
-import java.util.List;
+import util.MyArrayList;
+
 
 import game.PlayerSeat;
 
@@ -12,11 +13,11 @@ public record MatchSnapshot(
         long bannerId,
         String bannerText,
         long bannerExpiresAt,
-        List<FigureSnapshot> heroes,
-        List<DeploymentGroupSnapshot> imperialGroups,
-        List<Boolean> interactableStates,
-        List<String> offenseResults,
-        List<String> defenseResults,
+        MyArrayList<FigureSnapshot> heroes,
+        MyArrayList<DeploymentGroupSnapshot> imperialGroups,
+        MyArrayList<Boolean> interactableStates,
+        MyArrayList<String> offenseResults,
+        MyArrayList<String> defenseResults,
         boolean gameEnd,
         boolean rebelsWin) implements Serializable {
 }

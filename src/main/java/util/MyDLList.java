@@ -93,6 +93,10 @@ public class MyDLList<E> implements Iterable<E>, Serializable {
     return size;
   }
 
+  public boolean isEmpty() {
+    return size == 0;
+  }
+
   public void scramble() {
     for (int i = 0; i < size; i++) {
       int randIdx = (int) (Math.random() * size);

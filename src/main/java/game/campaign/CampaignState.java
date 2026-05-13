@@ -1,11 +1,8 @@
 package game.campaign;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
+import util.MyArrayList;
+import util.MyHashMap;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -15,10 +12,10 @@ import net.structs.MissionOption;
 
 public final class CampaignState implements Serializable {
     private final GameSessionConfig config;
-    private final ArrayList<CampaignLogEntry> campaignLog = new ArrayList<>();
-    private final ArrayList<MissionOption> activeMissions = new ArrayList<>();
-    private final ArrayList<ImperialDeploymentCardState> imperialDeploymentCards = new ArrayList<>();
-    private final EnumMap<PlayerSeat, PlayerProgress> playerProgress = new EnumMap<>(PlayerSeat.class);
+    private final MyArrayList<CampaignLogEntry> campaignLog = new MyArrayList<>();
+    private final MyArrayList<MissionOption> activeMissions = new MyArrayList<>();
+    private final MyArrayList<ImperialDeploymentCardState> imperialDeploymentCards = new MyArrayList<>();
+    private final MyHashMap<PlayerSeat, PlayerProgress> playerProgress = new MyHashMap<>(PlayerSeat.class);
     private final DeckState supplyDeck = new DeckState("Supply");
     private final DeckState agendaDeck = new DeckState("Agenda");
     private final DeckState imperialClassDeck = new DeckState("Imperial Class");
@@ -138,8 +135,8 @@ public final class CampaignState implements Serializable {
         imperialInfluence -= amount;
     }
 
-    public List<CampaignLogEntry> getCampaignLog() {
-        return Collections.unmodifiableList(new ArrayList<>(campaignLog));
+    public MyArrayList<CampaignLogEntry> getCampaignLog() {
+        return new MyArrayList<>(campaignLog);
     }
 
     public void addCampaignLogEntry(String title, String details) {
@@ -150,11 +147,11 @@ public final class CampaignState implements Serializable {
         campaignLog.clear();
     }
 
-    public List<MissionOption> getActiveMissions() {
-        return Collections.unmodifiableList(new ArrayList<>(activeMissions));
+    public MyArrayList<MissionOption> getActiveMissions() {
+        return new MyArrayList<>(activeMissions);
     }
 
-    public void setActiveMissions(List<MissionOption> missions) {
+    public void setActiveMissions(MyArrayList<MissionOption> missions) {
         activeMissions.clear();
         if (missions != null) {
             activeMissions.addAll(missions);
@@ -169,8 +166,8 @@ public final class CampaignState implements Serializable {
         activeMissions.clear();
     }
 
-    public List<ImperialDeploymentCardState> getImperialDeploymentCards() {
-        return Collections.unmodifiableList(new ArrayList<>(imperialDeploymentCards));
+    public MyArrayList<ImperialDeploymentCardState> getImperialDeploymentCards() {
+        return new MyArrayList<>(imperialDeploymentCards);
     }
 
     public ImperialDeploymentCardState registerImperialDeploymentCard(String cardId, String displayName,
@@ -183,7 +180,12 @@ public final class CampaignState implements Serializable {
 
     public Optional<ImperialDeploymentCardState> findImperialDeploymentCard(String cardId) {
         Objects.requireNonNull(cardId, "cardId");
-        return imperialDeploymentCards.stream().filter(card -> card.getCardId().equals(cardId)).findFirst();
+        for (ImperialDeploymentCardState card : imperialDeploymentCards) {
+            if (card.getCardId().equals(cardId)) {
+                return Optional.of(card);
+            }
+        }
+        return Optional.empty();
     }
 
     public boolean canOptionalDeployImperialCard(String cardId) {
@@ -211,8 +213,8 @@ public final class CampaignState implements Serializable {
         card.setInHand(true);
     }
 
-    public Map<PlayerSeat, PlayerProgress> getPlayerProgress() {
-        return Collections.unmodifiableMap(new EnumMap<>(playerProgress));
+    public MyHashMap<PlayerSeat, PlayerProgress> getPlayerProgress() {
+        return new MyHashMap<>(playerProgress);
     }
 
     public PlayerProgress getPlayerProgress(PlayerSeat seat) {
@@ -275,8 +277,8 @@ public final class CampaignState implements Serializable {
 
     public static final class DeckState implements Serializable {
         private final String name;
-        private final ArrayList<String> cards = new ArrayList<>();
-        private final ArrayList<String> discardPile = new ArrayList<>();
+        private final MyArrayList<String> cards = new MyArrayList<>();
+        private final MyArrayList<String> discardPile = new MyArrayList<>();
 
         public DeckState(String name) {
             this.name = Objects.requireNonNull(name, "name");
@@ -286,15 +288,15 @@ public final class CampaignState implements Serializable {
             return name;
         }
 
-        public List<String> getCards() {
-            return Collections.unmodifiableList(new ArrayList<>(cards));
+        public MyArrayList<String> getCards() {
+            return new MyArrayList<>(cards);
         }
 
-        public List<String> getDiscardPile() {
-            return Collections.unmodifiableList(new ArrayList<>(discardPile));
+        public MyArrayList<String> getDiscardPile() {
+            return new MyArrayList<>(discardPile);
         }
 
-        public void setCards(List<String> newCards) {
+        public void setCards(MyArrayList<String> newCards) {
             cards.clear();
             if (newCards != null) {
                 cards.addAll(newCards);
@@ -305,7 +307,7 @@ public final class CampaignState implements Serializable {
             cards.add(Objects.requireNonNull(card, "card"));
         }
 
-        public void addCards(List<String> newCards) {
+        public void addCards(MyArrayList<String> newCards) {
             if (newCards == null) {
                 return;
             }
@@ -398,7 +400,7 @@ public final class CampaignState implements Serializable {
 
     public static final class PlayerProgress implements Serializable {
         private final PlayerSeat seat;
-        private final ArrayList<HeroProgress> heroes = new ArrayList<>();
+        private final MyArrayList<HeroProgress> heroes = new MyArrayList<>();
         private int experiencePoints;
 
         private PlayerProgress(PlayerSeat seat) {
@@ -429,8 +431,8 @@ public final class CampaignState implements Serializable {
             experiencePoints -= amount;
         }
 
-        public List<HeroProgress> getHeroes() {
-            return Collections.unmodifiableList(new ArrayList<>(heroes));
+        public MyArrayList<HeroProgress> getHeroes() {
+            return new MyArrayList<>(heroes);
         }
 
         public HeroProgress addHero(String heroName) {
@@ -441,15 +443,20 @@ public final class CampaignState implements Serializable {
 
         public Optional<HeroProgress> findHero(String heroName) {
             Objects.requireNonNull(heroName, "heroName");
-            return heroes.stream().filter(hero -> hero.getHeroName().equals(heroName)).findFirst();
+            for (HeroProgress hero : heroes) {
+                if (hero.getHeroName().equals(heroName)) {
+                    return Optional.of(hero);
+                }
+            }
+            return Optional.empty();
         }
     }
 
     public static final class HeroProgress implements Serializable {
         private final String heroName;
-        private final ArrayList<String> classCards = new ArrayList<>();
-        private final ArrayList<String> itemCards = new ArrayList<>();
-        private final ArrayList<String> conditions = new ArrayList<>();
+        private final MyArrayList<String> classCards = new MyArrayList<>();
+        private final MyArrayList<String> itemCards = new MyArrayList<>();
+        private final MyArrayList<String> conditions = new MyArrayList<>();
         private int damage;
         private int strain;
         private boolean wounded;
@@ -488,16 +495,16 @@ public final class CampaignState implements Serializable {
             this.wounded = wounded;
         }
 
-        public List<String> getClassCards() {
-            return Collections.unmodifiableList(new ArrayList<>(classCards));
+        public MyArrayList<String> getClassCards() {
+            return new MyArrayList<>(classCards);
         }
 
-        public List<String> getItemCards() {
-            return Collections.unmodifiableList(new ArrayList<>(itemCards));
+        public MyArrayList<String> getItemCards() {
+            return new MyArrayList<>(itemCards);
         }
 
-        public List<String> getConditions() {
-            return Collections.unmodifiableList(new ArrayList<>(conditions));
+        public MyArrayList<String> getConditions() {
+            return new MyArrayList<>(conditions);
         }
 
         public void addClassCard(String classCard) {

@@ -5,7 +5,8 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
+import util.MyArrayList;
+
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
@@ -22,10 +23,10 @@ import net.GameDecisionProvider;
 
 public class Game {
   private final MapTile mapTile;
-  private final ArrayList<DeploymentGroup<? extends Imperial>> imperialDeployments = new ArrayList<>();
-  private final ArrayList<Hero> heroes = new ArrayList<>();
-  private final ArrayList<GraphicOffenseDieResult> offenseResults = new ArrayList<>();
-  private final ArrayList<GraphicDefenseDieResult> defenseResults = new ArrayList<>();
+  private final MyArrayList<DeploymentGroup<? extends Imperial>> imperialDeployments = new MyArrayList<>();
+  private final MyArrayList<Hero> heroes = new MyArrayList<>();
+  private final MyArrayList<GraphicOffenseDieResult> offenseResults = new MyArrayList<>();
+  private final MyArrayList<GraphicDefenseDieResult> defenseResults = new MyArrayList<>();
   @SuppressWarnings("unchecked")
   public final Interactable<? extends Personnel>[] interactables = (Interactable<? extends Personnel>[]) new Interactable[] {
       new Terminal<Imperial>(new Pos(7, 0), Imperial.class),
@@ -38,7 +39,7 @@ public class Game {
   private GameDecisionProvider decisionProvider;
   private Consumer<MatchSnapshot> snapshotListener;
   private CompletableFuture<Personnel> currentSelected = new CompletableFuture<>();
-  private ArrayList<Personnel> availableTargets = new ArrayList<>();
+  private MyArrayList<Personnel> availableTargets = new MyArrayList<>();
   private int threatDial = 0;
   private boolean gameEnd;
   private boolean rebelsWin = true;
@@ -109,7 +110,7 @@ public class Game {
     return Constants.tileSize * mapTile.tileArray()[0].length;
   }
 
-  private <T> void drawDiceSection(Graphics g, ArrayList<T> dice, boolean offense) {
+  private <T> void drawDiceSection(Graphics g, MyArrayList<T> dice, boolean offense) {
     if (dice.isEmpty()) {
       return;
     }
@@ -154,7 +155,7 @@ public class Game {
 
   private void playCycle() {
     for (PlayerSeat rebelSeat : sessionConfig.rebelTurnOrder()) {
-      ArrayList<Hero> seatOptions = getHeroExhaustOptions(rebelSeat);
+      MyArrayList<Hero> seatOptions = getHeroExhaustOptions(rebelSeat);
       if (!seatOptions.isEmpty()) {
         announceTurnStart(rebelSeat);
         activateHero(rebelSeat, seatOptions);
@@ -164,7 +165,7 @@ public class Game {
         announceTurnEnd(rebelSeat);
       }
     }
-    ArrayList<DeploymentGroup<? extends Imperial>> imperialExhaustOptions = getImperialExhaustOptions();
+    MyArrayList<DeploymentGroup<? extends Imperial>> imperialExhaustOptions = getImperialExhaustOptions();
     if (!imperialExhaustOptions.isEmpty()) {
       actingSeat = PlayerSeat.IMPERIAL;
       updateTurnStatus();
@@ -182,7 +183,7 @@ public class Game {
     checkEndGame();
   }
 
-  private void activateHero(PlayerSeat rebelSeat, ArrayList<Hero> seatOptions) {
+  private void activateHero(PlayerSeat rebelSeat, MyArrayList<Hero> seatOptions) {
     actingSeat = rebelSeat;
     updateTurnStatus();
     Hero activeFigure = seatOptions
@@ -209,7 +210,7 @@ public class Game {
     repaint();
   }
 
-  private void activateImperials(ArrayList<DeploymentGroup<? extends Imperial>> imperialExhaustOptions) {
+  private void activateImperials(MyArrayList<DeploymentGroup<? extends Imperial>> imperialExhaustOptions) {
     actingSeat = PlayerSeat.IMPERIAL;
     updateTurnStatus();
     DeploymentGroup<? extends Imperial> deploymentGroup = imperialExhaustOptions
@@ -270,7 +271,7 @@ public class Game {
 
   private void resolveImperialOptionalDeployments() {
     while (true) {
-      ArrayList<DeploymentGroup<? extends Imperial>> deployableGroups = getOptionalDeploymentOptions();
+      MyArrayList<DeploymentGroup<? extends Imperial>> deployableGroups = getOptionalDeploymentOptions();
       if (deployableGroups.isEmpty()) {
         return;
       }
@@ -286,8 +287,8 @@ public class Game {
     }
   }
 
-  private ArrayList<DeploymentGroup<? extends Imperial>> getOptionalDeploymentOptions() {
-    ArrayList<DeploymentGroup<? extends Imperial>> deployableGroups = new ArrayList<>();
+  private MyArrayList<DeploymentGroup<? extends Imperial>> getOptionalDeploymentOptions() {
+    MyArrayList<DeploymentGroup<? extends Imperial>> deployableGroups = new MyArrayList<>();
     for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
       if (!group.getDeployed() && group.getDeploymentCost() <= threatDial) {
         deployableGroups.add(group);
@@ -344,7 +345,7 @@ public class Game {
 
   public int takeAction(Personnel activeFigure, boolean rebel) {
     int leftoverMoves = 0;
-    ArrayList<Actions> availableActions = new ArrayList<>();
+    MyArrayList<Actions> availableActions = new MyArrayList<>();
     availableActions.addAll(activeFigure.getActions());
     availableTargets = availableDefenders(activeFigure, rebel);
     if (availableTargets.size() == 0) {
@@ -420,8 +421,8 @@ public class Game {
     return getAdjacentInteractable(activeFigure) != null;
   }
 
-  public ArrayList<Personnel> availableDefenders(Personnel attacker, boolean rebelAttacker) {
-    ArrayList<Personnel> defenders = new ArrayList<>();
+  public MyArrayList<Personnel> availableDefenders(Personnel attacker, boolean rebelAttacker) {
+    MyArrayList<Personnel> defenders = new MyArrayList<>();
     if (rebelAttacker) {
       for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
         if (group.getDeployed()) {
@@ -442,8 +443,8 @@ public class Game {
     return defenders;
   }
 
-  public ArrayList<Hero> getHeroExhaustOptions() {
-    ArrayList<Hero> readyDeployments = new ArrayList<>();
+  public MyArrayList<Hero> getHeroExhaustOptions() {
+    MyArrayList<Hero> readyDeployments = new MyArrayList<>();
     for (Hero hero : heroes) {
       if (!hero.getExhausted()) {
         readyDeployments.add(hero);
@@ -452,8 +453,8 @@ public class Game {
     return readyDeployments;
   }
 
-  public ArrayList<Hero> getHeroExhaustOptions(PlayerSeat seat) {
-    ArrayList<Hero> readyDeployments = new ArrayList<>();
+  public MyArrayList<Hero> getHeroExhaustOptions(PlayerSeat seat) {
+    MyArrayList<Hero> readyDeployments = new MyArrayList<>();
     for (Hero hero : heroes) {
       if (!hero.getExhausted() && hero.getOwnerSeat() == seat) {
         readyDeployments.add(hero);
@@ -462,8 +463,8 @@ public class Game {
     return readyDeployments;
   }
 
-  public ArrayList<DeploymentGroup<? extends Imperial>> getImperialExhaustOptions() {
-    ArrayList<DeploymentGroup<? extends Imperial>> readyDeployments = new ArrayList<>();
+  public MyArrayList<DeploymentGroup<? extends Imperial>> getImperialExhaustOptions() {
+    MyArrayList<DeploymentGroup<? extends Imperial>> readyDeployments = new MyArrayList<>();
     for (DeploymentGroup<? extends Imperial> deploymentGroup : imperialDeployments) {
       if (deploymentGroup.getDeployed() && !deploymentGroup.getExhausted()) {
         readyDeployments.add(deploymentGroup);
@@ -502,7 +503,7 @@ public class Game {
   }
 
   private void handleMoveInternal(Personnel activeFigure) {
-    ArrayList<Directions> availableDirections = new ArrayList<>();
+    MyArrayList<Directions> availableDirections = new MyArrayList<>();
     for (Directions direction : Directions.values()) {
       if (activeFigure.canMove(direction)) {
         availableDirections.add(direction);
@@ -521,7 +522,7 @@ public class Game {
     }
     repaint();
     Personnel chosenDefender = decisionProvider.chooseTarget(activeFigure.getOwnerSeat(), SelectionType.COMBAT,
-        new ArrayList<>(availableTargets));
+        new MyArrayList<>(availableTargets));
     for (Personnel person : availableTargets) {
       person.setPossibleTarget(false);
     }
@@ -537,8 +538,8 @@ public class Game {
     return false;
   }
 
-  public ArrayList<Imperial> getImperials() {
-    ArrayList<Imperial> imperials = new ArrayList<>();
+  public MyArrayList<Imperial> getImperials() {
+    MyArrayList<Imperial> imperials = new MyArrayList<>();
     for (DeploymentGroup<? extends Imperial> depGroup : imperialDeployments) {
       if (depGroup.getDeployed()) {
         imperials.addAll(depGroup.getMembers());
@@ -547,7 +548,7 @@ public class Game {
     return imperials;
   }
 
-  public ArrayList<Hero> getHeroes() {
+  public MyArrayList<Hero> getHeroes() {
     return heroes;
   }
 
@@ -740,7 +741,7 @@ public class Game {
     }
     repaint();
     Personnel chosenDefender = decisionProvider.chooseTarget(activeFigure.getOwnerSeat(), SelectionType.SPECIAL,
-        new ArrayList<>(availableTargets));
+        new MyArrayList<>(availableTargets));
     for (Personnel person : availableTargets) {
       person.setPossibleTarget(false);
     }
@@ -748,7 +749,7 @@ public class Game {
     repaint();
   }
 
-  public ArrayList<DeploymentGroup<? extends Imperial>> getDeploymentGroupsInternal() {
+  public MyArrayList<DeploymentGroup<? extends Imperial>> getDeploymentGroupsInternal() {
     return imperialDeployments;
   }
 
@@ -768,15 +769,15 @@ public class Game {
   }
 
   public MatchSnapshot createSnapshot() {
-    ArrayList<FigureSnapshot> heroSnapshots = new ArrayList<>();
+    MyArrayList<FigureSnapshot> heroSnapshots = new MyArrayList<>();
     for (Hero hero : heroes) {
       heroSnapshots.add(new FigureSnapshot(hero.getId(), hero.getName(), hero.getPos().getX(), hero.getPos().getY(),
           hero.getHealth(), hero.getStrain(), hero.stunned(), hero.focused, hero.isActive(),
           hero.isPossibleTarget(), hero.getExhausted(), hero.getOwnerSeat()));
     }
-    ArrayList<DeploymentGroupSnapshot> groupSnapshots = new ArrayList<>();
+    MyArrayList<DeploymentGroupSnapshot> groupSnapshots = new MyArrayList<>();
     for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
-      ArrayList<FigureSnapshot> members = new ArrayList<>();
+      MyArrayList<FigureSnapshot> members = new MyArrayList<>();
       for (Imperial imperial : group.getMembers()) {
         members.add(new FigureSnapshot(imperial.getId(), imperial.getName(), imperial.getPos().getX(),
             imperial.getPos().getY(), imperial.getHealth(), imperial.getStrain(), imperial.stunned(),
@@ -786,15 +787,15 @@ public class Game {
       groupSnapshots.add(new DeploymentGroupSnapshot(group.getId(), group.toString(), group.getExhausted(),
           group.getDeployed(), group.getOwnerSeat(), members));
     }
-    ArrayList<Boolean> interactableStates = new ArrayList<>();
+    MyArrayList<Boolean> interactableStates = new MyArrayList<>();
     for (Interactable<? extends Personnel> interactable : interactables) {
       interactableStates.add(interactable.snapshotState());
     }
-    ArrayList<String> offense = new ArrayList<>();
+    MyArrayList<String> offense = new MyArrayList<>();
     for (GraphicOffenseDieResult die : offenseResults) {
       offense.add(die.die().name() + ":" + die.face());
     }
-    ArrayList<String> defense = new ArrayList<>();
+    MyArrayList<String> defense = new MyArrayList<>();
     for (GraphicDefenseDieResult die : defenseResults) {
       defense.add(die.die().name() + ":" + die.face());
     }
@@ -1000,7 +1001,7 @@ public class Game {
     performSpecialInternal(activeFigure);
   }
 
-  public ArrayList<DeploymentGroup<? extends Imperial>> getDeploymentGroups() {
+  public MyArrayList<DeploymentGroup<? extends Imperial>> getDeploymentGroups() {
     return getDeploymentGroupsInternal();
   }
 
@@ -1008,7 +1009,7 @@ public class Game {
     return interactables;
   }
 
-  public void setAvailableTargets(ArrayList<Personnel> availableTargets) {
+  public void setAvailableTargets(MyArrayList<Personnel> availableTargets) {
     this.availableTargets = availableTargets;
   }
 

@@ -1,6 +1,7 @@
 package game;
 
-import java.util.ArrayList;
+import util.MyArrayList;
+
 
 import game.Die.DefenseDieType;
 import game.Die.DefenseRoll;
@@ -29,8 +30,8 @@ public class Officer extends Imperial {
 
     // Find all imperial figures within two spaces
     @Override
-    public ArrayList<Personnel> getSpecialTargets() {
-        ArrayList<Personnel> targets = new ArrayList<>();
+    public MyArrayList<Personnel> getSpecialTargets() {
+        MyArrayList<Personnel> targets = new MyArrayList<>();
         Pos thisPos = getPos();
         for (DeploymentGroup<? extends Imperial> group : game.getDeploymentGroups()) {
             for (Imperial imperial : group.getMembers()) {

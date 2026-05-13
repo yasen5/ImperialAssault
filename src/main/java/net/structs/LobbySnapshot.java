@@ -1,15 +1,17 @@
 package net.structs;
 
 import java.io.Serializable;
-import java.util.Map;
-import java.util.List;
+import util.MyHashMap;
+
+import util.MyArrayList;
+
 
 import game.PlayerSeat;
 
 public record LobbySnapshot(
     GameSessionConfig config,
-    List<PlayerSeat> occupiedSeats,
-    Map<PlayerSeat, MissionOption> missionSelections,
+    MyArrayList<PlayerSeat> occupiedSeats,
+    MyHashMap<PlayerSeat, MissionOption> missionSelections,
     boolean allSeatsFilled,
     boolean allMissionsSelected,
     boolean allMissionsMatch,

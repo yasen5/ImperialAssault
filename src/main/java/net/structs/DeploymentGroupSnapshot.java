@@ -1,7 +1,8 @@
 package net.structs;
 
 import java.io.Serializable;
-import java.util.List;
+import util.MyArrayList;
+
 
 import game.PlayerSeat;
 
@@ -11,5 +12,5 @@ public record DeploymentGroupSnapshot(
         boolean exhausted,
         boolean deployed,
         PlayerSeat ownerSeat,
-        List<FigureSnapshot> members) implements Serializable {
+        MyArrayList<FigureSnapshot> members) implements Serializable {
 }

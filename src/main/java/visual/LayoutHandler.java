@@ -2,8 +2,7 @@ package visual;
 
 import java.awt.Component;
 import java.awt.Rectangle;
-import java.util.ArrayList;
-import java.util.Comparator;
+import util.MyArrayList;
 
 public class LayoutHandler {
   public static final int DEFAULT_SCREEN_WIDTH = 1920;
@@ -39,7 +38,7 @@ public class LayoutHandler {
   private record VisualComponent(Priority priority, Component component, int width, int height) {
   }
 
-  private ArrayList<VisualComponent> visualComponents = new ArrayList<>();
+  private MyArrayList<VisualComponent> visualComponents = new MyArrayList<>();
   private int x;
   private int y;
   private int width;
@@ -89,9 +88,15 @@ public class LayoutHandler {
   }
 
   private void sortByPriority() {
-    visualComponents.sort(Comparator.comparingInt(comp -> {
-      return comp.priority.ordinal();
-    }));
+    for (int i = 0; i < visualComponents.size(); i++) {
+      for (int j = i + 1; j < visualComponents.size(); j++) {
+        if (visualComponents.get(j).priority.ordinal() < visualComponents.get(i).priority.ordinal()) {
+          VisualComponent current = visualComponents.get(i);
+          visualComponents.set(i, visualComponents.get(j));
+          visualComponents.set(j, current);
+        }
+      }
+    }
   }
 
   public Rectangle getDeploymentCardBounds(int baseWidth, int baseHeight) {

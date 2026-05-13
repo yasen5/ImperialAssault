@@ -1,6 +1,7 @@
 package game;
 
-import java.util.ArrayList;
+import util.MyArrayList;
+
 
 import game.Pathfinder;
 import game.Pathfinder.FullPos;
@@ -45,8 +46,8 @@ public class Constants {
                     new FullPos(adjustedEndX, adjustedEndY));
         }
 
-        public ArrayList<Pos> getHardEnds() {
-            ArrayList<Pos> hardEnds = new ArrayList<>();
+        public MyArrayList<Pos> getHardEnds() {
+            MyArrayList<Pos> hardEnds = new MyArrayList<>();
             if (!shortenFirstTip) { hardEnds.add(pos); }
             if (!shortenSecondTip) {
                 hardEnds.add(pos.getNextPos(vertical ? Directions.DOWN : Directions.RIGHT));

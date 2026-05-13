@@ -1,8 +1,9 @@
 package util;
 
+import java.io.Serializable;
 import java.util.Iterator;
 
-public class MyArrayList<E> implements Iterable<E> {
+public class MyArrayList<E> implements Iterable<E>, Serializable {
   private Object[] list;
   private int size = 0;
   private int capacity = 6;
@@ -12,8 +13,24 @@ public class MyArrayList<E> implements Iterable<E> {
   }
 
   public MyArrayList(int startingCapacity) {
-    capacity = startingCapacity;
+    capacity = Math.max(1, startingCapacity);
     list = new Object[capacity];
+  }
+
+  public MyArrayList(Iterable<? extends E> values) {
+    this();
+    addAll(values);
+  }
+
+  @SafeVarargs
+  public static <E> MyArrayList<E> of(E... values) {
+    MyArrayList<E> list = new MyArrayList<>();
+    if (values != null) {
+      for (E value : values) {
+        list.add(value);
+      }
+    }
+    return list;
   }
 
   public boolean add(E element) {
@@ -45,8 +62,8 @@ public class MyArrayList<E> implements Iterable<E> {
 
   public E remove(int index) {
     E removed = get(index);
-    for (int i = index; i < list.length - 1; i++) {
-      list[index] = list[index + 1];
+    for (int i = index; i < size - 1; i++) {
+      list[i] = list[i + 1];
     }
     size--;
     list[size] = null;
@@ -55,9 +72,8 @@ public class MyArrayList<E> implements Iterable<E> {
 
   @SuppressWarnings("unchecked")
   public E remove(Object element) {
-    for (int i = 0; i < list.length; i++) {
-      E cast = (E) element;
-      if (cast.equals(list[i])) {
+    for (int i = 0; i < size; i++) {
+      if (element == null ? list[i] == null : element.equals(list[i])) {
         return remove(i);
       }
     }
@@ -69,8 +85,9 @@ public class MyArrayList<E> implements Iterable<E> {
   }
 
   public boolean contains(Object val) {
-    for (Object obj : list) {
-      if (obj.equals(val)) {
+    for (int i = 0; i < size; i++) {
+      Object obj = list[i];
+      if (obj == null ? val == null : obj.equals(val)) {
         return true;
       }
     }
@@ -93,6 +110,32 @@ public class MyArrayList<E> implements Iterable<E> {
     }
     list[index] = element;
     size++;
+  }
+
+  public void addAll(Iterable<? extends E> values) {
+    if (values == null) {
+      return;
+    }
+    for (E value : values) {
+      add(value);
+    }
+  }
+
+  public void clear() {
+    list = new Object[capacity];
+    size = 0;
+  }
+
+  public boolean isEmpty() {
+    return size == 0;
+  }
+
+  public Object[] toArray() {
+    Object[] copy = new Object[size];
+    for (int i = 0; i < size; i++) {
+      copy[i] = list[i];
+    }
+    return copy;
   }
 
   @Override

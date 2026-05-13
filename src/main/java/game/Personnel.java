@@ -3,7 +3,8 @@ package game;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
+import util.MyArrayList;
+
 import java.util.Arrays;
 
 import game.Constants;
@@ -25,7 +26,7 @@ public abstract class Personnel {
   protected DefenseDieType[] defenseDice;
   private static int imageSideSpace = 7;
   private boolean possibleTarget = false, active = false;
-  protected ArrayList<Actions> actions;
+  protected MyArrayList<Actions> actions;
   protected int strain = 0;
   private boolean specialRequiresSelection;
   private String id;
@@ -63,7 +64,7 @@ public abstract class Personnel {
     this.pos = pos;
     this.corners = new Pos[] { pos, pos.getNextPos(Directions.RIGHT), pos.getNextPos(Directions.DOWN),
         pos.getNextPos(Directions.DOWNRIGHT) };
-    this.actions = new ArrayList<>(Arrays.asList(Actions.MOVE, Actions.ATTACK));
+    this.actions = new MyArrayList<>(Arrays.asList(Actions.MOVE, Actions.ATTACK));
     if (hasSpecial) {
       actions.add(Actions.SPECIAL);
     }
@@ -97,7 +98,7 @@ public abstract class Personnel {
     if (game != null) {
       game.repaint();
     }
-    ArrayList<Equipment.SurgeOptions> surgeOptions = new ArrayList<Equipment.SurgeOptions>();
+    MyArrayList<Equipment.SurgeOptions> surgeOptions = new MyArrayList<Equipment.SurgeOptions>();
     Equipment.SurgeOptions[] possibleActions = getSurgeOptions();
     for (Equipment.SurgeOptions option : possibleActions) {
       surgeOptions.add(option);
@@ -282,7 +283,7 @@ public abstract class Personnel {
     active = value;
   }
 
-  public ArrayList<Actions> getActions() {
+  public MyArrayList<Actions> getActions() {
     return actions;
   }
 
@@ -303,7 +304,7 @@ public abstract class Personnel {
     this.focused = focused;
   }
 
-  public ArrayList<Personnel> getSpecialTargets() {
+  public MyArrayList<Personnel> getSpecialTargets() {
     return null;
   }
 

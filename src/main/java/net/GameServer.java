@@ -8,12 +8,10 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Collections;
-import java.util.ArrayList;
-import java.util.EnumMap;
+import util.MyArrayList;
+import util.MyHashMap;
 import java.util.Enumeration;
-import java.util.List;
-import java.util.Map;
+
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
@@ -43,7 +41,7 @@ import visual.Screen;
 public class GameServer {
   private final int port;
   private final GameSessionConfig config;
-  private final EnumMap<PlayerSeat, ClientConnection> clients = new EnumMap<>(PlayerSeat.class);
+  private final MyHashMap<PlayerSeat, ClientConnection> clients = new MyHashMap<>(PlayerSeat.class);
   private final AtomicLong promptIds = new AtomicLong(1);
   private final Object lobbyLock = new Object();
   private volatile Game spectatorGame;
@@ -146,11 +144,11 @@ public class GameServer {
 
   private LobbySnapshot createLobbySnapshot() {
     synchronized (lobbyLock) {
-      ArrayList<PlayerSeat> occupiedSeats = new ArrayList<>(clients.keySet());
-      EnumMap<PlayerSeat, MissionOption> missionSelections = new EnumMap<>(PlayerSeat.class);
+      MyArrayList<PlayerSeat> occupiedSeats = new MyArrayList<>(clients.keySet());
+      MyHashMap<PlayerSeat, MissionOption> missionSelections = new MyHashMap<>(PlayerSeat.class);
       MissionOption selectedMission = null;
       boolean allMissionSelections = true;
-      for (Map.Entry<PlayerSeat, ClientConnection> entry : clients.entrySet()) {
+      for (MyHashMap.Entry<PlayerSeat, ClientConnection> entry : clients.entrySet()) {
         MissionOption mission = entry.getValue().mission;
         if (mission != null) {
           missionSelections.put(entry.getKey(), mission);
@@ -177,9 +175,9 @@ public class GameServer {
   private void broadcastLobbyState() {
     LobbySnapshot snapshot = createLobbySnapshot();
     updateSpectatorLobbySnapshot(snapshot);
-    ArrayList<ClientConnection> connections;
+    MyArrayList<ClientConnection> connections;
     synchronized (lobbyLock) {
-      connections = new ArrayList<>(clients.values());
+      connections = new MyArrayList<>(clients.values());
     }
     for (ClientConnection connection : connections) {
       connection.send(snapshot);
@@ -216,9 +214,9 @@ public class GameServer {
 
   private void broadcastSnapshot(MatchSnapshot snapshot) {
     updateSpectatorSnapshot(snapshot);
-    ArrayList<ClientConnection> connections;
+    MyArrayList<ClientConnection> connections;
     synchronized (lobbyLock) {
-      connections = new ArrayList<>(clients.values());
+      connections = new MyArrayList<>(clients.values());
     }
     for (ClientConnection connection : connections) {
       connection.send(snapshot);
@@ -268,11 +266,14 @@ public class GameServer {
   private String resolveHostAddress() {
     try {
       Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
-      for (NetworkInterface networkInterface : Collections.list(interfaces)) {
+      while (interfaces.hasMoreElements()) {
+        NetworkInterface networkInterface = interfaces.nextElement();
         if (!networkInterface.isUp() || networkInterface.isLoopback() || networkInterface.isVirtual()) {
           continue;
         }
-        for (InetAddress address : Collections.list(networkInterface.getInetAddresses())) {
+        Enumeration<InetAddress> addresses = networkInterface.getInetAddresses();
+        while (addresses.hasMoreElements()) {
+          InetAddress address = addresses.nextElement();
           if (address instanceof Inet4Address && !address.isLoopbackAddress() && !address.isAnyLocalAddress()) {
             return address.getHostAddress();
           }
@@ -297,7 +298,7 @@ public class GameServer {
 
     @Override
     public int chooseMultipleChoice(PlayerSeat seat, String name, String explanation, Object[] options) {
-      ArrayList<String> labels = new ArrayList<>();
+      MyArrayList<String> labels = new MyArrayList<>();
       for (Object option : options) {
         labels.add(String.valueOf(option));
       }
@@ -309,22 +310,23 @@ public class GameServer {
     @Override
     public boolean chooseYesNo(PlayerSeat seat, String name, String explanation) {
       RemotePrompt prompt = new RemotePrompt(promptIds.getAndIncrement(), seat, RemotePrompt.PromptType.YES_NO,
-          name, explanation, List.of("No", "Yes"), 0, 1, List.of("false", "true"), null, null);
+          name, explanation, MyArrayList.of("No", "Yes"), 0, 1, MyArrayList.of("false", "true"), null, null);
       return Boolean.parseBoolean(requestResponse(prompt));
     }
 
     @Override
     public int chooseNumericChoice(PlayerSeat seat, String name, int minValue, int maxValue) {
       RemotePrompt prompt = new RemotePrompt(promptIds.getAndIncrement(), seat, RemotePrompt.PromptType.NUMERIC,
-          name, name + " (" + minValue + " to " + maxValue + ")", List.of(), minValue, maxValue, List.of(),
+          name, name + " (" + minValue + " to " + maxValue + ")", MyArrayList.of(), minValue, maxValue,
+          MyArrayList.of(),
           null, null);
       return Integer.parseInt(requestResponse(prompt));
     }
 
     @Override
     public Directions chooseDirection(PlayerSeat seat, Personnel activeFigure,
-        ArrayList<Directions> allowedDirections) {
-      ArrayList<String> values = new ArrayList<>();
+        MyArrayList<Directions> allowedDirections) {
+      MyArrayList<String> values = new MyArrayList<>();
       for (Directions direction : allowedDirections) {
         values.add(direction.name());
       }
@@ -334,9 +336,9 @@ public class GameServer {
     }
 
     @Override
-    public Personnel chooseTarget(PlayerSeat seat, SelectionType selectionType, ArrayList<Personnel> availableTargets) {
-      ArrayList<String> values = new ArrayList<>();
-      ArrayList<String> labels = new ArrayList<>();
+    public Personnel chooseTarget(PlayerSeat seat, SelectionType selectionType, MyArrayList<Personnel> availableTargets) {
+      MyArrayList<String> values = new MyArrayList<>();
+      MyArrayList<String> labels = new MyArrayList<>();
       for (Personnel target : availableTargets) {
         values.add(target.getId());
         labels.add(target.getName());

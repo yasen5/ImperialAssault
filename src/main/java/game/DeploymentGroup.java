@@ -1,13 +1,14 @@
 package game;
 
 import java.awt.Graphics;
-import java.util.ArrayList;
+import util.MyArrayList;
+
 import java.util.function.Function;
 
 // Basically an arraylist of imperials with some added functionality
 public class DeploymentGroup<T extends Imperial> implements FullDeployment {
     // Instance variables
-    private ArrayList<T> members = new ArrayList<T>();
+    private MyArrayList<T> members = new MyArrayList<T>();
     private Function<Pos, T> constructor;
     private boolean exhausted = false;
     private boolean deployed = true;
@@ -106,7 +107,7 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
         }
     }
 
-    public ArrayList<T> getMembers() {
+    public MyArrayList<T> getMembers() {
         return members;
     }
 

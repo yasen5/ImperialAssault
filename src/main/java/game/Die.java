@@ -1,7 +1,8 @@
 package game;
 
 import java.awt.image.BufferedImage;
-import java.util.HashMap;
+import util.MyHashMap;
+
 
 import game.Constants;
 
@@ -112,12 +113,12 @@ public class Die {
         }
     }
 
-    public static HashMap<GraphicOffenseDieResult, BufferedImage> offenseDieFaces;
-    public static HashMap<GraphicDefenseDieResult, BufferedImage> defenseDieFaces;
+    public static MyHashMap<GraphicOffenseDieResult, BufferedImage> offenseDieFaces;
+    public static MyHashMap<GraphicDefenseDieResult, BufferedImage> defenseDieFaces;
 
     static {
-        offenseDieFaces = new HashMap<GraphicOffenseDieResult, BufferedImage>();
-        defenseDieFaces = new HashMap<GraphicDefenseDieResult, BufferedImage>();
+        offenseDieFaces = new MyHashMap<GraphicOffenseDieResult, BufferedImage>();
+        defenseDieFaces = new MyHashMap<GraphicDefenseDieResult, BufferedImage>();
         for (OffenseDieType die : OffenseDieType.values()) {
             for (int i = 0; i < 6; i++) {
                 offenseDieFaces.put(new GraphicOffenseDieResult(i, die),

@@ -1,8 +1,8 @@
 package game;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.Queue;
+import util.MyArrayList;
+import util.MyDLList;
+
 import game.Personnel.Directions;
 
 import game.Constants;
@@ -53,9 +53,9 @@ public class Pathfinder {
         }
         int[][] grid = Constants.tileMatrix;
         boolean[][] visited = new boolean[grid.length][grid[0].length];
-        Queue<Point> queue = new LinkedList<>();
+        MyDLList<Point> queue = new MyDLList<>();
         Point currentPoint;
-        ArrayList<Directions> validDirections = new ArrayList<>();
+        MyArrayList<Directions> validDirections = new MyArrayList<>();
         for (Directions dir : Directions.values()) {
             Pos point = start.getNextPos(dir);
             boolean xCloser = Math.abs(point.getX() - end.getX()) <= Math.abs(start.getX() - end.getX());
@@ -67,11 +67,11 @@ public class Pathfinder {
         }
         queue.add(new Point(start, null));
         do {
-            currentPoint = queue.poll();
+            currentPoint = queue.remove(0);
                 visited[currentPoint.pos().getY()][currentPoint.pos().getX()] = true;
 
             if (currentPoint.pos().getX() == end.getX() && currentPoint.pos().getY() == end.getY()) {
-                ArrayList<Point> bestPath = new ArrayList<>();
+                MyArrayList<Point> bestPath = new MyArrayList<>();
                 while (currentPoint.parent() != null) {
                     bestPath.add(currentPoint);
                     currentPoint = currentPoint.parent();
