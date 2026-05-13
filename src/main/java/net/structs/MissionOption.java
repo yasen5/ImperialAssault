@@ -1,4 +1,4 @@
-package game;
+package net.structs;
 
 import java.io.Serializable;
 

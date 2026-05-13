@@ -9,9 +9,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-import game.MissionOption;
 import game.PlayerSeat;
 import net.structs.GameSessionConfig;
+import net.structs.MissionOption;
 
 public final class CampaignState implements Serializable {
     private final GameSessionConfig config;
