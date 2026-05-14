@@ -5,9 +5,11 @@ import java.io.Serializable;
 public class MyHashMap<K, V> implements Serializable {
   private static final int DEFAULT_CAPACITY = 128;
   private static final double MAX_LOAD_FACTOR = 0.65;
+  private static final Entry<?, ?> DELETED = new Entry<>(null, null);
 
   private Entry<K, V>[] hashArray;
   private int size;
+  private int usedSlots;
   private MyHashSet<K> keySet;
 
   public static record Entry<K, V>(K key, V value) implements Serializable {
@@ -24,6 +26,7 @@ public class MyHashMap<K, V> implements Serializable {
   public MyHashMap() {
     hashArray = (Entry<K, V>[]) new Entry[DEFAULT_CAPACITY];
     size = 0;
+    usedSlots = 0;
     keySet = new MyHashSet<>();
   }
 
@@ -42,40 +45,45 @@ public class MyHashMap<K, V> implements Serializable {
   }
 
   public V put(K key, V value) {
-    ensureCapacity();
-    int slot = findSlot(key);
-    Entry<K, V> current = hashArray[slot];
-    V previous = current == null ? null : current.value();
-    hashArray[slot] = new Entry<>(key, value);
-    if (current == null) {
-      keySet.add(key);
-      size++;
+    int existingSlot = findExistingSlot(key);
+    if (existingSlot >= 0) {
+      Entry<K, V> current = hashArray[existingSlot];
+      hashArray[existingSlot] = new Entry<>(key, value);
+      return current.value();
     }
-    return previous;
+    ensureCapacity();
+    int slot = findInsertSlot(key);
+    Entry<K, V> current = hashArray[slot];
+    if (current == null) {
+      usedSlots++;
+    }
+    hashArray[slot] = new Entry<>(key, value);
+    keySet.add(key);
+    size++;
+    return null;
   }
 
   public V get(Object key) {
-    int slot = findSlot(key);
-    Entry<K, V> entry = hashArray[slot];
-    return entry == null ? null : entry.value();
+    int slot = findExistingSlot(key);
+    return slot < 0 ? null : hashArray[slot].value();
   }
 
   public V remove(Object key) {
-    int slot = findSlot(key);
-    Entry<K, V> entry = hashArray[slot];
-    if (entry == null) {
+    int slot = findExistingSlot(key);
+    if (slot < 0) {
       return null;
     }
+    Entry<K, V> entry = hashArray[slot];
     V previous = entry.value();
-    hashArray[slot] = null;
+    hashArray[slot] = deletedEntry();
     keySet.remove(key);
     size--;
-    rebuild(hashArray);
+    compactIfSparse();
     return previous;
   }
 
   public boolean containsKey(Object key) {
-    return hashArray[findSlot(key)] != null;
+    return findExistingSlot(key) >= 0;
   }
 
   public int size() {
@@ -101,7 +109,7 @@ public class MyHashMap<K, V> implements Serializable {
   public MyArrayList<Entry<K, V>> entrySet() {
     MyArrayList<Entry<K, V>> entries = new MyArrayList<>();
     for (Entry<K, V> entry : hashArray) {
-      if (entry != null) {
+      if (isActive(entry)) {
         entries.add(entry);
       }
     }
@@ -117,22 +125,44 @@ public class MyHashMap<K, V> implements Serializable {
     return str;
   }
 
-  private int findSlot(Object key) {
+  private int findExistingSlot(Object key) {
     int slot = Math.floorMod(key.hashCode(), hashArray.length);
-    while (hashArray[slot] != null && !hashArray[slot].key().equals(key)) {
+    while (hashArray[slot] != null) {
+      if (hashArray[slot] != DELETED && hashArray[slot].key().equals(key)) {
+        return slot;
+      }
       slot = (slot + 1) % hashArray.length;
     }
-    return slot;
+    return -1;
+  }
+
+  private int findInsertSlot(Object key) {
+    int slot = Math.floorMod(key.hashCode(), hashArray.length);
+    int firstDeleted = -1;
+    while (hashArray[slot] != null) {
+      if (hashArray[slot] == DELETED) {
+        if (firstDeleted < 0) {
+          firstDeleted = slot;
+        }
+      } else if (hashArray[slot].key().equals(key)) {
+        return slot;
+      }
+      slot = (slot + 1) % hashArray.length;
+    }
+    return firstDeleted >= 0 ? firstDeleted : slot;
   }
 
   private void ensureCapacity() {
-    if ((size + 1) / (double) hashArray.length > MAX_LOAD_FACTOR) {
+    if ((usedSlots + 1) / (double) hashArray.length > MAX_LOAD_FACTOR) {
       rebuildInto(hashArray.length * 2);
     }
   }
 
-  private void rebuild(Entry<K, V>[] oldArray) {
-    rebuildInto(Math.max(DEFAULT_CAPACITY, oldArray.length), oldArray);
+  private void compactIfSparse() {
+    int deletedSlots = usedSlots - size;
+    if (deletedSlots > size && usedSlots > hashArray.length / 2) {
+      rebuildInto(hashArray.length);
+    }
   }
 
   private void rebuildInto(int capacity) {
@@ -144,13 +174,21 @@ public class MyHashMap<K, V> implements Serializable {
     Entry<K, V>[] entries = oldArray;
     hashArray = (Entry<K, V>[]) new Entry[capacity];
     keySet = new MyHashSet<>();
-    int oldSize = size;
     size = 0;
+    usedSlots = 0;
     for (Entry<K, V> entry : entries) {
-      if (entry != null) {
+      if (isActive(entry)) {
         put(entry.key(), entry.value());
       }
     }
-    size = oldSize;
+  }
+
+  @SuppressWarnings("unchecked")
+  private Entry<K, V> deletedEntry() {
+    return (Entry<K, V>) DELETED;
+  }
+
+  private boolean isActive(Entry<K, V> entry) {
+    return entry != null && entry != DELETED;
   }
 }

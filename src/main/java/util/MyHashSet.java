@@ -5,54 +5,62 @@ import java.io.Serializable;
 public class MyHashSet<E> implements Iterable<E>, Serializable {
   private static final int DEFAULT_CAPACITY = 128;
   private static final double MAX_LOAD_FACTOR = 0.65;
+  private static final Object DELETED = new Object();
 
   private Object[] hashArray;
   private int size;
+  private int usedSlots;
 
   public MyHashSet() {
     hashArray = new Object[DEFAULT_CAPACITY];
     size = 0;
+    usedSlots = 0;
   }
 
   public boolean add(E obj) {
-    ensureCapacity();
     if (contains(obj)) {
       return false;
-    } else {
-      hashArray[findSlot(obj)] = obj;
-      size++;
     }
+    ensureCapacity();
+    int slot = findInsertSlot(obj);
+    if (hashArray[slot] == null) {
+      usedSlots++;
+    }
+    hashArray[slot] = obj;
+    size++;
     return true;
   }
 
   public void clear() {
     size = 0;
+    usedSlots = 0;
     hashArray = new Object[DEFAULT_CAPACITY];
   }
 
   public boolean contains(Object obj) {
-    int slot = findSlot(obj);
-    return hashArray[slot] != null && hashArray[slot].equals(obj);
+    return findExistingSlot(obj) >= 0;
   }
 
   public boolean remove(Object obj) {
-    if (contains(obj)) {
-      hashArray[findSlot(obj)] = null;
-      size--;
-      rebuild(hashArray);
-      return true;
+    int slot = findExistingSlot(obj);
+    if (slot < 0) {
+      return false;
     }
-    return false;
+    hashArray[slot] = DELETED;
+    size--;
+    compactIfSparse();
+    return true;
   }
 
   public int size() {
     return size;
   }
 
+  @SuppressWarnings("unchecked")
   public MyDLList<E> toDLList() {
     MyDLList<E> dll = new MyDLList<E>();
     for (int i = 0; i < hashArray.length; i++) {
-      if (hashArray[i] != null) {
+      if (isActive(hashArray[i])) {
         dll.add((E) hashArray[i]);
       }
     }
@@ -68,37 +76,70 @@ public class MyHashSet<E> implements Iterable<E>, Serializable {
   // return (E) hashArray[incomplete.hashCode()];
   // }
 
+  @SuppressWarnings("unchecked")
   public E getFullEntry(int hashCode) {
-    return (E) (hashArray[Math.floorMod(hashCode, hashArray.length)]);
+    for (Object entry : hashArray) {
+      if (isActive(entry) && entry.hashCode() == hashCode) {
+        return (E) entry;
+      }
+    }
+    return null;
   }
 
-  private int findSlot(Object obj) {
+  private int findExistingSlot(Object obj) {
     int slot = Math.floorMod(obj.hashCode(), hashArray.length);
-    while (hashArray[slot] != null && !hashArray[slot].equals(obj)) {
+    while (hashArray[slot] != null) {
+      if (hashArray[slot] != DELETED && hashArray[slot].equals(obj)) {
+        return slot;
+      }
       slot = (slot + 1) % hashArray.length;
     }
-    return slot;
+    return -1;
+  }
+
+  private int findInsertSlot(Object obj) {
+    int slot = Math.floorMod(obj.hashCode(), hashArray.length);
+    int firstDeleted = -1;
+    while (hashArray[slot] != null) {
+      if (hashArray[slot] == DELETED) {
+        if (firstDeleted < 0) {
+          firstDeleted = slot;
+        }
+      } else if (hashArray[slot].equals(obj)) {
+        return slot;
+      }
+      slot = (slot + 1) % hashArray.length;
+    }
+    return firstDeleted >= 0 ? firstDeleted : slot;
   }
 
   private void ensureCapacity() {
-    if ((size + 1) / (double) hashArray.length > MAX_LOAD_FACTOR) {
-      Object[] oldArray = hashArray;
-      hashArray = new Object[oldArray.length * 2];
-      rebuild(oldArray);
+    if ((usedSlots + 1) / (double) hashArray.length > MAX_LOAD_FACTOR) {
+      rebuild(hashArray.length * 2);
+    }
+  }
+
+  private void compactIfSparse() {
+    int deletedSlots = usedSlots - size;
+    if (deletedSlots > size && usedSlots > hashArray.length / 2) {
+      rebuild(hashArray.length);
     }
   }
 
   @SuppressWarnings("unchecked")
-  private void rebuild(Object[] oldArray) {
-    Object[] values = oldArray;
-    hashArray = new Object[Math.max(DEFAULT_CAPACITY, oldArray.length)];
-    int oldSize = size;
+  private void rebuild(int capacity) {
+    Object[] values = hashArray;
+    hashArray = new Object[Math.max(DEFAULT_CAPACITY, capacity)];
     size = 0;
+    usedSlots = 0;
     for (Object value : values) {
-      if (value != null) {
+      if (isActive(value)) {
         add((E) value);
       }
     }
-    size = oldSize;
+  }
+
+  private boolean isActive(Object value) {
+    return value != null && value != DELETED;
   }
 }
