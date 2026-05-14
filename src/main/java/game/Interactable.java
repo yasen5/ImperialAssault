@@ -47,7 +47,7 @@ public abstract class Interactable<ValidInteractors extends Personnel> {
 
     // Check if the interactor is valid, then follow through with the interaction
     public void interact(Personnel interactor) {
-        if (validInteractorClass.isInstance(interactor)) {
+        if (canInteract(interactor)) {
             safeInteract(validInteractorClass.cast(interactor));
         }
     }
@@ -60,6 +60,10 @@ public abstract class Interactable<ValidInteractors extends Personnel> {
 
     public boolean canInteract() {
         return true;
+    }
+
+    public boolean canInteract(Personnel interactor) {
+        return canInteract() && validInteractorClass.isInstance(interactor);
     }
 
     public boolean snapshotState() {

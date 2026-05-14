@@ -33,7 +33,8 @@ public class Game {
       new Terminal<Imperial>(new Pos(7, 0), Imperial.class),
       new Terminal<Imperial>(new Pos(0, 3), Imperial.class),
       new Door<Personnel>(new Pos(0, 6), Personnel.class),
-      new Door<Personnel>(new Pos(6, 8), Personnel.class)
+      new Door<Personnel>(new Pos(6, 8), Personnel.class),
+      new SupplyBox(new Pos(3, 3))
   };
 
   private GameUi ui;
@@ -229,7 +230,7 @@ public class Game {
         return;
       }
     }
-    handleMovesInternal(activeFigure, promptNumericChoice(rebelSeat, "# of moves you'll use", 0, leftoverMoves));
+    handlePendingMoves(activeFigure, rebelSeat, leftoverMoves);
     activeFigure.setActive(false);
     repaint();
   }
@@ -254,8 +255,7 @@ public class Game {
       if (gameEnd) {
         return;
       }
-      handleMovesInternal(imperial,
-          promptNumericChoice(PlayerSeat.IMPERIAL, "# of moves you'll use", 0, leftoverMoves));
+      handlePendingMoves(imperial, PlayerSeat.IMPERIAL, leftoverMoves);
       imperial.setActive(false);
     }
     repaint();
@@ -486,8 +486,7 @@ public class Game {
     switch (action) {
       case MOVE -> {
         leftoverMoves += activeFigure.getSpeed();
-        int movesUsed = promptNumericChoice(activeFigure.getOwnerSeat(), "# of moves you'll use:", 0,
-            leftoverMoves);
+        int movesUsed = promptPendingMoves(activeFigure.getOwnerSeat(), leftoverMoves);
         leftoverMoves -= movesUsed;
         handleMovesInternal(activeFigure, movesUsed);
       }
@@ -521,7 +520,7 @@ public class Game {
     for (Directions dir : Directions.values()) {
       Pos nextPos = activePos.getNextPos(dir);
       for (Interactable<? extends Personnel> interactable : interactables) {
-        if (!interactable.canInteract()) {
+        if (!interactable.canInteract(activeFigure)) {
           continue;
         }
         if (interactable.blocking()) {
@@ -621,6 +620,17 @@ public class Game {
       ui.deactiveateMovementButtons();
     }
     repaint();
+  }
+
+  private void handlePendingMoves(Personnel activeFigure, PlayerSeat seat, int leftoverMoves) {
+    handleMovesInternal(activeFigure, promptPendingMoves(seat, leftoverMoves));
+  }
+
+  private int promptPendingMoves(PlayerSeat seat, int leftoverMoves) {
+    if (leftoverMoves == 0) {
+      return 0;
+    }
+    return promptNumericChoice(seat, "# of moves you'll use", 0, leftoverMoves);
   }
 
   private void handleMoveInternal(Personnel activeFigure) {

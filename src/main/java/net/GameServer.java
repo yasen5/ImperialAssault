@@ -369,6 +369,9 @@ public class GameServer {
 
     @Override
     public int chooseMultipleChoice(PlayerSeat seat, String name, String explanation, Object[] options) {
+      if (options.length == 1) {
+        return 0;
+      }
       MyArrayList<String> labels = new MyArrayList<>();
       for (Object option : options) {
         labels.add(String.valueOf(option));
@@ -387,6 +390,9 @@ public class GameServer {
 
     @Override
     public int chooseNumericChoice(PlayerSeat seat, String name, int minValue, int maxValue) {
+      if (minValue == maxValue) {
+        return minValue;
+      }
       RemotePrompt prompt = new RemotePrompt(promptIds.getAndIncrement(), seat, RemotePrompt.PromptType.NUMERIC,
           name, name + " (" + minValue + " to " + maxValue + ")", MyArrayList.of(), minValue, maxValue,
           MyArrayList.of(),
@@ -397,6 +403,9 @@ public class GameServer {
     @Override
     public Directions chooseDirection(PlayerSeat seat, Personnel activeFigure,
         MyArrayList<Directions> allowedDirections) {
+      if (allowedDirections.size() == 1) {
+        return allowedDirections.get(0);
+      }
       MyArrayList<String> values = new MyArrayList<>();
       for (Directions direction : allowedDirections) {
         values.add(direction.name());
@@ -408,6 +417,9 @@ public class GameServer {
 
     @Override
     public Personnel chooseTarget(PlayerSeat seat, SelectionType selectionType, MyArrayList<Personnel> availableTargets) {
+      if (availableTargets.size() == 1) {
+        return availableTargets.get(0);
+      }
       MyArrayList<String> values = new MyArrayList<>();
       MyArrayList<String> labels = new MyArrayList<>();
       for (Personnel target : availableTargets) {
