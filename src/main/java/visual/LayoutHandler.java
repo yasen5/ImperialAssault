@@ -14,8 +14,6 @@ public class LayoutHandler {
   private static final int MAX_CARD_WIDTH_DENOMINATOR = 5;
   private static final int MIN_DETAIL_WIDTH_DIVISOR = 4;
   private static final int PROMPT_HEIGHT_DIVISOR = 4;
-  private static final int THREAT_BUTTON_WIDTH_DIVISOR = 8;
-  private static final int THREAT_BUTTON_HEIGHT_DIVISOR = 24;
   private static final int BUTTON_HEIGHT_DIVISOR = 25;
   private static final int BUTTON_MIN_WIDTH_DIVISOR = 7;
   private static final int BUTTON_MAX_WIDTH_DIVISOR = 5;
@@ -46,11 +44,19 @@ public class LayoutHandler {
   private int screenHeight = DEFAULT_SCREEN_HEIGHT;
   private int mapWidth = 0;
   private boolean promptVisible;
-  private boolean reserveThreatButtonSpace;
 
   public void addVisualComponent(Component comp, Priority priority, int width, int height) {
-    if (comp == null || visualComponents.contains(comp)) {
+    if (comp == null) {
       return;
+    }
+    for (int i = 0; i < visualComponents.size(); i++) {
+      VisualComponent visualComponent = visualComponents.get(i);
+      if (visualComponent.component == comp) {
+        visualComponents.set(i, new VisualComponent(priority, comp, width, height));
+        sortByPriority();
+        arrangeLayout();
+        return;
+      }
     }
     visualComponents.add(new VisualComponent(priority, comp, width, height));
     sortByPriority();
@@ -64,13 +70,11 @@ public class LayoutHandler {
     arrangeLayout();
   }
 
-  public void setSidebarState(int screenWidth, int screenHeight, int mapWidth, boolean promptVisible,
-      boolean reserveThreatButtonSpace) {
+  public void setSidebarState(int screenWidth, int screenHeight, int mapWidth, boolean promptVisible) {
     this.screenWidth = Math.max(0, screenWidth);
     this.screenHeight = Math.max(0, screenHeight);
     this.mapWidth = Math.max(0, mapWidth);
     this.promptVisible = promptVisible;
-    this.reserveThreatButtonSpace = reserveThreatButtonSpace;
     setLayoutArea(getSidebarLeft(), getSidebarContentTop(), getSidebarWidth());
   }
 
@@ -117,11 +121,6 @@ public class LayoutHandler {
 
   public Rectangle getPromptPanelBounds() {
     return new Rectangle(getSidebarLeft(), getPromptPanelTop(), getSidebarWidth(), getPromptPanelHeight());
-  }
-
-  public Rectangle getThreatButtonBounds() {
-    return new Rectangle(getSidebarLeft() + getSidebarGap(), getThreatButtonTop(), getThreatButtonWidth(),
-        getThreatButtonHeight());
   }
 
   public Rectangle getMissionOneButtonBounds() {
@@ -194,6 +193,15 @@ public class LayoutHandler {
     return getMapScaleWidth(MOVEMENT_BUTTON_SIZE_DIVISOR);
   }
 
+  public int getSidebarButtonWidth() {
+    return Math.min(getMapScaleWidth(BUTTON_MAX_WIDTH_DIVISOR),
+        Math.max(getMapScaleWidth(BUTTON_MIN_WIDTH_DIVISOR), getSidebarWidth()));
+  }
+
+  public int getSidebarButtonHeight() {
+    return getButtonHeight();
+  }
+
   public int getSidebarLeft() {
     return mapWidth;
   }
@@ -230,27 +238,11 @@ public class LayoutHandler {
   }
 
   public int getSidebarContentTop() {
-    int top = promptVisible ? getPromptPanelTop() + getPromptPanelHeight() + getSidebarGap() : getSidebarGap();
-    if (reserveThreatButtonSpace) {
-      return top + getThreatButtonHeight() + getSidebarGap();
-    }
-    return top;
-  }
-
-  private int getThreatButtonTop() {
     return promptVisible ? getPromptPanelTop() + getPromptPanelHeight() + getSidebarGap() : getSidebarGap();
   }
 
   private int getPromptPanelHeight() {
     return getMapScaleWidth(PROMPT_HEIGHT_DIVISOR);
-  }
-
-  private int getThreatButtonWidth() {
-    return getMapScaleWidth(THREAT_BUTTON_WIDTH_DIVISOR);
-  }
-
-  private int getThreatButtonHeight() {
-    return getMapScaleWidth(THREAT_BUTTON_HEIGHT_DIVISOR);
   }
 
   private int getButtonHeight() {

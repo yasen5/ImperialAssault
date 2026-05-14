@@ -70,16 +70,20 @@ public class GameClient {
     while (true) {
       Object message = in.readObject();
       if (message instanceof LobbySnapshot lobbySnapshot) {
-        SwingUtilities.invokeLater(() -> screen.updateLobbySnapshot(lobbySnapshot));
+        SwingUtilities.invokeLater(() -> {
+          screen.updateLobbySnapshot(lobbySnapshot);
+          screen.repaint();
+        });
         continue;
       }
       if (message instanceof MatchSnapshot snapshot) {
         SwingUtilities.invokeLater(() -> {
           screen.markGameStarted();
           game.loadSnapshot(snapshot);
+          screen.repaint();
         });
       } else if (message instanceof RemotePrompt prompt) {
-        handlePrompt(prompt);
+        new Thread(() -> handlePrompt(prompt), "Remote Prompt").start();
       }
     }
   }

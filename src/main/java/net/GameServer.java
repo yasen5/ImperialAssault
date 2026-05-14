@@ -96,6 +96,13 @@ public class GameServer {
           : getSelectedMission();
       Game game = createGameForMission(mission);
       game.setSnapshotListener(this::broadcastSnapshot);
+      SwingUtilities.invokeLater(() -> {
+        if (spectatorScreen != null) {
+          spectatorScreen.setIncreaseThreatAction(() -> new Thread(game::increaseThreat, "Manual Threat").start());
+          spectatorScreen.setNextRoundAction(
+              () -> new Thread(game::advanceStatusPhase, "Manual Next Round").start());
+        }
+      });
       broadcastSnapshot(game.createSnapshot());
       Thread gameThread = new Thread(game::playRound);
       gameThread.start();

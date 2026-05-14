@@ -89,6 +89,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   private final JTextField numericPromptField = new JTextField();
   private final JButton numericSubmitButton = new JButton("Submit");
   private final JButton increaseThreatButton = new JButton("+ Threat");
+  private final JButton nextRoundButton = new JButton("Next Round");
   private final JButton missionOneButton = new JButton("Mission 1");
   private final JButton missionTwoButton = new JButton("Mission 2");
   private final LayoutHandler layoutHandler = new LayoutHandler();
@@ -103,6 +104,10 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   private volatile LobbySnapshot lobbySnapshot;
   private MissionOption localMissionSelection;
   private Consumer<MissionOption> missionSelectionAction = mission -> {
+  };
+  private Runnable increaseThreatAction = () -> {
+  };
+  private Runnable nextRoundAction = () -> {
   };
   private game.PlayerSeat localSeat;
   private volatile String serverStatusText;
@@ -179,14 +184,10 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 
   private void installKeyBindings() {
     registerKeyBinding(KeyStroke.getKeyStroke(KeyEvent.VK_T, 0), "increaseThreat", () -> {
-      if (!remoteMode) {
-        game.increaseThreat();
-      }
+      performIncreaseThreat();
     });
     registerKeyBinding(KeyStroke.getKeyStroke(KeyEvent.VK_N, 0), "nextRound", () -> {
-      if (!remoteMode) {
-        game.advanceStatusPhase();
-      }
+      performAdvanceStatusPhase();
     });
     registerKeyBinding(KeyStroke.getKeyStroke(KeyEvent.VK_C, 0), "clearDice", () -> {
       if (!remoteMode) {
@@ -206,11 +207,10 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     getActionMap().put(actionName, new AbstractAction() {
       @Override
       public void actionPerformed(ActionEvent e) {
-        if (readOnly) {
-          return;
-        }
         action.run();
-        repaint();
+        if (!readOnly) {
+          repaint();
+        }
       }
     });
   }
@@ -224,7 +224,16 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 
   private boolean handleShortcutKeyCode(int keyCode) {
     if (readOnly) {
-      return false;
+      if (keyCode == KeyEvent.VK_T) {
+        performIncreaseThreat();
+      } else if (keyCode == KeyEvent.VK_N) {
+        performAdvanceStatusPhase();
+      } else if (keyCode == KeyEvent.VK_ESCAPE) {
+        gameEnd = true;
+      } else {
+        return false;
+      }
+      return true;
     }
     if (keyCode == KeyEvent.VK_ESCAPE) {
       gameEnd = true;
@@ -321,11 +330,12 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
       button.setVisible(false);
       button.setBounds(0, 0, buttonSize, buttonSize);
     }
-    increaseThreatButton.addActionListener(e -> {
-      game.increaseThreat();
-    });
+    increaseThreatButton.addActionListener(e -> performIncreaseThreat());
     increaseThreatButton.setVisible(false);
     add(increaseThreatButton);
+    nextRoundButton.addActionListener(e -> performAdvanceStatusPhase());
+    nextRoundButton.setVisible(false);
+    add(nextRoundButton);
     System.out.println("INITIALIZED BUTTONS");
   }
 
@@ -460,7 +470,6 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 
   @Override
   public Dimension getPreferredSize() {
-    updateLayoutState();
     return new Dimension(layoutHandler.getPreferredScreenWidth(), layoutHandler.getPreferredScreenHeight());
   }
 
@@ -909,14 +918,18 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   }
 
   private void updateLayoutState() {
-    layoutHandler.setSidebarState(getScreenWidth(), getScreenHeight(), game.getMapDrawWidth(), promptPanel.isVisible(),
-        shouldReserveThreatButtonSpace());
+    layoutHandler.setSidebarState(getScreenWidth(), getScreenHeight(), game.getMapDrawWidth(), promptPanel.isVisible());
+    increaseThreatButton.setVisible(shouldShowThreatButton());
+    nextRoundButton.setVisible(shouldShowNextRoundButton());
+    layoutHandler.addVisualComponent(increaseThreatButton, LayoutHandler.Priority.HIGH,
+        layoutHandler.getSidebarButtonWidth(), layoutHandler.getSidebarButtonHeight());
+    layoutHandler.addVisualComponent(nextRoundButton, LayoutHandler.Priority.HIGH,
+        layoutHandler.getSidebarButtonWidth(), layoutHandler.getSidebarButtonHeight());
     buttonSize = layoutHandler.getMovementButtonSize();
   }
 
   private void positionOverlayComponents() {
     promptPanel.setBounds(layoutHandler.getPromptPanelBounds());
-    increaseThreatButton.setBounds(layoutHandler.getThreatButtonBounds());
     missionOneButton.setBounds(layoutHandler.getMissionOneButtonBounds());
     missionTwoButton.setBounds(layoutHandler.getMissionTwoButtonBounds());
   }
@@ -955,8 +968,44 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     return currentHeight > 0 ? currentHeight : Math.max(LayoutHandler.DEFAULT_SCREEN_HEIGHT, game.getMapDrawWidth());
   }
 
-  private boolean shouldReserveThreatButtonSpace() {
-    return !readOnly && !remoteMode && gameStarted && !gameEnd;
+  private boolean shouldShowThreatButton() {
+    return readOnly && gameStarted && !gameEnd;
+  }
+
+  private boolean shouldShowNextRoundButton() {
+    return shouldShowThreatButton();
+  }
+
+  private void performIncreaseThreat() {
+    if (readOnly) {
+      increaseThreatAction.run();
+      return;
+    }
+    if (!remoteMode) {
+      game.increaseThreat();
+      repaint();
+    }
+  }
+
+  private void performAdvanceStatusPhase() {
+    if (readOnly) {
+      nextRoundAction.run();
+      return;
+    }
+    if (!remoteMode) {
+      game.advanceStatusPhase();
+      repaint();
+    }
+  }
+
+  public void setIncreaseThreatAction(Runnable increaseThreatAction) {
+    this.increaseThreatAction = increaseThreatAction == null ? () -> {
+    } : increaseThreatAction;
+  }
+
+  public void setNextRoundAction(Runnable nextRoundAction) {
+    this.nextRoundAction = nextRoundAction == null ? () -> {
+    } : nextRoundAction;
   }
 
   private void startBannerTimer(long token) {
