@@ -22,7 +22,9 @@ import java.awt.image.BufferedImage;
 import util.MyArrayList;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import javax.swing.AbstractAction;
@@ -67,7 +69,9 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   private CompletableFuture<String> remoteBoardSelection;
   private RemotePrompt activeRemotePrompt;
   private CompletableFuture<String> activePromptResponse;
+  private long activePromptId = -1L;
   private PromptKind activePromptKind;
+  private final Set<Long> pendingPromptCancels = ConcurrentHashMap.newKeySet();
   private final JPanel promptPanel = new JPanel(new BorderLayout(8, 8)) {
     @Override
     protected void paintComponent(Graphics g) {
@@ -238,9 +242,9 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     if (keyCode == KeyEvent.VK_ESCAPE) {
       gameEnd = true;
     } else if (!remoteMode && keyCode == KeyEvent.VK_T) {
-      game.increaseThreat();
+      performIncreaseThreat();
     } else if (!remoteMode && keyCode == KeyEvent.VK_N) {
-      game.advanceStatusPhase();
+      performAdvanceStatusPhase();
     } else if (!remoteMode && keyCode == KeyEvent.VK_C) {
       game.clearDice();
     } else if (!remoteMode && keyCode == KeyEvent.VK_R) {
@@ -361,9 +365,10 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     }
   }
 
-  private CompletableFuture<String> beginPrompt(PromptKind kind, String name, String explanation) {
+  private CompletableFuture<String> beginPrompt(long promptId, PromptKind kind, String name, String explanation) {
     CompletableFuture<String> future = new CompletableFuture<>();
     Runnable setup = () -> {
+      activePromptId = promptId;
       activePromptKind = kind;
       activePromptResponse = future;
       promptTitleLabel.setText(name);
@@ -377,6 +382,9 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
       repaint();
       if (kind == PromptKind.NUMERIC) {
         numericPromptField.requestFocusInWindow();
+      }
+      if (pendingPromptCancels.remove(promptId)) {
+        future.cancel(true);
       }
     };
     future.whenComplete((value, error) -> SwingUtilities.invokeLater(() -> {
@@ -393,6 +401,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   }
 
   private void clearPromptPanel() {
+    activePromptId = -1L;
     activePromptKind = null;
     activePromptResponse = null;
     promptActionsPanel.removeAll();
@@ -734,39 +743,72 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   }
 
   public int promptMultipleChoice(String name, String explanation, Object[] options) {
-    CompletableFuture<String> future = beginPrompt(PromptKind.MULTIPLE_CHOICE, name, explanation);
-    SwingUtilities.invokeLater(() -> {
-      promptActionsPanel.removeAll();
-      for (int i = 0; i < options.length; i++) {
-        addPromptButton(String.valueOf(options[i]), String.valueOf(i));
+    return promptMultipleChoice(-1L, name, explanation, options);
+  }
+
+  public int promptMultipleChoice(long promptId, String name, String explanation, Object[] options) {
+    CompletableFuture<String> future = beginPrompt(promptId, PromptKind.MULTIPLE_CHOICE, name, explanation);
+    game.setActivePromptCancelAction(() -> future.cancel(true));
+    try {
+      if (!future.isCancelled()) {
+        SwingUtilities.invokeLater(() -> {
+          promptActionsPanel.removeAll();
+          for (int i = 0; i < options.length; i++) {
+            addPromptButton(String.valueOf(options[i]), String.valueOf(i));
+          }
+          promptPanel.revalidate();
+          promptPanel.repaint();
+        });
       }
-      promptPanel.revalidate();
-      promptPanel.repaint();
-    });
-    return Integer.parseInt(future.join());
+      return Integer.parseInt(future.join());
+    } finally {
+      game.clearActivePromptCancelAction();
+    }
   }
 
   public boolean promptYesNo(String name, String explanation) {
-    CompletableFuture<String> future = beginPrompt(PromptKind.YES_NO, name, explanation);
-    SwingUtilities.invokeLater(() -> {
-      promptActionsPanel.removeAll();
-      addPromptButton("No", String.valueOf(false));
-      addPromptButton("Yes", String.valueOf(true));
-      promptPanel.revalidate();
-      promptPanel.repaint();
-    });
-    return Boolean.parseBoolean(future.join());
+    return promptYesNo(-1L, name, explanation);
+  }
+
+  public boolean promptYesNo(long promptId, String name, String explanation) {
+    CompletableFuture<String> future = beginPrompt(promptId, PromptKind.YES_NO, name, explanation);
+    game.setActivePromptCancelAction(() -> future.cancel(true));
+    try {
+      if (!future.isCancelled()) {
+        SwingUtilities.invokeLater(() -> {
+          promptActionsPanel.removeAll();
+          addPromptButton("No", String.valueOf(false));
+          addPromptButton("Yes", String.valueOf(true));
+          promptPanel.revalidate();
+          promptPanel.repaint();
+        });
+      }
+      return Boolean.parseBoolean(future.join());
+    } finally {
+      game.clearActivePromptCancelAction();
+    }
   }
 
   public int promptNumericChoice(String name, String explanation, int minValue, int maxValue) {
+    return promptNumericChoice(-1L, name, explanation, minValue, maxValue);
+  }
+
+  public int promptNumericChoice(long promptId, String name, String explanation, int minValue, int maxValue) {
     numericPromptMinValue = minValue;
     numericPromptMaxValue = maxValue;
-    CompletableFuture<String> future = beginPrompt(PromptKind.NUMERIC, name,
+    CompletableFuture<String> future = beginPrompt(promptId, PromptKind.NUMERIC, name,
         explanation + " (" + minValue + " to " + maxValue + ")");
-    SwingUtilities.invokeLater(() -> {
-      numericPromptField.setToolTipText("Enter a value from " + minValue + " to " + maxValue);
-    });
-    return Integer.parseInt(future.join());
+    game.setActivePromptCancelAction(() -> future.cancel(true));
+    try {
+      if (!future.isCancelled()) {
+        SwingUtilities.invokeLater(() -> {
+          numericPromptField.setToolTipText("Enter a value from " + minValue + " to " + maxValue);
+        });
+      }
+      return Integer.parseInt(future.join());
+    } finally {
+      game.clearActivePromptCancelAction();
+    }
   }
 
   public void deactivateMovementButton(Directions dir) {
@@ -812,7 +854,17 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
       return CompletableFuture.completedFuture(null);
     }
     activeRemotePrompt = prompt;
+    activePromptId = prompt.promptId();
     remoteBoardSelection = new CompletableFuture<>();
+    remoteBoardSelection.whenComplete((value, error) -> SwingUtilities.invokeLater(() -> {
+      if (activeRemotePrompt != null && activeRemotePrompt.promptId() == prompt.promptId()) {
+        clearRemotePrompt();
+      }
+    }));
+    if (pendingPromptCancels.remove(prompt.promptId())) {
+      remoteBoardSelection.cancel(true);
+      return remoteBoardSelection;
+    }
     if (prompt.selectionType() != null) {
       setSelectionType(prompt.selectionType());
     }
@@ -844,9 +896,44 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   public void clearRemotePrompt() {
     activeRemotePrompt = null;
     remoteBoardSelection = null;
+    activePromptId = -1L;
     deactiveateMovementButtons();
     setSelectionType(SelectionType.EXPLANATION);
     repaint();
+  }
+
+  public void cancelPrompt(long promptId) {
+    if (activePromptId != promptId) {
+      pendingPromptCancels.add(promptId);
+      return;
+    }
+    if (activePromptResponse != null && !activePromptResponse.isDone()) {
+      activePromptResponse.cancel(true);
+    }
+    if (remoteBoardSelection != null && !remoteBoardSelection.isDone()) {
+      remoteBoardSelection.cancel(true);
+    }
+    clearRemotePrompt();
+  }
+
+  @Override
+  public void resetTransientTurnState() {
+    Runnable reset = () -> {
+      if (activePromptResponse != null && !activePromptResponse.isDone()) {
+        activePromptResponse.cancel(true);
+      }
+      if (remoteBoardSelection != null && !remoteBoardSelection.isDone()) {
+        remoteBoardSelection.cancel(true);
+      }
+      deactiveateMovementButtons();
+      setSelectionType(SelectionType.EXPLANATION);
+      repaint();
+    };
+    if (SwingUtilities.isEventDispatchThread()) {
+      reset.run();
+    } else {
+      SwingUtilities.invokeLater(reset);
+    }
   }
 
   public void setTurnStatus(game.PlayerSeat seat) {
@@ -982,7 +1069,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
       return;
     }
     if (!remoteMode) {
-      game.increaseThreat();
+      new Thread(game::increaseThreat, "Manual Threat").start();
       repaint();
     }
   }
@@ -993,7 +1080,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
       return;
     }
     if (!remoteMode) {
-      game.advanceStatusPhase();
+      game.requestAdvanceStatusPhase();
       repaint();
     }
   }

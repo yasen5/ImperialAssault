@@ -18,6 +18,7 @@ import net.structs.JoinRequest;
 import net.structs.JoinResponse;
 import net.structs.MatchSnapshot;
 import net.structs.RemotePrompt;
+import net.structs.RemotePromptCancel;
 import net.structs.PromptResponse;
 import net.structs.ClientMissionSelection;
 
@@ -84,6 +85,8 @@ public class GameClient {
         });
       } else if (message instanceof RemotePrompt prompt) {
         new Thread(() -> handlePrompt(prompt), "Remote Prompt").start();
+      } else if (message instanceof RemotePromptCancel cancel) {
+        SwingUtilities.invokeLater(() -> screen.cancelPrompt(cancel.promptId()));
       }
     }
   }
@@ -92,10 +95,10 @@ public class GameClient {
     try {
       String value = switch (prompt.type()) {
         case MULTIPLE_CHOICE -> String.valueOf(
-            screen.promptMultipleChoice(prompt.title(), prompt.message(), prompt.optionLabels().toArray()));
-        case YES_NO -> String.valueOf(screen.promptYesNo(prompt.title(), prompt.message()));
+            screen.promptMultipleChoice(prompt.promptId(), prompt.title(), prompt.message(), prompt.optionLabels().toArray()));
+        case YES_NO -> String.valueOf(screen.promptYesNo(prompt.promptId(), prompt.title(), prompt.message()));
         case NUMERIC -> String.valueOf(
-            screen.promptNumericChoice(prompt.title(), prompt.message(), prompt.minValue(),
+            screen.promptNumericChoice(prompt.promptId(), prompt.title(), prompt.message(), prompt.minValue(),
                 prompt.maxValue()));
         case DIRECTION, TARGET -> {
           CompletableFuture<String> selection;
@@ -106,11 +109,12 @@ public class GameClient {
           SwingUtilities.invokeAndWait(() -> selectionRef[0] = screen.beginRemoteBoardPrompt(prompt));
           selection = selectionRef[0];
           String result = selection.join();
-          SwingUtilities.invokeLater(() -> screen.clearRemotePrompt());
           yield result;
         }
       };
       send(new PromptResponse(prompt.promptId(), value));
+    } catch (java.util.concurrent.CancellationException ex) {
+      SwingUtilities.invokeLater(() -> screen.cancelPrompt(prompt.promptId()));
     } catch (Exception ex) {
       throw new RuntimeException(ex);
     }

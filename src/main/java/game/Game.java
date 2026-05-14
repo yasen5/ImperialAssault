@@ -7,6 +7,7 @@ import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import util.MyArrayList;
 
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
@@ -44,6 +45,11 @@ public class Game {
   private boolean gameEnd;
   private boolean rebelsWin = true;
   private PlayerSeat actingSeat = PlayerSeat.REBEL_1;
+  private volatile boolean advanceStatusPhaseRequested;
+  private volatile boolean statusPhaseInProgress;
+  private volatile boolean abortStatusPhasePrompts;
+  private volatile Runnable activePromptCancelAction = () -> {
+  };
   private long bannerId;
   private String bannerText;
   private long bannerExpiresAt;
@@ -154,33 +160,46 @@ public class Game {
   }
 
   private void playCycle() {
-    for (PlayerSeat rebelSeat : sessionConfig.rebelTurnOrder()) {
-      MyArrayList<Hero> seatOptions = getHeroExhaustOptions(rebelSeat);
-      if (!seatOptions.isEmpty()) {
-        announceTurnStart(rebelSeat);
-        activateHero(rebelSeat, seatOptions);
+    try {
+      if (advanceStatusPhaseRequested) {
+        finishRoundTransition();
+        return;
+      }
+      for (PlayerSeat rebelSeat : sessionConfig.rebelTurnOrder()) {
+        MyArrayList<Hero> seatOptions = getHeroExhaustOptions(rebelSeat);
+        if (!seatOptions.isEmpty()) {
+          announceTurnStart(rebelSeat);
+          activateHero(rebelSeat, seatOptions);
+          if (gameEnd) {
+            return;
+          }
+          announceTurnEnd(rebelSeat);
+        }
+      }
+      MyArrayList<DeploymentGroup<? extends Imperial>> imperialExhaustOptions = getImperialExhaustOptions();
+      if (!imperialExhaustOptions.isEmpty()) {
+        actingSeat = PlayerSeat.IMPERIAL;
+        updateTurnStatus();
+        announceTurnStart(PlayerSeat.IMPERIAL);
+        activateImperials(imperialExhaustOptions);
         if (gameEnd) {
           return;
         }
-        announceTurnEnd(rebelSeat);
+        announceTurnEnd(PlayerSeat.IMPERIAL);
       }
-    }
-    MyArrayList<DeploymentGroup<? extends Imperial>> imperialExhaustOptions = getImperialExhaustOptions();
-    if (!imperialExhaustOptions.isEmpty()) {
-      actingSeat = PlayerSeat.IMPERIAL;
-      updateTurnStatus();
-      announceTurnStart(PlayerSeat.IMPERIAL);
-      activateImperials(imperialExhaustOptions);
-      if (gameEnd) {
+      repaint();
+      if (getHeroExhaustOptions().isEmpty() && imperialExhaustOptions.isEmpty()) {
+        resolveStatusPhase();
+      }
+      checkEndGame();
+    } catch (CancellationException ex) {
+      if (advanceStatusPhaseRequested) {
+        Thread.interrupted();
+        finishRoundTransition();
         return;
       }
-      announceTurnEnd(PlayerSeat.IMPERIAL);
+      throw ex;
     }
-    repaint();
-    if (getHeroExhaustOptions().isEmpty() && imperialExhaustOptions.isEmpty()) {
-      resolveStatusPhase();
-    }
-    checkEndGame();
   }
 
   private void activateHero(PlayerSeat rebelSeat, MyArrayList<Hero> seatOptions) {
@@ -248,10 +267,17 @@ public class Game {
   }
 
   private void resolveStatusPhase() {
-    threatDial++;
-    triggerBanner("Threat dial increased to " + threatDial);
-    replenishDeployments();
-    resolveImperialOptionalDeployments();
+    statusPhaseInProgress = true;
+    advanceStatusPhaseRequested = false;
+    abortStatusPhasePrompts = false;
+    try {
+      threatDial++;
+      triggerBanner("Threat dial increased to " + threatDial);
+      replenishDeployments();
+      resolveImperialOptionalDeployments();
+    } finally {
+      statusPhaseInProgress = false;
+    }
   }
 
   public void increaseThreat() {
@@ -266,23 +292,104 @@ public class Game {
     if (gameEnd) {
       return;
     }
+    requestAdvanceStatusPhase();
+  }
+
+  public void requestAdvanceStatusPhase() {
+    if (gameEnd) {
+      return;
+    }
+    if (!statusPhaseInProgress) {
+      advanceStatusPhaseRequested = true;
+    } else {
+      abortStatusPhasePrompts = true;
+    }
+    cancelActivePrompt();
+    if (ui != null) {
+      ui.resetTransientTurnState();
+    }
+  }
+
+  public void setActivePromptCancelAction(Runnable activePromptCancelAction) {
+    this.activePromptCancelAction = activePromptCancelAction == null ? () -> {
+    } : activePromptCancelAction;
+  }
+
+  public void clearActivePromptCancelAction() {
+    this.activePromptCancelAction = () -> {
+    };
+  }
+
+  public void cancelActivePrompt() {
+    Runnable cancelAction = activePromptCancelAction;
+    if (cancelAction != null) {
+      cancelAction.run();
+    }
+  }
+
+  private void finishRoundTransition() {
+    advanceStatusPhaseRequested = false;
+    cleanupTransientTurnState();
     resolveStatusPhase();
+    checkEndGame();
+  }
+
+  private void cleanupTransientTurnState() {
+    currentSelected.cancel(true);
+    currentSelected = new CompletableFuture<>();
+    for (Personnel target : availableTargets) {
+      target.setPossibleTarget(false);
+    }
+    availableTargets.clear();
+    for (Hero hero : heroes) {
+      hero.setActive(false);
+      hero.setPossibleTarget(false);
+    }
+    for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
+      for (Imperial imperial : group.getMembers()) {
+        imperial.setActive(false);
+        imperial.setPossibleTarget(false);
+      }
+    }
+    if (ui != null) {
+      ui.resetTransientTurnState();
+    }
+    repaint();
   }
 
   private void resolveImperialOptionalDeployments() {
     while (true) {
+      if (!statusPhaseInProgress || abortStatusPhasePrompts) {
+        return;
+      }
       MyArrayList<DeploymentGroup<? extends Imperial>> deployableGroups = getOptionalDeploymentOptions();
       if (deployableGroups.isEmpty()) {
         return;
       }
-      boolean wantsDeploy = promptYesNo(PlayerSeat.IMPERIAL, "Imperial Deployment",
-          "Spend threat to deploy an additional imperial group?");
+      boolean wantsDeploy;
+      try {
+        wantsDeploy = promptYesNo(PlayerSeat.IMPERIAL, "Imperial Deployment",
+            "Spend threat to deploy an additional imperial group?");
+      } catch (CancellationException ex) {
+        if (statusPhaseInProgress && abortStatusPhasePrompts) {
+          return;
+        }
+        throw ex;
+      }
       if (!wantsDeploy) {
         return;
       }
-      DeploymentGroup<? extends Imperial> chosenGroup = deployableGroups
-          .get(promptMultipleChoice(PlayerSeat.IMPERIAL, "Imperial Deployment",
-              "Choose a group to deploy", deployableGroups.toArray()));
+      DeploymentGroup<? extends Imperial> chosenGroup;
+      try {
+        chosenGroup = deployableGroups
+            .get(promptMultipleChoice(PlayerSeat.IMPERIAL, "Imperial Deployment",
+                "Choose a group to deploy", deployableGroups.toArray()));
+      } catch (CancellationException ex) {
+        if (statusPhaseInProgress && abortStatusPhasePrompts) {
+          return;
+        }
+        throw ex;
+      }
       deployImperialGroup(chosenGroup);
     }
   }

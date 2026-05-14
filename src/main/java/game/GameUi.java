@@ -7,6 +7,8 @@ public interface GameUi {
 
   void deactiveateMovementButtons();
 
+  void resetTransientTurnState();
+
   void endGame(boolean rebelsWin);
 
   void showBanner(String text);

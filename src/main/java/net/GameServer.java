@@ -13,6 +13,7 @@ import util.MyHashMap;
 import java.util.Enumeration;
 
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -35,6 +36,7 @@ import net.structs.JoinResponse;
 import net.structs.LobbySnapshot;
 import net.structs.MatchSnapshot;
 import net.structs.PromptResponse;
+import net.structs.RemotePromptCancel;
 import net.structs.RemotePrompt;
 import visual.Screen;
 
@@ -99,8 +101,7 @@ public class GameServer {
       SwingUtilities.invokeLater(() -> {
         if (spectatorScreen != null) {
           spectatorScreen.setIncreaseThreatAction(() -> new Thread(game::increaseThreat, "Manual Threat").start());
-          spectatorScreen.setNextRoundAction(
-              () -> new Thread(game::advanceStatusPhase, "Manual Next Round").start());
+          spectatorScreen.setNextRoundAction(game::requestAdvanceStatusPhase);
         }
       });
       broadcastSnapshot(game.createSnapshot());
@@ -362,13 +363,22 @@ public class GameServer {
 
     private String requestResponse(RemotePrompt prompt) {
       ClientConnection connection = clients.get(prompt.seat());
-      connection.send(game.createSnapshot());
-      connection.send(prompt);
-      PromptResponse response;
-      do {
-        response = connection.takeResponse();
-      } while (response.promptId() != prompt.promptId());
-      return response.value();
+      Thread waitingThread = Thread.currentThread();
+      game.setActivePromptCancelAction(() -> {
+        connection.send(new RemotePromptCancel(prompt.promptId()));
+        waitingThread.interrupt();
+      });
+      try {
+        connection.send(game.createSnapshot());
+        connection.send(prompt);
+        PromptResponse response;
+        do {
+          response = connection.takeResponse();
+        } while (response.promptId() != prompt.promptId());
+        return response.value();
+      } finally {
+        game.clearActivePromptCancelAction();
+      }
     }
   }
 
@@ -423,8 +433,7 @@ public class GameServer {
       try {
         return responses.take();
       } catch (InterruptedException ex) {
-        Thread.currentThread().interrupt();
-        throw new RuntimeException(ex);
+        throw new CancellationException("Prompt cancelled");
       }
     }
   }
