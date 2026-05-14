@@ -5,12 +5,15 @@ import java.awt.Graphics;
 import game.Die.DefenseDieType;
 import game.Die.OffenseDieType;
 import game.Die.OffenseRoll;
+import util.MyArrayList;
 
 public abstract class Hero extends Personnel implements FullDeployment {
     // Instance variables
     private int endurance;
     protected boolean wounded;
     private Equipment.Weapon weapon;
+    private Equipment.Item defaultEquipment;
+    private MyArrayList<Equipment.Item> equipment = new MyArrayList<>();
     private boolean exhausted = false;
     private DeploymentCard deploymentCard;
     private boolean displayStats = false;
@@ -21,6 +24,8 @@ public abstract class Hero extends Personnel implements FullDeployment {
         super(name, startingHealth, speed, pos, defenseDice, hasSpecial, specialRequiresSelection);
         this.endurance = endurance;
         this.weapon = weapon;
+        this.defaultEquipment = Equipment.asItem(weapon);
+        this.equipment.add(defaultEquipment);
         this.wounded = false;
         this.deploymentCard = new DeploymentCard(name, true, this);
         this.actions.add(Actions.RECOVER);
@@ -90,6 +95,52 @@ public abstract class Hero extends Personnel implements FullDeployment {
 
     public Equipment.SurgeOptions[] getSurgeOptions() {
         return weapon.surgeOptions();
+    }
+
+    public void addEquipment(Equipment.Item item) {
+        if (item == null || hasEquipment(item.id())) {
+            return;
+        }
+        equipment.add(item);
+    }
+
+    @Override
+    public MyArrayList<Equipment.Item> getEquipment() {
+        return new MyArrayList<>(equipment);
+    }
+
+    public MyArrayList<String> getEquipmentIds() {
+        MyArrayList<String> ids = new MyArrayList<>();
+        for (Equipment.Item item : equipment) {
+            ids.add(item.id());
+        }
+        return ids;
+    }
+
+    public void applyEquipmentIds(MyArrayList<String> equipmentIds) {
+        equipment.clear();
+        equipment.add(defaultEquipment);
+        if (equipmentIds == null) {
+            return;
+        }
+        for (String equipmentId : equipmentIds) {
+            if (equipmentId == null || equipmentId.equals(defaultEquipment.id()) || hasEquipment(equipmentId)) {
+                continue;
+            }
+            Equipment.Item item = Equipment.findItem(equipmentId);
+            if (item != null) {
+                equipment.add(item);
+            }
+        }
+    }
+
+    private boolean hasEquipment(String equipmentId) {
+        for (Equipment.Item item : equipment) {
+            if (item.id().equals(equipmentId)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public DeploymentCard getDeploymentCard() {

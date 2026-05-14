@@ -17,6 +17,7 @@ public record MatchSnapshot(
         MyArrayList<FigureSnapshot> heroes,
         MyArrayList<DeploymentGroupSnapshot> imperialGroups,
         MyArrayList<Boolean> interactableStates,
+        int nextSupplyEquipmentIndex,
         MyArrayList<String> offenseResults,
         MyArrayList<String> defenseResults,
         boolean gameEnd,

@@ -11,7 +11,9 @@ public class SupplyBox extends Interactable<Hero> {
 
     @Override
     public void safeInteract(Hero interactor) {
-        // Future equipment reward logic should be triggered here when supply cards exist.
+        if (game != null) {
+            game.awardSupplyEquipment(interactor);
+        }
         active = false;
         if (game != null) {
             game.repaint();

@@ -56,6 +56,7 @@ public class Game {
   private String bannerText;
   private long bannerExpiresAt;
   private long lastAppliedBannerId;
+  private int nextSupplyEquipmentIndex;
   private final GameSessionConfig sessionConfig;
 
   public static record MapTile(BufferedImage img, int[][] tileArray) {
@@ -687,6 +688,7 @@ public class Game {
     gameEnd = false;
     rebelsWin = true;
     threatDial = 0;
+    nextSupplyEquipmentIndex = 0;
     currentTurnSeat = firstTurnSeat();
     actingSeat = currentTurnSeat;
     heroes.clear();
@@ -701,6 +703,7 @@ public class Game {
 
   public void setup() {
     threatDial = 0;
+    nextSupplyEquipmentIndex = 0;
     currentTurnSeat = firstTurnSeat();
     actingSeat = currentTurnSeat;
     heroes.clear();
@@ -767,6 +770,16 @@ public class Game {
       imperial.setOwnerSeat(seat);
       index++;
     }
+  }
+
+  public void awardSupplyEquipment(Hero hero) {
+    Equipment.Item item = Equipment.getSupplyItem(nextSupplyEquipmentIndex);
+    if (item == null) {
+      return;
+    }
+    nextSupplyEquipmentIndex++;
+    hero.addEquipment(item);
+    triggerBanner(hero.getDisplayName() + " found " + item.name());
   }
 
   public void addOffenseResultInternal(GraphicOffenseDieResult offenseResult) {
@@ -908,7 +921,7 @@ public class Game {
     for (Hero hero : heroes) {
       heroSnapshots.add(new FigureSnapshot(hero.getId(), hero.getName(), hero.getPos().getX(), hero.getPos().getY(),
           hero.getHealth(), hero.getStrain(), hero.stunned(), hero.focused, hero.isActive(),
-          hero.isPossibleTarget(), hero.getExhausted(), hero.getOwnerSeat()));
+          hero.isPossibleTarget(), hero.getExhausted(), hero.getOwnerSeat(), hero.getEquipmentIds()));
     }
     MyArrayList<DeploymentGroupSnapshot> groupSnapshots = new MyArrayList<>();
     for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
@@ -917,7 +930,7 @@ public class Game {
         members.add(new FigureSnapshot(imperial.getId(), imperial.getName(), imperial.getPos().getX(),
             imperial.getPos().getY(), imperial.getHealth(), imperial.getStrain(), imperial.stunned(),
             imperial.focused, imperial.isActive(), imperial.isPossibleTarget(), false,
-            imperial.getOwnerSeat()));
+            imperial.getOwnerSeat(), new MyArrayList<>()));
       }
       groupSnapshots.add(new DeploymentGroupSnapshot(group.getId(), group.toString(), group.getExhausted(),
           group.getDeployed(), group.getDeploymentCost(), group.getOwnerSeat(), members));
@@ -937,7 +950,7 @@ public class Game {
     return new MatchSnapshot(sessionConfig, actingSeat, currentTurnSeat, threatDial, bannerId, bannerText,
         bannerExpiresAt,
         heroSnapshots,
-        groupSnapshots, interactableStates, offense, defense, gameEnd, rebelsWin);
+        groupSnapshots, interactableStates, nextSupplyEquipmentIndex, offense, defense, gameEnd, rebelsWin);
   }
 
   public void loadSnapshot(MatchSnapshot snapshot) {
@@ -979,6 +992,7 @@ public class Game {
     this.actingSeat = snapshot.actingSeat();
     this.currentTurnSeat = snapshot.currentTurnSeat() == null ? snapshot.actingSeat() : snapshot.currentTurnSeat();
     this.threatDial = snapshot.threatDial();
+    this.nextSupplyEquipmentIndex = snapshot.nextSupplyEquipmentIndex();
     if (snapshot.bannerId() > lastAppliedBannerId && ui != null) {
       lastAppliedBannerId = snapshot.bannerId();
       long remaining = snapshot.bannerExpiresAt() - System.currentTimeMillis();
@@ -1116,6 +1130,7 @@ public class Game {
     personnel.setPossibleTarget(snapshot.possibleTarget());
     if (personnel instanceof Hero hero) {
       hero.setExhausted(snapshot.exhausted());
+      hero.applyEquipmentIds(snapshot.equipmentIds());
     }
   }
 

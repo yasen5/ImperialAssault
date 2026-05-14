@@ -7,6 +7,7 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import util.MyArrayList;
 
 // Interface for things that have deployment cards and stats
 interface FullDeployment {
@@ -53,6 +54,10 @@ interface FullDeployment {
     return false;
   }
 
+  default MyArrayList<Equipment.Item> getEquipment() {
+    return new MyArrayList<>();
+  }
+
   public default void setDeploymentVisibility(boolean value) {
     getDeploymentCard().setVisible(value);
   }
@@ -68,6 +73,7 @@ interface FullDeployment {
 
     PersonnelStatus[] statuses = getStatuses();
     String[] labels = getStatusLabels();
+    MyArrayList<Equipment.Item> equipment = getEquipment();
     int panelX = detailBounds.x;
     int panelY = detailBounds.y;
     int panelWidth = detailBounds.width;
@@ -88,13 +94,17 @@ interface FullDeployment {
     int metricBarHeight = Math.max(1, panelWidth / METRIC_BAR_HEIGHT_DIVISOR);
     int chipHeight = Math.max(1, panelWidth / DETAIL_PILL_HEIGHT_DIVISOR);
     int headerHeight = Math.max(padding * 2 + titleLineHeight, panelWidth / DETAIL_HEADER_HEIGHT_DIVISOR);
+    int equipmentLineHeight = Math.max(1, metricLineHeight);
+    int equipmentSectionHeight = equipment.isEmpty() ? 0
+        : padding * 2 + equipmentLineHeight * (Math.min(4, equipment.size()) + 1) + smallPadding;
     int minimumRowHeight = padding * 3 + rowLineHeight + metricLineHeight * 2 + metricBarHeight * 2 + chipHeight
         + smallPadding * 4;
-    int availableRowsHeight = Math.max(minimumRowHeight, detailBounds.height - headerHeight - padding);
+    int availableRowsHeight = Math.max(minimumRowHeight,
+        detailBounds.height - headerHeight - equipmentSectionHeight - padding);
     int rowHeight = statuses.length <= 1
         ? Math.min(availableRowsHeight, Math.max(minimumRowHeight, panelWidth / DETAIL_ROW_HEIGHT_DIVISOR))
         : Math.max(minimumRowHeight, availableRowsHeight / Math.max(1, statuses.length));
-    int panelHeight = headerHeight + rowHeight * statuses.length + padding;
+    int panelHeight = headerHeight + rowHeight * statuses.length + equipmentSectionHeight + padding;
     int cornerArc = Math.max(1, panelWidth / DETAIL_CORNER_DIVISOR);
 
     g2.setColor(new Color(10, 12, 16, 230));
@@ -165,7 +175,44 @@ interface FullDeployment {
       currentY += rowHeight;
     }
 
+    if (!equipment.isEmpty()) {
+      drawEquipmentSection(g2, panelX + smallPadding, currentY, panelWidth - smallPadding * 2, equipment,
+          equipmentLineHeight, metricFontSize, padding, smallPadding);
+    }
+
     g2.dispose();
+  }
+
+  private static void drawEquipmentSection(Graphics2D g2, int x, int y, int width,
+      MyArrayList<Equipment.Item> equipment, int lineHeight, float fontSize, int padding, int smallPadding) {
+    int visibleItems = Math.min(4, equipment.size());
+    int height = padding * 2 + lineHeight * (visibleItems + 1) + smallPadding;
+    int cornerArc = Math.max(1, width / DETAIL_CORNER_DIVISOR);
+    g2.setColor(new Color(255, 255, 255, 18));
+    g2.fillRoundRect(x, y, width, height, cornerArc, cornerArc);
+    g2.setColor(new Color(255, 255, 255, 24));
+    g2.drawRoundRect(x, y, width, height, cornerArc, cornerArc);
+
+    g2.setFont(g2.getFont().deriveFont(Font.BOLD, fontSize));
+    g2.setColor(Color.WHITE);
+    FontMetrics metrics = g2.getFontMetrics();
+    int textY = y + padding + metrics.getAscent();
+    g2.drawString("Equipment", x + padding, textY);
+    textY += lineHeight;
+
+    g2.setFont(g2.getFont().deriveFont(Font.PLAIN, fontSize));
+    metrics = g2.getFontMetrics();
+    int textWidth = width - padding * 2;
+    for (int i = 0; i < visibleItems; i++) {
+      Equipment.Item item = equipment.get(i);
+      String label = item.name() + ": " + item.description();
+      g2.setColor(mutedTextColor);
+      g2.drawString(fitText(metrics, label, textWidth), x + padding, textY);
+      textY += lineHeight;
+    }
+    if (equipment.size() > visibleItems) {
+      g2.drawString("+" + (equipment.size() - visibleItems) + " more", x + padding, textY);
+    }
   }
 
   private static int drawMetric(Graphics2D g2, int x, int y, int width, float fontSize, String label, String value,
@@ -229,6 +276,23 @@ interface FullDeployment {
       healthState = healthState + ", focused";
     }
     return healthState;
+  }
+
+  private static String fitText(FontMetrics metrics, String text, int maxWidth) {
+    if (metrics.stringWidth(text) <= maxWidth) {
+      return text;
+    }
+    String suffix = "...";
+    int suffixWidth = metrics.stringWidth(suffix);
+    String result = "";
+    for (int i = 0; i < text.length(); i++) {
+      String next = result + text.charAt(i);
+      if (metrics.stringWidth(next) + suffixWidth > maxWidth) {
+        break;
+      }
+      result = next;
+    }
+    return result + suffix;
   }
 
   PersonnelStatus[] getStatuses();

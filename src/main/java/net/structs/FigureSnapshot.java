@@ -1,6 +1,7 @@
 package net.structs;
 
 import java.io.Serializable;
+import util.MyArrayList;
 
 import game.PlayerSeat;
 
@@ -16,5 +17,6 @@ public record FigureSnapshot(
         boolean active,
         boolean possibleTarget,
         boolean exhausted,
-        PlayerSeat ownerSeat) implements Serializable {
+        PlayerSeat ownerSeat,
+        MyArrayList<String> equipmentIds) implements Serializable {
 }
