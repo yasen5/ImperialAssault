@@ -45,6 +45,7 @@ public class Game {
   private boolean gameEnd;
   private boolean rebelsWin = true;
   private PlayerSeat actingSeat = PlayerSeat.REBEL_1;
+  private PlayerSeat currentTurnSeat = PlayerSeat.REBEL_1;
   private volatile boolean advanceStatusPhaseRequested;
   private volatile boolean statusPhaseInProgress;
   private volatile boolean abortStatusPhasePrompts;
@@ -165,30 +166,34 @@ public class Game {
         finishRoundTransition();
         return;
       }
-      for (PlayerSeat rebelSeat : sessionConfig.rebelTurnOrder()) {
-        MyArrayList<Hero> seatOptions = getHeroExhaustOptions(rebelSeat);
-        if (!seatOptions.isEmpty()) {
-          announceTurnStart(rebelSeat);
-          activateHero(rebelSeat, seatOptions);
-          if (gameEnd) {
-            return;
+      MyArrayList<PlayerSeat> turnOrder = currentRoundTurnOrder();
+      int startIndex = getTurnIndex(currentTurnSeat, turnOrder);
+      for (int i = startIndex; i < turnOrder.size(); i++) {
+        PlayerSeat seat = turnOrder.get(i);
+        if (seat == PlayerSeat.IMPERIAL) {
+          MyArrayList<DeploymentGroup<? extends Imperial>> imperialExhaustOptions = getImperialExhaustOptions();
+          if (!imperialExhaustOptions.isEmpty()) {
+            startTurn(PlayerSeat.IMPERIAL);
+            activateImperials(imperialExhaustOptions);
+            if (gameEnd) {
+              return;
+            }
+            endTurn(PlayerSeat.IMPERIAL);
           }
-          announceTurnEnd(rebelSeat);
+        } else {
+          MyArrayList<Hero> seatOptions = getHeroExhaustOptions(seat);
+          if (!seatOptions.isEmpty()) {
+            startTurn(seat);
+            activateHero(seat, seatOptions);
+            if (gameEnd) {
+              return;
+            }
+            endTurn(seat);
+          }
         }
-      }
-      MyArrayList<DeploymentGroup<? extends Imperial>> imperialExhaustOptions = getImperialExhaustOptions();
-      if (!imperialExhaustOptions.isEmpty()) {
-        actingSeat = PlayerSeat.IMPERIAL;
-        updateTurnStatus();
-        announceTurnStart(PlayerSeat.IMPERIAL);
-        activateImperials(imperialExhaustOptions);
-        if (gameEnd) {
-          return;
-        }
-        announceTurnEnd(PlayerSeat.IMPERIAL);
       }
       repaint();
-      if (getHeroExhaustOptions().isEmpty() && imperialExhaustOptions.isEmpty()) {
+      if (getHeroExhaustOptions().isEmpty() && getImperialExhaustOptions().isEmpty()) {
         resolveStatusPhase();
       }
       checkEndGame();
@@ -271,6 +276,7 @@ public class Game {
     advanceStatusPhaseRequested = false;
     abortStatusPhasePrompts = false;
     try {
+      currentTurnSeat = firstTurnSeat();
       threatDial++;
       triggerBanner("Threat dial increased to " + threatDial);
       replenishDeployments();
@@ -671,6 +677,8 @@ public class Game {
     gameEnd = false;
     rebelsWin = true;
     threatDial = 0;
+    currentTurnSeat = firstTurnSeat();
+    actingSeat = currentTurnSeat;
     heroes.clear();
     imperialDeployments.clear();
     clearDiceInternal();
@@ -683,6 +691,8 @@ public class Game {
 
   public void setup() {
     threatDial = 0;
+    currentTurnSeat = firstTurnSeat();
+    actingSeat = currentTurnSeat;
     heroes.clear();
     imperialDeployments.clear();
     Hero diala = new DialaPassil(new Pos(6, 5));
@@ -914,7 +924,8 @@ public class Game {
     for (GraphicDefenseDieResult die : defenseResults) {
       defense.add(die.die().name() + ":" + die.face());
     }
-    return new MatchSnapshot(sessionConfig, actingSeat, threatDial, bannerId, bannerText, bannerExpiresAt,
+    return new MatchSnapshot(sessionConfig, actingSeat, currentTurnSeat, threatDial, bannerId, bannerText,
+        bannerExpiresAt,
         heroSnapshots,
         groupSnapshots, interactableStates, offense, defense, gameEnd, rebelsWin);
   }
@@ -956,6 +967,7 @@ public class Game {
     this.gameEnd = snapshot.gameEnd();
     this.rebelsWin = snapshot.rebelsWin();
     this.actingSeat = snapshot.actingSeat();
+    this.currentTurnSeat = snapshot.currentTurnSeat() == null ? snapshot.actingSeat() : snapshot.currentTurnSeat();
     this.threatDial = snapshot.threatDial();
     if (snapshot.bannerId() > lastAppliedBannerId && ui != null) {
       lastAppliedBannerId = snapshot.bannerId();
@@ -987,6 +999,47 @@ public class Game {
     if (ui != null) {
       ui.setTurnStatus(actingSeat);
     }
+  }
+
+  private void startTurn(PlayerSeat seat) {
+    currentTurnSeat = seat;
+    actingSeat = seat;
+    updateTurnStatus();
+    announceTurnStart(seat);
+  }
+
+  private void endTurn(PlayerSeat seat) {
+    currentTurnSeat = nextTurnSeatAfter(seat);
+    announceTurnEnd(seat);
+  }
+
+  private MyArrayList<PlayerSeat> currentRoundTurnOrder() {
+    MyArrayList<PlayerSeat> turnOrder = sessionConfig.rebelTurnOrder();
+    turnOrder.add(PlayerSeat.IMPERIAL);
+    return turnOrder;
+  }
+
+  private int getTurnIndex(PlayerSeat seat, MyArrayList<PlayerSeat> turnOrder) {
+    for (int i = 0; i < turnOrder.size(); i++) {
+      if (turnOrder.get(i) == seat) {
+        return i;
+      }
+    }
+    return 0;
+  }
+
+  private PlayerSeat nextTurnSeatAfter(PlayerSeat seat) {
+    MyArrayList<PlayerSeat> turnOrder = currentRoundTurnOrder();
+    int index = getTurnIndex(seat, turnOrder);
+    if (index + 1 < turnOrder.size()) {
+      return turnOrder.get(index + 1);
+    }
+    return firstTurnSeat();
+  }
+
+  private PlayerSeat firstTurnSeat() {
+    MyArrayList<PlayerSeat> rebelTurnOrder = sessionConfig.rebelTurnOrder();
+    return rebelTurnOrder.isEmpty() ? PlayerSeat.IMPERIAL : rebelTurnOrder.get(0);
   }
 
   private void triggerBanner(String text) {
