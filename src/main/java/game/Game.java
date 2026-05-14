@@ -295,6 +295,14 @@ public class Game {
     requestAdvanceStatusPhase();
   }
 
+  public void finishCurrentRound() {
+    if (gameEnd) {
+      return;
+    }
+    requestAdvanceStatusPhase();
+    repaint();
+  }
+
   public void requestAdvanceStatusPhase() {
     if (gameEnd) {
       return;
@@ -892,7 +900,7 @@ public class Game {
             imperial.getOwnerSeat()));
       }
       groupSnapshots.add(new DeploymentGroupSnapshot(group.getId(), group.toString(), group.getExhausted(),
-          group.getDeployed(), group.getOwnerSeat(), members));
+          group.getDeployed(), group.getDeploymentCost(), group.getOwnerSeat(), members));
     }
     MyArrayList<Boolean> interactableStates = new MyArrayList<>();
     for (Interactable<? extends Personnel> interactable : interactables) {
@@ -926,6 +934,7 @@ public class Game {
       group.setOwnerSeat(groupSnapshot.ownerSeat());
       group.setExhausted(groupSnapshot.exhausted());
       group.setDeployed(groupSnapshot.deployed());
+      group.setDeploymentCost(groupSnapshot.deploymentCost());
       for (int i = 0; i < group.getMembers().size() && i < groupSnapshot.members().size(); i++) {
         applyFigureSnapshot(group.getMembers().get(i), groupSnapshot.members().get(i));
       }

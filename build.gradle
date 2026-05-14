@@ -29,6 +29,9 @@ tasks.register('runServer', JavaExec) {
     description = 'Runs the multiplayer server.'
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'runners.ServerRunner'
+    if (project.hasProperty('args')) {
+        args project.property('args').toString().split('\\s+')
+    }
 }
 
 tasks.register('runClient', JavaExec) {

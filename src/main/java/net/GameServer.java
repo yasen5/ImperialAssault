@@ -3,6 +3,10 @@ package net;
 import java.io.EOFException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -43,6 +47,9 @@ import visual.Screen;
 public class GameServer {
   private final int port;
   private final GameSessionConfig config;
+  private final boolean loadPreviousGame;
+  private final Path savePath;
+  private final Object saveLock = new Object();
   private final MyHashMap<PlayerSeat, ClientConnection> clients = new MyHashMap<>(PlayerSeat.class);
   private final AtomicLong promptIds = new AtomicLong(1);
   private final Object lobbyLock = new Object();
@@ -51,8 +58,14 @@ public class GameServer {
   private volatile String hostAddress;
 
   public GameServer(int port, int rebelPlayers) {
+    this(port, rebelPlayers, true);
+  }
+
+  public GameServer(int port, int rebelPlayers, boolean loadPreviousGame) {
     this.port = port;
     this.config = new GameSessionConfig(rebelPlayers);
+    this.loadPreviousGame = loadPreviousGame;
+    this.savePath = Path.of("server-game-state.ser");
   }
 
   public void run() throws Exception {
@@ -97,11 +110,16 @@ public class GameServer {
       MissionOption mission = config.rebelPlayerCount() == 0 ? MissionOption.MISSION_ONE
           : getSelectedMission();
       Game game = createGameForMission(mission);
+      MatchSnapshot loadedSnapshot = loadPreviousGame ? tryLoadSavedSnapshot() : null;
+      if (loadedSnapshot != null) {
+        game.loadSnapshot(loadedSnapshot);
+      }
       game.setSnapshotListener(this::broadcastSnapshot);
       SwingUtilities.invokeLater(() -> {
         if (spectatorScreen != null) {
           spectatorScreen.setIncreaseThreatAction(() -> new Thread(game::increaseThreat, "Manual Threat").start());
           spectatorScreen.setNextRoundAction(game::requestAdvanceStatusPhase);
+          spectatorScreen.setFinishGameAction(() -> new Thread(game::finishCurrentRound, "Finish Game").start());
         }
       });
       broadcastSnapshot(game.createSnapshot());
@@ -221,6 +239,7 @@ public class GameServer {
   }
 
   private void broadcastSnapshot(MatchSnapshot snapshot) {
+    saveSnapshot(snapshot);
     updateSpectatorSnapshot(snapshot);
     MyArrayList<ClientConnection> connections;
     synchronized (lobbyLock) {
@@ -269,6 +288,50 @@ public class GameServer {
       }
       spectatorGame.loadSnapshot(snapshot);
     });
+  }
+
+  private MatchSnapshot tryLoadSavedSnapshot() {
+    if (!Files.exists(savePath)) {
+      return null;
+    }
+    try (ObjectInputStream in = new ObjectInputStream(Files.newInputStream(savePath))) {
+      Object object = in.readObject();
+      if (!(object instanceof MatchSnapshot snapshot)) {
+        System.err.println("Ignoring saved game state because it is not a match snapshot: " + savePath);
+        return null;
+      }
+      if (!snapshot.config().equals(config)) {
+        System.err.println("Ignoring saved game state because it was created for " +
+            snapshot.config().rebelPlayerCount() + " rebel player(s), not " + config.rebelPlayerCount() + ".");
+        return null;
+      }
+      return snapshot;
+    } catch (Exception ex) {
+      System.err.println("Unable to load saved game state from " + savePath + ": " + ex.getMessage());
+      return null;
+    }
+  }
+
+  private void saveSnapshot(MatchSnapshot snapshot) {
+    synchronized (saveLock) {
+      try {
+        Path parent = savePath.toAbsolutePath().getParent();
+        if (parent != null) {
+          Files.createDirectories(parent);
+        }
+        Path tempPath = savePath.resolveSibling(savePath.getFileName() + ".tmp");
+        try (ObjectOutputStream out = new ObjectOutputStream(Files.newOutputStream(tempPath))) {
+          out.writeObject(snapshot);
+        }
+        try {
+          Files.move(tempPath, savePath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException ex) {
+          Files.move(tempPath, savePath, StandardCopyOption.REPLACE_EXISTING);
+        }
+      } catch (Exception ex) {
+        System.err.println("Unable to save game state to " + savePath + ": " + ex.getMessage());
+      }
+    }
   }
 
   private String resolveHostAddress() {
