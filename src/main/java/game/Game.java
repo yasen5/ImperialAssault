@@ -476,8 +476,15 @@ public class Game {
     if (canInteract(activeFigure)) {
       availableActions.add(Actions.INTERACT);
     }
+    if (activeFigure instanceof Hero hero && hero.hasUsableEquipment(Equipment.UseTiming.DURING_ACTIVATION)) {
+      availableActions.add(Actions.USE_EQUIPMENT);
+    }
     Actions chosenAction = availableActions.get(promptMultipleChoice(activeFigure.getOwnerSeat(), "Action Selection",
         "Choose an action to take", availableActions.toArray()));
+    if (chosenAction == Actions.USE_EQUIPMENT) {
+      takeAction(activeFigure, chosenAction);
+      return takeAction(activeFigure, rebel);
+    }
     leftoverMoves = takeAction(activeFigure, chosenAction);
     return leftoverMoves;
   }
@@ -495,11 +502,71 @@ public class Game {
         handleAttackInternal(activeFigure);
         removeDeadFigures();
       }
-      case RECOVER -> activeFigure.dealDamage(-1 * ((Hero) activeFigure).getEndurance());
+      case RECOVER -> {
+        Hero hero = (Hero) activeFigure;
+        hero.dealDamage(-1 * hero.getEndurance());
+        offerAfterRecoverEquipment(hero);
+      }
+      case USE_EQUIPMENT -> {
+        if (activeFigure instanceof Hero hero) {
+          handleEquipmentUse(hero, Equipment.UseTiming.DURING_ACTIVATION);
+        }
+      }
       case SPECIAL -> handleSpecial(activeFigure);
       case INTERACT -> handleInteraction(activeFigure);
     }
     return leftoverMoves;
+  }
+
+  private void offerAfterRecoverEquipment(Hero hero) {
+    if (!hero.hasUsableEquipment(Equipment.UseTiming.AFTER_RECOVER)) {
+      return;
+    }
+    if (promptYesNo(hero.getOwnerSeat(), "Equipment", "Use equipment after resting?")) {
+      handleEquipmentUse(hero, Equipment.UseTiming.AFTER_RECOVER);
+    }
+  }
+
+  private void handleEquipmentUse(Hero owner, Equipment.UseTiming timing) {
+    MyArrayList<Equipment.Item> usableEquipment = owner.getUsableEquipment(timing);
+    if (usableEquipment.isEmpty()) {
+      return;
+    }
+    Equipment.Item item = usableEquipment.get(usableEquipment.size() == 1 ? 0
+        : promptMultipleChoice(owner.getOwnerSeat(), "Equipment", "Choose equipment to use", usableEquipment.toArray()));
+    MyArrayList<Hero> targets = getFriendlyAdjacentHeroes(owner);
+    if (targets.isEmpty()) {
+      return;
+    }
+    Hero target = targets.get(targets.size() == 1 ? 0
+        : promptMultipleChoice(owner.getOwnerSeat(), item.name(), "Choose a target", targets.toArray()));
+    if (item.recoverAmount() > 0) {
+      target.dealDamage(-item.recoverAmount());
+    }
+    if (item.grantsFocus()) {
+      target.setFocused(true);
+    }
+    if (item.consumable()) {
+      owner.removeEquipment(item);
+    }
+    triggerBanner(owner.getDisplayName() + " used " + item.name());
+    repaint();
+  }
+
+  private MyArrayList<Hero> getFriendlyAdjacentHeroes(Hero owner) {
+    MyArrayList<Hero> targets = new MyArrayList<>();
+    for (Hero hero : heroes) {
+      if (hero == owner || isAdjacent(owner.getPos(), hero.getPos())) {
+        targets.add(hero);
+      }
+    }
+    return targets;
+  }
+
+  private boolean isAdjacent(Pos first, Pos second) {
+    int xDistance = Math.abs(first.getX() - second.getX());
+    int yDistance = Math.abs(first.getY() - second.getY());
+    return xDistance <= 1 && yDistance <= 1 && (xDistance + yDistance) > 0;
   }
 
   public void handleSpecial(Personnel activeFigure) {

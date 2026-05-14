@@ -6,19 +6,25 @@ import util.MyArrayList;
 import java.util.function.BiConsumer;
 
 public class Equipment {
-    public static record Item(String id, String name, String description) {
+    public static record Item(String id, String name, String imageName, UseTiming useTiming, int recoverAmount,
+            boolean grantsFocus, boolean consumable) {
     };
 
     public static record Weapon(String name, Die.OffenseDieType[] attackDice,
-            SurgeOptions[] surgeOptions, boolean melee, boolean reach) {
+            SurgeOptions[] surgeOptions, boolean melee, boolean reach, String imageName) {
     };
 
     private static final MyArrayList<Item> supplyItems = MyArrayList.of(
-            new Item("supply-med-kit", "Med Kit", "A compact field kit for emergency treatment."),
-            new Item("supply-targeting-scope", "Targeting Scope", "A clip-on optic for lining up difficult shots."),
-            new Item("supply-emergency-battery", "Emergency Battery", "A reserve power cell for mission gear."));
+            new Item("supply-emergency-medpac", "Emergency Medpac", "medkit", UseTiming.AFTER_RECOVER, 5, false, true),
+            new Item("supply-adrenal-stim", "Adrenal Stim", "adrenal-stim", UseTiming.DURING_ACTIVATION, 3, true, true));
 
     private static final MyHashMap<String, Item> itemRegistry = new MyHashMap<>();
+
+    public static enum UseTiming {
+        PASSIVE,
+        DURING_ACTIVATION,
+        AFTER_RECOVER
+    }
 
     // All the surge options a weapon can have in the tutorial
     public static enum SurgeOptions {
@@ -81,7 +87,8 @@ public class Equipment {
     }
 
     public static Item asItem(Weapon weapon) {
-        return new Item("weapon-" + normalizeId(weapon.name()), weapon.name(), formatWeaponDescription(weapon));
+        return new Item("weapon-" + normalizeId(weapon.name()), weapon.name(), weapon.imageName(), UseTiming.PASSIVE, 0,
+                false, false);
     }
 
     public static MyArrayList<Item> getSupplyItems() {
@@ -97,12 +104,6 @@ public class Equipment {
 
     public static Item findItem(String id) {
         return itemRegistry.get(id);
-    }
-
-    private static String formatWeaponDescription(Weapon weapon) {
-        String range = weapon.melee() ? (weapon.reach() ? "Melee weapon with reach." : "Melee weapon.")
-                : "Ranged weapon.";
-        return "Default " + range;
     }
 
     private static String normalizeId(String text) {

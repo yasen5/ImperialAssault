@@ -48,6 +48,7 @@ public abstract class Personnel {
     MOVE,
     ATTACK,
     RECOVER,
+    USE_EQUIPMENT,
     SPECIAL,
     INTERACT
   }

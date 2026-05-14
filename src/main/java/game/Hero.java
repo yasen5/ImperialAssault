@@ -104,6 +104,26 @@ public abstract class Hero extends Personnel implements FullDeployment {
         equipment.add(item);
     }
 
+    public void removeEquipment(Equipment.Item item) {
+        if (item != null) {
+            equipment.remove(item);
+        }
+    }
+
+    public MyArrayList<Equipment.Item> getUsableEquipment(Equipment.UseTiming timing) {
+        MyArrayList<Equipment.Item> usableEquipment = new MyArrayList<>();
+        for (Equipment.Item item : equipment) {
+            if (item.useTiming() == timing) {
+                usableEquipment.add(item);
+            }
+        }
+        return usableEquipment;
+    }
+
+    public boolean hasUsableEquipment(Equipment.UseTiming timing) {
+        return !getUsableEquipment(timing).isEmpty();
+    }
+
     @Override
     public MyArrayList<Equipment.Item> getEquipment() {
         return new MyArrayList<>(equipment);

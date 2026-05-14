@@ -7,6 +7,7 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
 import util.MyArrayList;
 
 // Interface for things that have deployment cards and stats
@@ -94,9 +95,8 @@ interface FullDeployment {
     int metricBarHeight = Math.max(1, panelWidth / METRIC_BAR_HEIGHT_DIVISOR);
     int chipHeight = Math.max(1, panelWidth / DETAIL_PILL_HEIGHT_DIVISOR);
     int headerHeight = Math.max(padding * 2 + titleLineHeight, panelWidth / DETAIL_HEADER_HEIGHT_DIVISOR);
-    int equipmentLineHeight = Math.max(1, metricLineHeight);
     int equipmentSectionHeight = equipment.isEmpty() ? 0
-        : padding * 2 + equipmentLineHeight * (Math.min(4, equipment.size()) + 1) + smallPadding;
+        : getEquipmentSectionHeight(panelWidth - smallPadding * 2, equipment, padding, smallPadding, metricLineHeight);
     int minimumRowHeight = padding * 3 + rowLineHeight + metricLineHeight * 2 + metricBarHeight * 2 + chipHeight
         + smallPadding * 4;
     int availableRowsHeight = Math.max(minimumRowHeight,
@@ -177,42 +177,82 @@ interface FullDeployment {
 
     if (!equipment.isEmpty()) {
       drawEquipmentSection(g2, panelX + smallPadding, currentY, panelWidth - smallPadding * 2, equipment,
-          equipmentLineHeight, metricFontSize, padding, smallPadding);
+          metricFontSize, padding, smallPadding);
     }
 
     g2.dispose();
   }
 
   private static void drawEquipmentSection(Graphics2D g2, int x, int y, int width,
-      MyArrayList<Equipment.Item> equipment, int lineHeight, float fontSize, int padding, int smallPadding) {
+      MyArrayList<Equipment.Item> equipment, float fontSize, int padding, int smallPadding) {
     int visibleItems = Math.min(4, equipment.size());
-    int height = padding * 2 + lineHeight * (visibleItems + 1) + smallPadding;
+    int columns = getEquipmentColumns(width, padding, smallPadding);
+    int itemWidth = getEquipmentItemWidth(width, columns, padding, smallPadding);
+    int itemHeight = getEquipmentItemHeight(itemWidth);
+    int rows = (visibleItems + columns - 1) / columns;
+    g2.setFont(g2.getFont().deriveFont(Font.BOLD, fontSize));
+    int height = getEquipmentSectionHeight(width, equipment, padding, smallPadding, g2.getFontMetrics().getHeight());
     int cornerArc = Math.max(1, width / DETAIL_CORNER_DIVISOR);
     g2.setColor(new Color(255, 255, 255, 18));
     g2.fillRoundRect(x, y, width, height, cornerArc, cornerArc);
     g2.setColor(new Color(255, 255, 255, 24));
     g2.drawRoundRect(x, y, width, height, cornerArc, cornerArc);
 
-    g2.setFont(g2.getFont().deriveFont(Font.BOLD, fontSize));
     g2.setColor(Color.WHITE);
     FontMetrics metrics = g2.getFontMetrics();
     int textY = y + padding + metrics.getAscent();
     g2.drawString("Equipment", x + padding, textY);
-    textY += lineHeight;
-
-    g2.setFont(g2.getFont().deriveFont(Font.PLAIN, fontSize));
-    metrics = g2.getFontMetrics();
-    int textWidth = width - padding * 2;
+    int gridY = textY + smallPadding;
     for (int i = 0; i < visibleItems; i++) {
       Equipment.Item item = equipment.get(i);
-      String label = item.name() + ": " + item.description();
-      g2.setColor(mutedTextColor);
-      g2.drawString(fitText(metrics, label, textWidth), x + padding, textY);
-      textY += lineHeight;
+      BufferedImage image = LoaderUtils.getImage(item.imageName());
+      int column = i % columns;
+      int row = i / columns;
+      int itemX = x + padding + column * (itemWidth + smallPadding);
+      int itemY = gridY + row * (itemHeight + smallPadding);
+      drawEquipmentImage(g2, image, itemX, itemY, itemWidth, itemHeight);
     }
     if (equipment.size() > visibleItems) {
-      g2.drawString("+" + (equipment.size() - visibleItems) + " more", x + padding, textY);
+      g2.setFont(g2.getFont().deriveFont(Font.PLAIN, fontSize));
+      g2.setColor(mutedTextColor);
+      g2.drawString("+" + (equipment.size() - visibleItems) + " more", x + padding,
+          gridY + rows * (itemHeight + smallPadding));
     }
+  }
+
+  private static void drawEquipmentImage(Graphics2D g2, BufferedImage image, int x, int y, int width, int height) {
+    int imageWidth = image.getWidth(null);
+    int imageHeight = image.getHeight(null);
+    float scale = Math.min(width / (float) imageWidth, height / (float) imageHeight);
+    int drawWidth = Math.max(1, Math.round(imageWidth * scale));
+    int drawHeight = Math.max(1, Math.round(imageHeight * scale));
+    int drawX = x + (width - drawWidth) / 2;
+    int drawY = y + (height - drawHeight) / 2;
+    g2.drawImage(image, drawX, drawY, drawX + drawWidth, drawY + drawHeight, 0, 0, imageWidth, imageHeight, null);
+  }
+
+  private static int getEquipmentSectionHeight(int width, MyArrayList<Equipment.Item> equipment, int padding,
+      int smallPadding, int headerLineHeight) {
+    int visibleItems = Math.min(4, equipment.size());
+    int columns = getEquipmentColumns(width, padding, smallPadding);
+    int rows = (visibleItems + columns - 1) / columns;
+    int itemWidth = getEquipmentItemWidth(width, columns, padding, smallPadding);
+    int itemHeight = getEquipmentItemHeight(itemWidth);
+    int overflowHeight = equipment.size() > visibleItems ? headerLineHeight + smallPadding : 0;
+    return padding * 2 + headerLineHeight + smallPadding + rows * itemHeight
+        + Math.max(0, rows - 1) * smallPadding + overflowHeight;
+  }
+
+  private static int getEquipmentColumns(int width, int padding, int smallPadding) {
+    return width - padding * 2 >= smallPadding * 2 + 120 ? 2 : 1;
+  }
+
+  private static int getEquipmentItemWidth(int width, int columns, int padding, int smallPadding) {
+    return Math.max(1, (width - padding * 2 - smallPadding * (columns - 1)) / columns);
+  }
+
+  private static int getEquipmentItemHeight(int itemWidth) {
+    return Math.max(1, Math.round(itemWidth * 1.4f));
   }
 
   private static int drawMetric(Graphics2D g2, int x, int y, int width, float fontSize, String label, String value,
