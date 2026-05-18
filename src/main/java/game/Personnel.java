@@ -21,6 +21,8 @@ public abstract class Personnel {
   private Pos pos;
   private Pos[] corners;
   protected boolean stunned = false, focused = false;
+  private boolean bleeding = false;
+  private boolean defeated = false;
   private BufferedImage image;
   private String name;
   protected DefenseDieType[] defenseDice;
@@ -49,6 +51,7 @@ public abstract class Personnel {
     ATTACK,
     RECOVER,
     USE_EQUIPMENT,
+    DISCARD_CONDITION,
     SPECIAL,
     INTERACT
   }
@@ -75,63 +78,14 @@ public abstract class Personnel {
   // your results, and then doing surge effects, then figuring out if you had
   // enough range
   public void performAttack(Personnel other) {
-    if (game != null) {
-      game.clearDice();
-    }
-    int surges = 0;
-    TotalAttackResult totalResults = new TotalAttackResult();
-    for (DefenseRoll roll : getDefense(other)) {
-      DefenseDieResult result = roll.result();
-      if (result.dodge()) {
-        return;
-      }
-      totalResults.addDamage(-result.shields());
-      surges -= result.surgeCancel();
-    }
-    // Pierce only acts when there are shields present, which is why it is separate
-    int postPierceDamage = 0;
-    for (OffenseRoll roll : getOffense()) {
-      OffenseDieResult result = roll.result();
-      postPierceDamage += result.damage();
-      surges += result.surge();
-      totalResults.addAccuracy(result.accuracy());
-    }
-    if (game != null) {
-      game.repaint();
-    }
-    MyArrayList<Equipment.SurgeOptions> surgeOptions = new MyArrayList<Equipment.SurgeOptions>();
-    Equipment.SurgeOptions[] possibleActions = getSurgeOptions();
-    for (Equipment.SurgeOptions option : possibleActions) {
-      surgeOptions.add(option);
-    }
-    // Do all the surge options
-    while (surges > 0 && !surgeOptions.isEmpty()) {
-      int selectedIndex = game != null
-          ? game.promptMultipleChoice(getOwnerSeat(), "Surge Selection", "Spend Surges: " + surges,
-              surgeOptions.toArray())
-          : InputUtils.getMultipleChoice("Surge Selection", "Spend Surges: " + surges,
-              surgeOptions.toArray());
-      if (selectedIndex < 0 || selectedIndex >= surgeOptions.size()) {
-        break;
-      }
-      Equipment.surgeEffects.get(surgeOptions.remove(selectedIndex)).accept(new Personnel[] { this, other },
-          totalResults);
-      surges--;
-    }
-    totalResults.addDamage(postPierceDamage);
-    // Check if there is high enough accuracy
-    if ((getRange() != Integer.MAX_VALUE
-        || Pathfinder.canReachPoint(pos, other.getPos(), totalResults.getAccuracy(), false, game))
-        && totalResults.getDamage() > 0) {
-      other.dealDamage(totalResults.getDamage());
-    }
+    AttackResolver.resolve(this, other, game);
   }
 
   // Roll all the defense dice
   public DefenseRoll[] getDefense() {
     DefenseRoll[] results = new DefenseRoll[defenseDice.length];
     for (int i = 0; i < defenseDice.length; i++) {
-      results[0] = defenseDice[i].roll(game);
+      results[i] = defenseDice[i].roll(game);
     }
     return results;
   }
@@ -142,14 +96,20 @@ public abstract class Personnel {
 
   // Deal damage, can't go above starting health
   public void dealDamage(int damage) {
+    if (defeated) {
+      return;
+    }
     health -= damage;
     if (health > startingHealth) {
       health = startingHealth;
     }
+    if (health <= 0) {
+      defeated = true;
+    }
   }
 
   public boolean getDead() {
-    return health <= 0;
+    return defeated || health <= 0;
   }
 
   public void move(Directions dir) {
@@ -160,6 +120,66 @@ public abstract class Personnel {
 
   public void setStunned(boolean value) {
     stunned = value;
+  }
+
+  public void addCondition(Condition condition) {
+    switch (condition) {
+      case STUNNED -> stunned = true;
+      case FOCUSED -> focused = true;
+      case BLEEDING -> bleeding = true;
+    }
+  }
+
+  public void removeCondition(Condition condition) {
+    switch (condition) {
+      case STUNNED -> stunned = false;
+      case FOCUSED -> focused = false;
+      case BLEEDING -> bleeding = false;
+    }
+  }
+
+  public boolean hasCondition(Condition condition) {
+    return switch (condition) {
+      case STUNNED -> stunned;
+      case FOCUSED -> focused;
+      case BLEEDING -> bleeding;
+    };
+  }
+
+  public MyArrayList<Condition> getConditions() {
+    MyArrayList<Condition> conditions = new MyArrayList<>();
+    if (stunned) {
+      conditions.add(Condition.STUNNED);
+    }
+    if (focused) {
+      conditions.add(Condition.FOCUSED);
+    }
+    if (bleeding) {
+      conditions.add(Condition.BLEEDING);
+    }
+    return conditions;
+  }
+
+  public MyArrayList<String> getConditionNames() {
+    MyArrayList<String> names = new MyArrayList<>();
+    for (Condition condition : getConditions()) {
+      names.add(condition.name());
+    }
+    return names;
+  }
+
+  public void applyConditionNames(MyArrayList<String> conditions) {
+    stunned = false;
+    focused = false;
+    bleeding = false;
+    if (conditions == null) {
+      return;
+    }
+    for (String condition : conditions) {
+      if (condition != null) {
+        addCondition(Condition.valueOf(condition));
+      }
+    }
   }
 
   public DefenseRoll[] getDefense(Personnel other) {
@@ -199,7 +219,7 @@ public abstract class Personnel {
   }
 
   public boolean canMove(Directions dir) {
-    return pos.canMove(dir, true, true, game);
+    return MovementRules.canMoveOneSpace(this, dir, game);
   }
 
   public Pos getPos() {
@@ -289,7 +309,7 @@ public abstract class Personnel {
   }
 
   public PersonnelStatus getStatus() {
-    return new PersonnelStatus(health, strain, stunned, focused);
+    return new PersonnelStatus(health, strain, stunned, focused, bleeding, false, defeated);
   }
 
   public boolean stunned() {
@@ -303,6 +323,14 @@ public abstract class Personnel {
 
   public void setFocused(boolean focused) {
     this.focused = focused;
+  }
+
+  public void setBleeding(boolean bleeding) {
+    this.bleeding = bleeding;
+  }
+
+  public boolean bleeding() {
+    return bleeding;
   }
 
   public MyArrayList<Personnel> getSpecialTargets() {
@@ -319,6 +347,7 @@ public abstract class Personnel {
 
   public void setHealth(int health) {
     this.health = health;
+    this.defeated = health <= 0;
   }
 
   public void setPos(Pos pos) {
@@ -345,6 +374,14 @@ public abstract class Personnel {
 
   public int getStrain() {
     return strain;
+  }
+
+  public void setDefeated(boolean defeated) {
+    this.defeated = defeated;
+  }
+
+  public boolean isDefeated() {
+    return defeated;
   }
 
   public PlayerSeat getOwnerSeat() {

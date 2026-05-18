@@ -18,6 +18,8 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
     private String id;
     private PlayerSeat ownerSeat = PlayerSeat.IMPERIAL;
     private int deploymentCost = 0;
+    private int reinforcementCost = 0;
+    private int maxMemberCount = 0;
 
     // Constructor
     public DeploymentGroup(Pos[] poses, Function<Pos, T> constructor, String name) {
@@ -45,11 +47,20 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
     public void addMembers(Pos[] poses) {
         for (Pos pos : poses) {
             members.add(constructor.apply(pos));
+            maxMemberCount++;
         }
     }
 
     // Same as above but for single member
     public void addMember(Pos pos) {
+        members.add(constructor.apply(pos));
+        maxMemberCount++;
+    }
+
+    public void reinforceMember(Pos pos) {
+        if (members.size() >= maxMemberCount) {
+            throw new IllegalStateException("Deployment group is already at full strength: " + this);
+        }
         members.add(constructor.apply(pos));
     }
 
@@ -78,6 +89,29 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
 
     public void setDeploymentCost(int deploymentCost) {
         this.deploymentCost = deploymentCost;
+        if (reinforcementCost == 0) {
+            this.reinforcementCost = Math.max(1, deploymentCost / Math.max(1, maxMemberCount));
+        }
+    }
+
+    public int getReinforcementCost() {
+        return reinforcementCost <= 0 ? Math.max(1, deploymentCost / Math.max(1, maxMemberCount)) : reinforcementCost;
+    }
+
+    public void setReinforcementCost(int reinforcementCost) {
+        this.reinforcementCost = reinforcementCost;
+    }
+
+    public boolean canReinforce(int availableThreat) {
+        return deployed && members.size() < maxMemberCount && getReinforcementCost() <= availableThreat;
+    }
+
+    public int getMaxMemberCount() {
+        return maxMemberCount;
+    }
+
+    public void setMaxMemberCount(int maxMemberCount) {
+        this.maxMemberCount = Math.max(members.size(), maxMemberCount);
     }
 
     public String getName() {

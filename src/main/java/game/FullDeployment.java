@@ -32,7 +32,8 @@ interface FullDeployment {
   Color warningColor = new Color(255, 108, 108);
   Color mutedTextColor = new Color(225, 227, 232);
 
-  public static record PersonnelStatus(int health, int strain, boolean stunned, boolean focused) {
+  public static record PersonnelStatus(int health, int strain, boolean stunned, boolean focused, boolean bleeding,
+      boolean wounded, boolean defeated) {
   }
 
   DeploymentCard getDeploymentCard();
@@ -165,6 +166,8 @@ interface FullDeployment {
           status.stunned() ? warningColor : new Color(70, 76, 88), status.stunned() ? "Stunned" : "Clear");
       drawPill(g2, rowX + padding + chipWidth + smallPadding, chipsY, chipWidth, chipHeight,
           status.focused() ? accentColor : new Color(70, 76, 88), status.focused() ? "Focused" : "Not Focused");
+      drawPill(g2, rowX + padding + (chipWidth + smallPadding) * 2, chipsY, chipWidth, chipHeight,
+          status.bleeding() ? warningColor : new Color(70, 76, 88), status.bleeding() ? "Bleeding" : "Stable");
 
       String evaluation = evaluateStatus(status, healthMax);
       int textWidth = g2.getFontMetrics().stringWidth(evaluation);
@@ -314,6 +317,14 @@ interface FullDeployment {
     }
     if (status.focused()) {
       healthState = healthState + ", focused";
+    }
+    if (status.bleeding()) {
+      healthState = healthState + ", bleeding";
+    }
+    if (status.defeated()) {
+      healthState = "Defeated";
+    } else if (status.wounded()) {
+      healthState = healthState + ", wounded";
     }
     return healthState;
   }

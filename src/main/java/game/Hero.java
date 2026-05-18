@@ -33,11 +33,24 @@ public abstract class Hero extends Personnel implements FullDeployment {
 
     // Add strain, if too much strain, turn it into damage instead
     public void ApplyStrain(int strain) {
-        this.strain += strain;
-        if (this.strain > endurance) {
-            dealDamage(strain - endurance);
-            strain = endurance;
+        int newStrain = this.strain + strain;
+        if (newStrain > endurance) {
+            dealDamage(newStrain - endurance);
+            this.strain = endurance;
+        } else {
+            this.strain = Math.max(0, newStrain);
         }
+    }
+
+    public void recover() {
+        int recoverAmount = endurance;
+        int strainRecovered = Math.min(this.strain, recoverAmount);
+        this.strain -= strainRecovered;
+        recoverAmount -= strainRecovered;
+        if (recoverAmount > 0) {
+            dealDamage(-recoverAmount);
+        }
+        removeCondition(Condition.BLEEDING);
     }
 
     public boolean getExhausted() {
@@ -189,6 +202,32 @@ public abstract class Hero extends Personnel implements FullDeployment {
     public PersonnelStatus[] getStatuses() {
         PersonnelStatus[] statuses = new PersonnelStatus[] { getStatus() };
         return statuses;
+    }
+
+    @Override
+    public PersonnelStatus getStatus() {
+        return new PersonnelStatus(getHealth(), getStrain(), stunned(), focused, bleeding(), wounded, isDefeated());
+    }
+
+    @Override
+    public void dealDamage(int damage) {
+        super.dealDamage(damage);
+        if (getHealth() <= 0 && !wounded) {
+            wounded = true;
+            setDefeated(false);
+            setHealth(getStartingHealth());
+            setStrain(0);
+            removeCondition(Condition.STUNNED);
+            removeCondition(Condition.BLEEDING);
+        }
+    }
+
+    public boolean isWounded() {
+        return wounded;
+    }
+
+    public void setWounded(boolean wounded) {
+        this.wounded = wounded;
     }
 
     @Override

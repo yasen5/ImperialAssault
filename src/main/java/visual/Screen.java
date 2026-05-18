@@ -130,8 +130,8 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
           "<p>Select any text above to copy it, or click the links to open them in your browser.</p>" +
           "</body></html>",
       "<html><body style='width: 300px; padding: 10px;'>" +
-          "<h3>Changes:</h3>" +
-          "<p>The main changes are that you are only playing with two rebels, and without the droid or e-web engineer. There are no bleeding effects. There are no crates. Specials can be activated multiple times per activation. Melee vs ranged weapon types are not important. Heroes do not flip to a wounded side but are rather immediately defeated. You can move through any figure. Keywords other than \"stun\" and \"focused\" are irrelevant</p>"
+          "<h3>Mission Rules:</h3>" +
+          "<p>This implementation uses campaign mission rules for activations, threat, status phase, wounded heroes, figure blocking, crates, and common conditions. Some campaign progression features are still outside the mission board.</p>"
           +
           "</body></html>",
       "<html><body style='width: 300px; padding: 10px;'>" +

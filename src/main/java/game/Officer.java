@@ -51,7 +51,7 @@ public class Officer extends Imperial {
     public DefenseRoll[] getDefense() {
         DefenseRoll[] results = new DefenseRoll[defenseDice.length];
         for (int i = 0; i < defenseDice.length; i++) {
-            results[0] = defenseDice[i].roll(game);
+            results[i] = defenseDice[i].roll(game);
         }
         if (game != null) {
             game.repaint();

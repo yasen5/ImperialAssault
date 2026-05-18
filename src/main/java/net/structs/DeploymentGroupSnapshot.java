@@ -12,6 +12,8 @@ public record DeploymentGroupSnapshot(
         boolean exhausted,
         boolean deployed,
         int deploymentCost,
+        int reinforcementCost,
+        int maxMemberCount,
         PlayerSeat ownerSeat,
         MyArrayList<FigureSnapshot> members) implements Serializable {
 }

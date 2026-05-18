@@ -25,6 +25,7 @@ import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
 import game.Game;
+import game.MissionDefinition;
 import net.structs.MissionOption;
 import game.Personnel;
 import game.PlayerSeat;
@@ -220,7 +221,7 @@ public class GameServer {
 
   private Game createGameForMission(MissionOption mission) {
     Game game = switch (mission) {
-      case MISSION_ONE, MISSION_TWO -> new Game(null, config, null, true);
+      case MISSION_ONE, MISSION_TWO -> new Game(null, config, MissionDefinition.forOption(mission), null, true);
     };
     game.setDecisionProvider(new RemoteDecisionProvider(game));
     return game;

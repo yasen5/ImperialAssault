@@ -10,6 +10,8 @@ import util.MyArrayList;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.HashSet;
+import java.util.Set;
 
 import game.Constants.WallLine;
 import game.Die.GraphicDefenseDieResult;
@@ -28,21 +30,18 @@ public class Game {
   private final MyArrayList<Hero> heroes = new MyArrayList<>();
   private final MyArrayList<GraphicOffenseDieResult> offenseResults = new MyArrayList<>();
   private final MyArrayList<GraphicDefenseDieResult> defenseResults = new MyArrayList<>();
-  @SuppressWarnings("unchecked")
-  public final Interactable<? extends Personnel>[] interactables = (Interactable<? extends Personnel>[]) new Interactable[] {
-      new Terminal<Imperial>(new Pos(7, 0), Imperial.class),
-      new Terminal<Imperial>(new Pos(0, 3), Imperial.class),
-      new Door<Personnel>(new Pos(0, 6), Personnel.class),
-      new Door<Personnel>(new Pos(6, 8), Personnel.class),
-      new SupplyBox(new Pos(3, 3))
-  };
+  public final Interactable<? extends Personnel>[] interactables;
 
   private GameUi ui;
   private GameDecisionProvider decisionProvider;
   private Consumer<MatchSnapshot> snapshotListener;
   private CompletableFuture<Personnel> currentSelected = new CompletableFuture<>();
   private MyArrayList<Personnel> availableTargets = new MyArrayList<>();
+  private final Set<Personnel> specialUsedThisActivation = new HashSet<>();
   private int threatDial = 0;
+  private int threatLevel = 1;
+  private int roundDial = 1;
+  private int roundLimit = 0;
   private boolean gameEnd;
   private boolean rebelsWin = true;
   private PlayerSeat actingSeat = PlayerSeat.REBEL_1;
@@ -58,6 +57,7 @@ public class Game {
   private long lastAppliedBannerId;
   private int nextSupplyEquipmentIndex;
   private final GameSessionConfig sessionConfig;
+  private final MissionDefinition missionDefinition;
 
   public static record MapTile(BufferedImage img, int[][] tileArray) {
   }
@@ -68,13 +68,42 @@ public class Game {
 
   public Game(GameUi ui, GameSessionConfig sessionConfig, GameDecisionProvider decisionProvider,
       boolean authoritative) {
+    this(ui, sessionConfig, MissionDefinition.forOption(net.structs.MissionOption.MISSION_ONE), decisionProvider,
+        authoritative);
+  }
+
+  @SuppressWarnings("unchecked")
+  public Game(GameUi ui, GameSessionConfig sessionConfig, MissionDefinition missionDefinition,
+      GameDecisionProvider decisionProvider, boolean authoritative) {
     this.ui = ui;
     this.sessionConfig = sessionConfig;
     this.decisionProvider = decisionProvider;
+    this.missionDefinition = missionDefinition;
+    this.interactables = createInteractables(missionDefinition);
     this.mapTile = new MapTile(LoaderUtils.getImage("TutorialTile"), Constants.tileMatrix);
     if (authoritative) {
       setup();
     }
+  }
+
+  @SuppressWarnings("unchecked")
+  private Interactable<? extends Personnel>[] createInteractables(MissionDefinition missionDefinition) {
+    MyArrayList<Interactable<? extends Personnel>> missionInteractables = new MyArrayList<>();
+    for (Pos pos : missionDefinition.terminalPositions()) {
+      missionInteractables.add(new Terminal<Imperial>(pos, Imperial.class));
+    }
+    for (Pos pos : missionDefinition.doorPositions()) {
+      missionInteractables.add(new Door<Personnel>(pos, Personnel.class));
+    }
+    for (Pos pos : missionDefinition.cratePositions()) {
+      missionInteractables.add(new SupplyBox(pos));
+    }
+    Interactable<? extends Personnel>[] result = (Interactable<? extends Personnel>[]) new Interactable[missionInteractables
+        .size()];
+    for (int i = 0; i < missionInteractables.size(); i++) {
+      result[i] = missionInteractables.get(i);
+    }
+    return result;
   }
 
   public boolean hasDecisionProvider() {
@@ -216,14 +245,11 @@ public class Game {
         .remove(promptMultipleChoice(rebelSeat, "Deployment Selection",
             "Choose deployment card to exhaust", seatOptions.toArray()));
     activeFigure.setActive(true);
+    specialUsedThisActivation.clear();
     activeFigure.setExhausted(true);
     repaint();
     int leftoverMoves = 0;
     int numActions = 2;
-    if (activeFigure.stunned()) {
-      numActions--;
-      activeFigure.setStunned(false);
-    }
     for (int i = 0; i < numActions; i++) {
       leftoverMoves += takeAction(activeFigure, true);
       checkEndGame();
@@ -233,6 +259,7 @@ public class Game {
     }
     handlePendingMoves(activeFigure, rebelSeat, leftoverMoves);
     activeFigure.setActive(false);
+    specialUsedThisActivation.clear();
     repaint();
   }
 
@@ -246,6 +273,7 @@ public class Game {
     repaint();
     for (Imperial imperial : deploymentGroup.getMembers()) {
       imperial.setActive(true);
+      specialUsedThisActivation.clear();
       repaint();
       int leftoverMoves = 0;
       if (!imperial.stunned()) {
@@ -258,6 +286,7 @@ public class Game {
       }
       handlePendingMoves(imperial, PlayerSeat.IMPERIAL, leftoverMoves);
       imperial.setActive(false);
+      specialUsedThisActivation.clear();
     }
     repaint();
   }
@@ -278,10 +307,12 @@ public class Game {
     abortStatusPhasePrompts = false;
     try {
       currentTurnSeat = firstTurnSeat();
-      threatDial++;
+      roundDial++;
+      threatDial += threatLevel;
       triggerBanner("Threat dial increased to " + threatDial);
       replenishDeployments();
       resolveImperialOptionalDeployments();
+      resolveImperialReinforcements();
     } finally {
       statusPhaseInProgress = false;
     }
@@ -419,6 +450,34 @@ public class Game {
     return deployableGroups;
   }
 
+  private void resolveImperialReinforcements() {
+    while (true) {
+      MyArrayList<DeploymentGroup<? extends Imperial>> reinforceableGroups = getReinforcementOptions();
+      if (reinforceableGroups.isEmpty()) {
+        return;
+      }
+      boolean wantsReinforce = promptYesNo(PlayerSeat.IMPERIAL, "Imperial Reinforcement",
+          "Spend threat to reinforce a defeated imperial figure?");
+      if (!wantsReinforce) {
+        return;
+      }
+      DeploymentGroup<? extends Imperial> chosenGroup = reinforceableGroups
+          .get(promptMultipleChoice(PlayerSeat.IMPERIAL, "Imperial Reinforcement",
+              "Choose a group to reinforce", reinforceableGroups.toArray()));
+      reinforceImperialGroup(chosenGroup);
+    }
+  }
+
+  private MyArrayList<DeploymentGroup<? extends Imperial>> getReinforcementOptions() {
+    MyArrayList<DeploymentGroup<? extends Imperial>> reinforceableGroups = new MyArrayList<>();
+    for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
+      if (group.canReinforce(threatDial)) {
+        reinforceableGroups.add(group);
+      }
+    }
+    return reinforceableGroups;
+  }
+
   private void deployImperialGroup(DeploymentGroup<? extends Imperial> group) {
     if (group.getDeployed()) {
       throw new IllegalStateException("Group is already deployed: " + group);
@@ -436,9 +495,51 @@ public class Game {
     triggerBanner("Deployed " + group + " for " + group.getDeploymentCost() + " threat");
   }
 
+  private void reinforceImperialGroup(DeploymentGroup<? extends Imperial> group) {
+    int cost = group.getReinforcementCost();
+    if (!group.canReinforce(threatDial)) {
+      throw new IllegalStateException("Cannot reinforce " + group + " with " + threatDial + " threat");
+    }
+    Pos spawnPos = findOpenImperialDeploymentPosition();
+    threatDial -= cost;
+    int memberIndex = group.getMembers().size();
+    group.reinforceMember(spawnPos);
+    Imperial reinforced = group.getMembers().get(memberIndex);
+    reinforced.setId(group.getId() + "-member-" + memberIndex);
+    reinforced.setOwnerSeat(group.getOwnerSeat());
+    reinforced.setGame(this);
+    group.setExhausted(true);
+    triggerBanner("Reinforced " + group + " for " + cost + " threat");
+    repaint();
+  }
+
+  private Pos findOpenImperialDeploymentPosition() {
+    for (int y = Constants.tileMatrix.length - 1; y >= 0; y--) {
+      for (int x = Constants.tileMatrix[y].length - 1; x >= 0; x--) {
+        Pos pos = new Pos(x, y);
+        if (Constants.tileMatrix[y][x] == 1 && isSpaceAvailable(pos)) {
+          return pos;
+        }
+      }
+    }
+    throw new IllegalStateException("No open deployment space for reinforcement");
+  }
+
   public void checkEndGame() {
-    if (heroes.isEmpty()) {
+    if (roundLimit > 0 && roundDial > roundLimit) {
       endGameInternal(false);
+      return;
+    }
+    boolean anyHeroAble = false;
+    for (Hero hero : heroes) {
+      if (!hero.isDefeated()) {
+        anyHeroAble = true;
+        break;
+      }
+    }
+    if (!anyHeroAble) {
+      endGameInternal(false);
+      return;
     }
     boolean allDeploymentGroupsEmpty = true;
     for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
@@ -470,11 +571,19 @@ public class Game {
     MyArrayList<Actions> availableActions = new MyArrayList<>();
     availableActions.addAll(activeFigure.getActions());
     availableTargets = availableDefenders(activeFigure, rebel);
+    if (activeFigure.stunned()) {
+      availableActions.remove(Actions.ATTACK);
+      availableActions.remove(Actions.SPECIAL);
+      availableActions.add(Actions.DISCARD_CONDITION);
+    }
     if (availableTargets.size() == 0) {
       availableActions.remove(Actions.ATTACK);
     }
     if (canInteract(activeFigure)) {
       availableActions.add(Actions.INTERACT);
+    }
+    if (specialUsedThisActivation.contains(activeFigure)) {
+      availableActions.remove(Actions.SPECIAL);
     }
     if (activeFigure instanceof Hero hero && hero.hasUsableEquipment(Equipment.UseTiming.DURING_ACTIVATION)) {
       availableActions.add(Actions.USE_EQUIPMENT);
@@ -504,18 +613,30 @@ public class Game {
       }
       case RECOVER -> {
         Hero hero = (Hero) activeFigure;
-        hero.dealDamage(-1 * hero.getEndurance());
+        hero.recover();
         offerAfterRecoverEquipment(hero);
       }
+      case DISCARD_CONDITION -> activeFigure.setStunned(false);
       case USE_EQUIPMENT -> {
         if (activeFigure instanceof Hero hero) {
           handleEquipmentUse(hero, Equipment.UseTiming.DURING_ACTIVATION);
         }
       }
-      case SPECIAL -> handleSpecial(activeFigure);
+      case SPECIAL -> {
+        specialUsedThisActivation.add(activeFigure);
+        handleSpecial(activeFigure);
+      }
       case INTERACT -> handleInteraction(activeFigure);
     }
+    applyAfterActionConditions(activeFigure, action);
     return leftoverMoves;
+  }
+
+  private void applyAfterActionConditions(Personnel activeFigure, Actions action) {
+    if (activeFigure instanceof Hero hero && hero.bleeding() && action != Actions.RECOVER
+        && action != Actions.DISCARD_CONDITION) {
+      hero.ApplyStrain(1);
+    }
   }
 
   private void offerAfterRecoverEquipment(Hero hero) {
@@ -755,6 +876,7 @@ public class Game {
     gameEnd = false;
     rebelsWin = true;
     threatDial = 0;
+    roundDial = 1;
     nextSupplyEquipmentIndex = 0;
     currentTurnSeat = firstTurnSeat();
     actingSeat = currentTurnSeat;
@@ -770,6 +892,9 @@ public class Game {
 
   public void setup() {
     threatDial = 0;
+    threatLevel = missionDefinition.threatLevel();
+    roundLimit = missionDefinition.roundLimit();
+    roundDial = 1;
     nextSupplyEquipmentIndex = 0;
     currentTurnSeat = firstTurnSeat();
     actingSeat = currentTurnSeat;
@@ -988,7 +1113,8 @@ public class Game {
     for (Hero hero : heroes) {
       heroSnapshots.add(new FigureSnapshot(hero.getId(), hero.getName(), hero.getPos().getX(), hero.getPos().getY(),
           hero.getHealth(), hero.getStrain(), hero.stunned(), hero.focused, hero.isActive(),
-          hero.isPossibleTarget(), hero.getExhausted(), hero.getOwnerSeat(), hero.getEquipmentIds()));
+          hero.isPossibleTarget(), hero.getExhausted(), hero.getOwnerSeat(), hero.getEquipmentIds(),
+          hero.getConditionNames(), hero.isWounded(), hero.isDefeated()));
     }
     MyArrayList<DeploymentGroupSnapshot> groupSnapshots = new MyArrayList<>();
     for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
@@ -997,10 +1123,11 @@ public class Game {
         members.add(new FigureSnapshot(imperial.getId(), imperial.getName(), imperial.getPos().getX(),
             imperial.getPos().getY(), imperial.getHealth(), imperial.getStrain(), imperial.stunned(),
             imperial.focused, imperial.isActive(), imperial.isPossibleTarget(), false,
-            imperial.getOwnerSeat(), new MyArrayList<>()));
+            imperial.getOwnerSeat(), new MyArrayList<>(), imperial.getConditionNames(), false, imperial.isDefeated()));
       }
       groupSnapshots.add(new DeploymentGroupSnapshot(group.getId(), group.toString(), group.getExhausted(),
-          group.getDeployed(), group.getDeploymentCost(), group.getOwnerSeat(), members));
+          group.getDeployed(), group.getDeploymentCost(), group.getReinforcementCost(), group.getMaxMemberCount(),
+          group.getOwnerSeat(), members));
     }
     MyArrayList<Boolean> interactableStates = new MyArrayList<>();
     for (Interactable<? extends Personnel> interactable : interactables) {
@@ -1014,7 +1141,8 @@ public class Game {
     for (GraphicDefenseDieResult die : defenseResults) {
       defense.add(die.die().name() + ":" + die.face());
     }
-    return new MatchSnapshot(sessionConfig, actingSeat, currentTurnSeat, threatDial, bannerId, bannerText,
+    return new MatchSnapshot(sessionConfig, actingSeat, currentTurnSeat, threatDial, threatLevel, roundDial, roundLimit,
+        bannerId, bannerText,
         bannerExpiresAt,
         heroSnapshots,
         groupSnapshots, interactableStates, nextSupplyEquipmentIndex, offense, defense, gameEnd, rebelsWin);
@@ -1036,6 +1164,8 @@ public class Game {
       group.setExhausted(groupSnapshot.exhausted());
       group.setDeployed(groupSnapshot.deployed());
       group.setDeploymentCost(groupSnapshot.deploymentCost());
+      group.setReinforcementCost(groupSnapshot.reinforcementCost());
+      group.setMaxMemberCount(groupSnapshot.maxMemberCount());
       for (int i = 0; i < group.getMembers().size() && i < groupSnapshot.members().size(); i++) {
         applyFigureSnapshot(group.getMembers().get(i), groupSnapshot.members().get(i));
       }
@@ -1059,6 +1189,9 @@ public class Game {
     this.actingSeat = snapshot.actingSeat();
     this.currentTurnSeat = snapshot.currentTurnSeat() == null ? snapshot.actingSeat() : snapshot.currentTurnSeat();
     this.threatDial = snapshot.threatDial();
+    this.threatLevel = snapshot.threatLevel();
+    this.roundDial = snapshot.roundDial();
+    this.roundLimit = snapshot.roundLimit();
     this.nextSupplyEquipmentIndex = snapshot.nextSupplyEquipmentIndex();
     if (snapshot.bannerId() > lastAppliedBannerId && ui != null) {
       lastAppliedBannerId = snapshot.bannerId();
@@ -1175,13 +1308,15 @@ public class Game {
   private void drawThreatHud(Graphics g) {
     Graphics2D g2 = (Graphics2D) g.create();
     g2.setColor(new Color(0, 0, 0, 180));
-    g2.fillRoundRect(20, 82, 300, 76, 18, 18);
+    g2.fillRoundRect(20, 82, 300, 102, 18, 18);
     g2.setColor(Color.WHITE);
-    g2.drawRoundRect(20, 82, 300, 76, 18, 18);
+    g2.drawRoundRect(20, 82, 300, 102, 18, 18);
     g2.setFont(g2.getFont().deriveFont(java.awt.Font.BOLD, 20f));
     g2.drawString("Threat Dial: " + threatDial, 38, 113);
     g2.setFont(g2.getFont().deriveFont(java.awt.Font.PLAIN, 14f));
-    g2.drawString("Use the + Threat button", 38, 139);
+    g2.drawString("Threat Level: " + threatLevel, 38, 139);
+    String roundText = roundLimit > 0 ? ("Round: " + roundDial + "/" + roundLimit) : ("Round: " + roundDial);
+    g2.drawString(roundText, 38, 164);
     g2.dispose();
   }
 
@@ -1193,10 +1328,13 @@ public class Game {
     personnel.setStrain(snapshot.strain());
     personnel.setStunned(snapshot.stunned());
     personnel.setFocused(snapshot.focused());
+    personnel.applyConditionNames(snapshot.conditions());
     personnel.setActive(snapshot.active());
     personnel.setPossibleTarget(snapshot.possibleTarget());
+    personnel.setDefeated(snapshot.defeated());
     if (personnel instanceof Hero hero) {
       hero.setExhausted(snapshot.exhausted());
+      hero.setWounded(snapshot.wounded());
       hero.applyEquipmentIds(snapshot.equipmentIds());
     }
   }
@@ -1207,6 +1345,22 @@ public class Game {
 
   public boolean rebelsWin() {
     return rebelsWin;
+  }
+
+  public int getThreatDial() {
+    return threatDial;
+  }
+
+  public int getThreatLevel() {
+    return threatLevel;
+  }
+
+  public int getRoundDial() {
+    return roundDial;
+  }
+
+  public int getRoundLimit() {
+    return roundLimit;
   }
 
   public boolean isSpaceAvailable(Pos pos) {

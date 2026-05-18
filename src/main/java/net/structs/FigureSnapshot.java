@@ -18,5 +18,8 @@ public record FigureSnapshot(
         boolean possibleTarget,
         boolean exhausted,
         PlayerSeat ownerSeat,
-        MyArrayList<String> equipmentIds) implements Serializable {
+        MyArrayList<String> equipmentIds,
+        MyArrayList<String> conditions,
+        boolean wounded,
+        boolean defeated) implements Serializable {
 }
