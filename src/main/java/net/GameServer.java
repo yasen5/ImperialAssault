@@ -284,8 +284,7 @@ public class GameServer {
       UiContext.setFrame(frame);
       frame.add(spectatorScreen);
       frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-      frame.pack();
-      WindowFocus.showWithoutTakingFocus(frame);
+      WindowFocus.packAndShowWithoutTakingFocus(frame);
       spectatorScreen.updateLobbySnapshot(createLobbySnapshot());
     });
   }

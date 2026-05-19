@@ -2,9 +2,11 @@ package runners;
 
 import net.GameServer;
 import net.NetworkConfig;
+import visual.WindowFocus;
 
 public class ServerRunner {
     public static void main(String[] args) throws Exception {
+        WindowFocus.configureProcessForNonActivatingWindows();
         int port = NetworkConfig.PORT;
         int rebelPlayers = 1;
         boolean loadPreviousGame = true;
