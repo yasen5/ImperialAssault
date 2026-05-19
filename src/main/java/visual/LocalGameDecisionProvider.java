@@ -8,6 +8,7 @@ import javax.swing.SwingUtilities;
 
 import game.InputUtils;
 import game.Game;
+import game.MovementChoice;
 import game.Personnel;
 import game.Personnel.Directions;
 import game.PlayerSeat;
@@ -38,6 +39,12 @@ public class LocalGameDecisionProvider implements GameDecisionProvider {
 
   @Override
   public Directions chooseDirection(PlayerSeat seat, Personnel activeFigure, MyArrayList<Directions> allowedDirections) {
+    return chooseMovement(seat, activeFigure, allowedDirections, false).direction();
+  }
+
+  @Override
+  public MovementChoice chooseMovement(PlayerSeat seat, Personnel activeFigure, MyArrayList<Directions> allowedDirections,
+      boolean canRotate) {
     CompletableFuture<Directions> dir = new CompletableFuture<>();
     ui.getGame().setActivePromptCancelAction(() -> dir.cancel(true));
     ui.setMovementButtonOutput(dir);
@@ -54,8 +61,14 @@ public class LocalGameDecisionProvider implements GameDecisionProvider {
             ui.deactivateMovementButton(direction);
           }
         }
+        if (canRotate) {
+          ui.moveAndActivateRotateButton(activeFigure.getPos().getX(), activeFigure.getPos().getY());
+        } else {
+          ui.deactivateRotateButton();
+        }
       });
-      return dir.join();
+      Directions result = dir.join();
+      return result == null ? MovementChoice.rotate() : MovementChoice.direction(result);
     } finally {
       ui.getGame().clearActivePromptCancelAction();
     }

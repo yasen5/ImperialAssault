@@ -33,6 +33,7 @@ import game.PlayerSeat;
 import game.SelectionType;
 import visual.UiContext;
 import game.Personnel.Directions;
+import game.MovementChoice;
 import net.GameDecisionProvider;
 import net.NetworkConfig;
 import net.structs.ClientMissionSelection;
@@ -431,16 +432,29 @@ public class GameServer {
     @Override
     public Directions chooseDirection(PlayerSeat seat, Personnel activeFigure,
         MyArrayList<Directions> allowedDirections) {
-      if (allowedDirections.size() == 1) {
-        return allowedDirections.get(0);
+      return chooseMovement(seat, activeFigure, allowedDirections, false).direction();
+    }
+
+    @Override
+    public MovementChoice chooseMovement(PlayerSeat seat, Personnel activeFigure,
+        MyArrayList<Directions> allowedDirections, boolean canRotate) {
+      if (allowedDirections.size() == 1 && !canRotate) {
+        return MovementChoice.direction(allowedDirections.get(0));
+      }
+      if (allowedDirections.isEmpty() && canRotate) {
+        return MovementChoice.rotate();
       }
       MyArrayList<String> values = new MyArrayList<>();
       for (Directions direction : allowedDirections) {
         values.add(direction.name());
       }
+      if (canRotate) {
+        values.add("ROTATE");
+      }
       RemotePrompt prompt = new RemotePrompt(promptIds.getAndIncrement(), seat, RemotePrompt.PromptType.DIRECTION,
           "Movement", "Choose a direction", values, 0, 0, values, activeFigure.getId(), null);
-      return Directions.valueOf(requestResponse(prompt));
+      String response = requestResponse(prompt);
+      return "ROTATE".equals(response) ? MovementChoice.rotate() : MovementChoice.direction(Directions.valueOf(response));
     }
 
     @Override

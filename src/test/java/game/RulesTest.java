@@ -122,6 +122,29 @@ class RulesTest {
     }
 
     @Test
+    void nonSquareLargeFiguresCanRotateWhenFootprintOverlapsAndIsOpen() {
+        EWebEngineer eWeb = new EWebEngineer(new Pos(4, 4));
+
+        assertTrue(MovementRules.canRotate(eWeb, null));
+
+        eWeb.rotate();
+
+        assertEquals(2, eWeb.getXSize());
+        assertEquals(1, eWeb.getYSize());
+        assertTrue(eWeb.occupiesSpace(new Pos(5, 4)));
+    }
+
+    @Test
+    void rotationCannotEnterOccupiedSpace() {
+        EWebEngineer eWeb = new EWebEngineer(new Pos(4, 4));
+        Game game = new Game(null, new GameSessionConfig(1), null, true);
+        game.getHeroes().get(0).setPos(new Pos(5, 4));
+        eWeb.setGame(game);
+
+        assertFalse(eWeb.canRotate());
+    }
+
+    @Test
     void personnelWithSameIdCompareAsSameFigure() {
         FennSignis first = new FennSignis(new Pos(1, 1));
         FennSignis second = new FennSignis(new Pos(5, 5));

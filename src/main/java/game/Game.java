@@ -557,6 +557,7 @@ public class Game {
       throw new IllegalStateException("Not enough threat to deploy " + group);
     }
     threatDial -= group.getDeploymentCost();
+    initializeDeploymentOrientations(group);
     group.setDeployed(true);
     group.setExhausted(true);
     for (Imperial imperial : group.getMembers()) {
@@ -965,13 +966,18 @@ public class Game {
         availableDirections.add(direction);
       }
     }
-    if (availableDirections.isEmpty()) {
+    boolean canRotate = activeFigure.canRotate();
+    if (availableDirections.isEmpty() && !canRotate) {
       triggerBanner(activeFigure.getName() + " cannot move farther");
       return false;
     }
-    Directions chosenDir = decisionProvider.chooseDirection(activeFigure.getOwnerSeat(), activeFigure,
-        availableDirections);
-    activeFigure.move(chosenDir);
+    MovementChoice choice = decisionProvider.chooseMovement(activeFigure.getOwnerSeat(), activeFigure,
+        availableDirections, canRotate);
+    if (choice.rotateAction()) {
+      activeFigure.rotate();
+    } else {
+      activeFigure.move(choice.direction());
+    }
     repaint();
     return true;
   }
@@ -1097,7 +1103,7 @@ public class Game {
     imperialDeployments.add(troopers);
     imperialDeployments.add(officers);
     if (missionDefinition.tutorialObjectives()) {
-      if (heroCount >= 2) { // TODO revert to 3
+      if (heroCount >= 2) {
         DeploymentGroup<ProbeDroid> probeDroid = new DeploymentGroup<>(
             new Pos[] { new Pos(5, 12) }, ProbeDroid::new, "ProbeDroid");
         probeDroid.setDeploymentCost(5);
@@ -1105,11 +1111,12 @@ public class Game {
         configureDeploymentGroup(probeDroid, "imperial-probe-droid", PlayerSeat.IMPERIAL);
         imperialDeployments.add(probeDroid);
       }
-      if (heroCount >= 2) { // TODO revert to 4
+      if (heroCount >= 2) {
         DeploymentGroup<EWebEngineer> eWebEngineer = new DeploymentGroup<>(
             new Pos[] { new Pos(6, 11) }, EWebEngineer::new, "EWebEngineer");
         eWebEngineer.setDeploymentCost(6);
         eWebEngineer.setDeployed(true);
+        initializeDeploymentOrientations(eWebEngineer);
         configureDeploymentGroup(eWebEngineer, "imperial-e-web-engineer", PlayerSeat.IMPERIAL);
         imperialDeployments.add(eWebEngineer);
       }
@@ -1208,6 +1215,77 @@ public class Game {
       imperial.setOwnerSeat(seat);
       index++;
     }
+  }
+
+  private void initializeDeploymentOrientations(DeploymentGroup<? extends Imperial> group) {
+    for (Imperial imperial : group.getMembers()) {
+      if (!imperial.isNonSquareLargeFigure()) {
+        continue;
+      }
+      Pos verticalAnchor = findLegalAnchorForFootprint(imperial, Math.min(imperial.getXSize(), imperial.getYSize()),
+          Math.max(imperial.getXSize(), imperial.getYSize()));
+      Pos horizontalAnchor = findLegalAnchorForFootprint(imperial, Math.max(imperial.getXSize(), imperial.getYSize()),
+          Math.min(imperial.getXSize(), imperial.getYSize()));
+      if (verticalAnchor == null && horizontalAnchor == null) {
+        throw new IllegalStateException("No legal deployment space for " + imperial.getName());
+      }
+      boolean horizontal = false;
+      if (verticalAnchor == null) {
+        horizontal = true;
+      } else if (horizontalAnchor != null && decisionProvider != null) {
+        Object[] options = new Object[] { "Vertical", "Horizontal" };
+        horizontal = promptMultipleChoice(group.getOwnerSeat(), "Deployment Orientation",
+            "Choose orientation for " + imperial.getName(), options) == 1;
+      }
+      imperial.setHorizontalOrientation(horizontal);
+      imperial.setPos(horizontal ? horizontalAnchor : verticalAnchor);
+    }
+  }
+
+  private Pos findLegalAnchorForFootprint(Personnel figure, int xSize, int ySize) {
+    Pos bestAnchor = null;
+    int bestOverlap = -1;
+    int bestDistance = Integer.MAX_VALUE;
+    Pos[] currentSpaces = figure.getOccupiedSpaces();
+    for (int y = 0; y < Constants.tileMatrix.length; y++) {
+      for (int x = 0; x < Constants.tileMatrix[y].length; x++) {
+        Pos anchor = new Pos(x, y);
+        Pos[] candidateSpaces = MovementRules.occupiedSpacesAtSize(anchor, xSize, ySize);
+        if (!canOccupyFootprint(candidateSpaces, figure)) {
+          continue;
+        }
+        int overlap = countOverlap(candidateSpaces, currentSpaces);
+        int distance = Math.abs(figure.getPos().getX() - x) + Math.abs(figure.getPos().getY() - y);
+        if (overlap > bestOverlap || overlap == bestOverlap && distance < bestDistance) {
+          bestAnchor = anchor;
+          bestOverlap = overlap;
+          bestDistance = distance;
+        }
+      }
+    }
+    return bestAnchor;
+  }
+
+  private boolean canOccupyFootprint(Pos[] spaces, Personnel ignore) {
+    for (Pos space : spaces) {
+      if (!MovementRules.isLegalBoardSpace(space) || !isSpaceAvailable(space, ignore)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private int countOverlap(Pos[] first, Pos[] second) {
+    int overlap = 0;
+    for (Pos firstSpace : first) {
+      for (Pos secondSpace : second) {
+        if (firstSpace.equalTo(secondSpace)) {
+          overlap++;
+          break;
+        }
+      }
+    }
+    return overlap;
   }
 
   public void awardSupplyEquipment(Hero hero) {
@@ -1358,6 +1436,7 @@ public class Game {
     MyArrayList<FigureSnapshot> heroSnapshots = new MyArrayList<>();
     for (Hero hero : heroes) {
       heroSnapshots.add(new FigureSnapshot(hero.getId(), hero.getName(), hero.getPos().getX(), hero.getPos().getY(),
+          hero.getXSize(), hero.getYSize(),
           hero.getHealth(), hero.getStrain(), hero.stunned(), hero.focused, hero.isActive(),
           hero.isPossibleTarget(), hero.getExhausted(), hero.getOwnerSeat(), hero.getEquipmentIds(),
           hero.getConditionNames(), hero.isWounded(), hero.isDefeated()));
@@ -1367,7 +1446,8 @@ public class Game {
       MyArrayList<FigureSnapshot> members = new MyArrayList<>();
       for (Imperial imperial : group.getMembers()) {
         members.add(new FigureSnapshot(imperial.getId(), imperial.getName(), imperial.getPos().getX(),
-            imperial.getPos().getY(), imperial.getHealth(), imperial.getStrain(), imperial.stunned(),
+            imperial.getPos().getY(), imperial.getXSize(), imperial.getYSize(),
+            imperial.getHealth(), imperial.getStrain(), imperial.stunned(),
             imperial.focused, imperial.isActive(), imperial.isPossibleTarget(), false,
             imperial.getOwnerSeat(), new MyArrayList<>(), imperial.getConditionNames(), false, imperial.isDefeated()));
       }
@@ -1556,6 +1636,9 @@ public class Game {
     personnel.setId(snapshot.id());
     personnel.setOwnerSeat(snapshot.ownerSeat());
     personnel.setPos(new Pos(snapshot.x(), snapshot.y()));
+    if (snapshot.xSize() > 0 && snapshot.ySize() > 0 && personnel.isNonSquareLargeFigure()) {
+      personnel.setHorizontalOrientation(snapshot.xSize() > snapshot.ySize());
+    }
     personnel.setHealth(snapshot.health());
     personnel.setStrain(snapshot.strain());
     personnel.setStunned(snapshot.stunned());

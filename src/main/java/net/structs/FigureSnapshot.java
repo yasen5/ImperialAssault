@@ -10,6 +10,8 @@ public record FigureSnapshot(
         String name,
         int x,
         int y,
+        int xSize,
+        int ySize,
         int health,
         int strain,
         boolean stunned,

@@ -60,6 +60,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   private BufferedImage startScreenimage;
   private int buttonSize;
   private CompletableFuture<Directions> movementButtonOutput;
+  private final JButton rotateMovementButton = new JButton("Rotate");
   private static boolean gameEnd = false;
   private Thread mainGameLoop;
   private static SelectionType currentSelectionType = SelectionType.EXPLANATION;
@@ -339,6 +340,10 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
       button.setVisible(false);
       button.setBounds(0, 0, buttonSize, buttonSize);
     }
+    rotateMovementButton.addActionListener(this);
+    rotateMovementButton.setVisible(false);
+    rotateMovementButton.setBounds(0, 0, buttonSize + 32, buttonSize);
+    add(rotateMovementButton);
     increaseThreatButton.addActionListener(e -> performIncreaseThreat());
     increaseThreatButton.setVisible(false);
     add(increaseThreatButton);
@@ -658,6 +663,14 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         continue;
       }
     }
+    if (source.equals(rotateMovementButton)) {
+      if (remoteMode && remoteBoardSelection != null && activeRemotePrompt != null
+          && activeRemotePrompt.type() == PromptType.DIRECTION) {
+        remoteBoardSelection.complete("ROTATE");
+      } else if (movementButtonOutput != null) {
+        movementButtonOutput.complete(null);
+      }
+    }
   }
 
   @Override
@@ -748,6 +761,16 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     return movementButtons.get(direction);
   }
 
+  public JButton moveAndActivateRotateButton(int x, int y) {
+    rotateMovementButton.setBounds((int) ((x + 0.15) * Constants.tileSize),
+        (int) ((y + 1.15) * Constants.tileSize), buttonSize + 32, buttonSize);
+    rotateMovementButton.setEnabled(true);
+    rotateMovementButton.setVisible(true);
+    revalidate();
+    repaint();
+    return rotateMovementButton;
+  }
+
   public void setMovementButtonOutput(CompletableFuture<Directions> output) {
     movementButtonOutput = output;
   }
@@ -826,10 +849,16 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     movementButtons.get(dir).setEnabled(false);
   }
 
+  public void deactivateRotateButton() {
+    rotateMovementButton.setVisible(false);
+    rotateMovementButton.setEnabled(false);
+  }
+
   public void deactiveateMovementButtons() {
     for (Directions direction : Directions.values()) {
       deactivateMovementButton(direction);
     }
+    deactivateRotateButton();
     repaint();
   }
 
@@ -900,6 +929,11 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
       } else {
         deactivateMovementButton(direction);
       }
+    }
+    if (allowedValues.contains("ROTATE")) {
+      moveAndActivateRotateButton(activeFigure.getPos().getX(), activeFigure.getPos().getY());
+    } else {
+      deactivateRotateButton();
     }
   }
 

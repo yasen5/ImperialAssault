@@ -117,6 +117,17 @@ public abstract class Personnel {
     updateCorners();
   }
 
+  public boolean canRotate() {
+    return MovementRules.canRotate(this, game);
+  }
+
+  public void rotate() {
+    int previousXSize = xSize;
+    xSize = ySize;
+    ySize = previousXSize;
+    updateCorners();
+  }
+
   public void setStunned(boolean value) {
     stunned = value;
   }
@@ -321,6 +332,28 @@ public abstract class Personnel {
 
   public boolean isLargeFigure() {
     return xSize * ySize > 1;
+  }
+
+  public boolean isNonSquareLargeFigure() {
+    return isLargeFigure() && xSize != ySize;
+  }
+
+  public int getXSize() {
+    return xSize;
+  }
+
+  public int getYSize() {
+    return ySize;
+  }
+
+  public void setHorizontalOrientation(boolean horizontal) {
+    if (!isNonSquareLargeFigure()) {
+      return;
+    }
+    boolean currentlyHorizontal = xSize > ySize;
+    if (currentlyHorizontal != horizontal) {
+      rotate();
+    }
   }
 
   protected void setFigureSize(int xSize, int ySize) {

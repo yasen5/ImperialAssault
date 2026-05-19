@@ -24,6 +24,27 @@ public final class MovementRules {
     return true;
   }
 
+  public static boolean canRotate(Personnel figure, Game game) {
+    if (!figure.isNonSquareLargeFigure()) {
+      return false;
+    }
+    Pos[] currentSpaces = figure.getOccupiedSpaces();
+    Pos[] rotatedSpaces = occupiedSpacesAtSize(figure.getPos(), figure.getYSize(), figure.getXSize());
+    int overlapCount = 0;
+    for (Pos rotatedSpace : rotatedSpaces) {
+      if (!isLegalBoardSpace(rotatedSpace)) {
+        return false;
+      }
+      if (contains(currentSpaces, rotatedSpace)) {
+        overlapCount++;
+      }
+      if (game != null && !game.isSpaceAvailable(rotatedSpace, figure)) {
+        return false;
+      }
+    }
+    return overlapCount * 2 >= rotatedSpaces.length;
+  }
+
   private static Pos[] occupiedSpacesAt(Personnel figure, Pos anchor) {
     Pos currentAnchor = figure.getPos();
     Pos[] currentSpaces = figure.getOccupiedSpaces();
@@ -34,6 +55,30 @@ public final class MovementRules {
       destinationSpaces[i] = new Pos(currentSpaces[i].getX() + deltaX, currentSpaces[i].getY() + deltaY);
     }
     return destinationSpaces;
+  }
+
+  public static Pos[] occupiedSpacesAtSize(Pos anchor, int xSize, int ySize) {
+    Pos[] occupiedSpaces = new Pos[xSize * ySize];
+    int index = 0;
+    for (int y = 0; y < ySize; y++) {
+      for (int x = 0; x < xSize; x++) {
+        occupiedSpaces[index++] = new Pos(anchor.getX() + x, anchor.getY() + y);
+      }
+    }
+    return occupiedSpaces;
+  }
+
+  public static boolean isLegalBoardSpace(Pos space) {
+    return space.isOnGrid() && Constants.tileMatrix[space.getY()][space.getX()] == 1;
+  }
+
+  private static boolean contains(Pos[] spaces, Pos target) {
+    for (Pos space : spaces) {
+      if (space.equalTo(target)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static boolean isDiagonal(Directions direction) {
