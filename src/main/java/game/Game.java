@@ -724,6 +724,9 @@ public class Game {
     }
     if (availableTargets.size() == 0) {
       availableActions.remove(Actions.ATTACK);
+      if (activeFigure.specialNeedsAttackTarget()) {
+        availableActions.remove(Actions.SPECIAL);
+      }
     }
     if (canInteract(activeFigure)) {
       availableActions.add(Actions.INTERACT);
@@ -984,6 +987,45 @@ public class Game {
       }
     }
     return imperials;
+  }
+
+  public void applyBlast(Personnel target, int blastValue) {
+    if (target == null || blastValue <= 0) {
+      return;
+    }
+    Set<Personnel> affected = new HashSet<>();
+    for (Personnel targetSpaceOwner : allPersonnel()) {
+      if (targetSpaceOwner == target) {
+        continue;
+      }
+      for (Pos targetSpace : target.getOccupiedSpaces()) {
+        if (isAdjacentToAnyOccupiedSpace(targetSpaceOwner, targetSpace)) {
+          affected.add(targetSpaceOwner);
+          break;
+        }
+      }
+    }
+    for (Personnel personnel : affected) {
+      personnel.dealDamage(blastValue);
+    }
+  }
+
+  private MyArrayList<Personnel> allPersonnel() {
+    MyArrayList<Personnel> personnel = new MyArrayList<>();
+    personnel.addAll(heroes);
+    personnel.addAll(getImperials());
+    return personnel;
+  }
+
+  private boolean isAdjacentToAnyOccupiedSpace(Personnel personnel, Pos targetSpace) {
+    for (Pos occupiedSpace : personnel.getOccupiedSpaces()) {
+      int xDistance = Math.abs(occupiedSpace.getX() - targetSpace.getX());
+      int yDistance = Math.abs(occupiedSpace.getY() - targetSpace.getY());
+      if (xDistance <= 1 && yDistance <= 1 && (xDistance + yDistance) > 0) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public MyArrayList<Hero> getHeroes() {

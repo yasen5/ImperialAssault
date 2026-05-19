@@ -15,7 +15,7 @@ public class StormTrooper extends Imperial {
 
     @Override
     public Equipment.SurgeOptions[] getSurgeOptions() {
-        return new Equipment.SurgeOptions[] { Equipment.SurgeOptions.DAMAGE1, Equipment.SurgeOptions.ACCURACY1 };
+        return new Equipment.SurgeOptions[] { Equipment.SurgeOptions.DAMAGE1, Equipment.SurgeOptions.ACCURACY2 };
     }
 
     // Same as the superclass's implementation, except you can reroll if a trooper

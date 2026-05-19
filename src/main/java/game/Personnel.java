@@ -241,6 +241,14 @@ public abstract class Personnel {
     return Integer.MAX_VALUE;
   }
 
+  public int getBlastValue() {
+    return 0;
+  }
+
+  public boolean specialNeedsAttackTarget() {
+    return false;
+  }
+
   // Checks if the defender is in line of sight and if melee, if they are < range
   // spaces away
   public boolean canAttack(Personnel other) {

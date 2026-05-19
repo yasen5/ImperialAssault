@@ -17,7 +17,7 @@ public class EWebEngineer extends Imperial {
     @Override
     public Equipment.SurgeOptions[] getSurgeOptions() {
         return new Equipment.SurgeOptions[] { Equipment.SurgeOptions.RECOVER2, Equipment.SurgeOptions.DAMAGE1,
-                Equipment.SurgeOptions.ACCURACY2 };
+                Equipment.SurgeOptions.ACCURACY3 };
     }
 
     @Override

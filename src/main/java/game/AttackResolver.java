@@ -37,7 +37,11 @@ public final class AttackResolver {
         spendSurges(attacker, defender, game, Math.max(0, surges), totalResults);
         totalResults.addDamage(rawDamage);
         if (attackHasRange(attacker, defender, totalResults, game) && totalResults.getDamage() > 0) {
-            defender.dealDamage(totalResults.getDamage());
+            int damage = totalResults.getDamage();
+            defender.dealDamage(damage);
+            if (game != null && attacker.getBlastValue() > 0) {
+                game.applyBlast(defender, attacker.getBlastValue());
+            }
         }
         if (totalResults.getRecovery() > 0) {
             attacker.dealDamage(-totalResults.getRecovery());

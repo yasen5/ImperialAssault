@@ -151,6 +151,53 @@ class RulesTest {
     }
 
     @Test
+    void printedDeploymentCardSurgesMatchImplementedFigures() {
+        FennSignis fenn = new FennSignis(new Pos(1, 1));
+        EWebEngineer eWeb = new EWebEngineer(new Pos(1, 1));
+        StormTrooper stormTrooper = new StormTrooper(new Pos(1, 1));
+        Officer officer = new Officer(new Pos(1, 1));
+
+        assertTrue(fenn.getActions().contains(Personnel.Actions.SPECIAL));
+        assertTrue(hasSurge(fenn.getSurgeOptions(), Equipment.SurgeOptions.ACCURACY2));
+        assertTrue(hasSurge(eWeb.getSurgeOptions(), Equipment.SurgeOptions.ACCURACY3));
+        assertTrue(hasSurge(stormTrooper.getSurgeOptions(), Equipment.SurgeOptions.ACCURACY2));
+        assertTrue(hasSurge(officer.getSurgeOptions(), Equipment.SurgeOptions.ACCURACY2));
+    }
+
+    @Test
+    void fennHavocShotAddsBlastOnlyDuringSpecialAttack() {
+        FennSignis fenn = new FennSignis(new Pos(1, 1));
+        BlastRecordingGame game = new BlastRecordingGame();
+        fenn.setGame(game);
+
+        fenn.performSpecial();
+
+        assertEquals(1, game.recordedBlastValue);
+        assertEquals(0, fenn.getBlastValue());
+    }
+
+    @Test
+    void blastDamagesAdjacentFiguresButNotTarget() {
+        Game game = new Game(null, new GameSessionConfig(4), MissionDefinition.forOption(MissionOption.MISSION_ONE),
+                null, true);
+        Hero target = game.getHeroes().get(0);
+        Hero adjacentHero = game.getHeroes().get(1);
+        Hero farHero = game.getHeroes().get(2);
+        StormTrooper adjacentImperial = findStormTrooper(game);
+        target.setPos(new Pos(5, 5));
+        adjacentHero.setPos(new Pos(6, 6));
+        farHero.setPos(new Pos(9, 9));
+        adjacentImperial.setPos(new Pos(4, 5));
+
+        game.applyBlast(target, 1);
+
+        assertEquals(target.getStartingHealth(), target.getHealth());
+        assertEquals(adjacentHero.getStartingHealth() - 1, adjacentHero.getHealth());
+        assertEquals(farHero.getStartingHealth(), farHero.getHealth());
+        assertEquals(adjacentImperial.getStartingHealth() - 1, adjacentImperial.getHealth());
+    }
+
+    @Test
     void missionSnapshotCarriesThreatRoundAndConditions() {
         Game game = new Game(null, new GameSessionConfig(1), MissionDefinition.forOption(MissionOption.MISSION_TWO),
                 null, true);
@@ -331,6 +378,26 @@ class RulesTest {
         throw new AssertionError("E-Web Engineer not found");
     }
 
+    private StormTrooper findStormTrooper(Game game) {
+        for (DeploymentGroup<? extends Imperial> group : game.getDeploymentGroups()) {
+            for (Imperial member : group.getMembers()) {
+                if (member instanceof StormTrooper stormTrooper) {
+                    return stormTrooper;
+                }
+            }
+        }
+        throw new AssertionError("Stormtrooper not found");
+    }
+
+    private boolean hasSurge(Equipment.SurgeOptions[] options, Equipment.SurgeOptions expected) {
+        for (Equipment.SurgeOptions option : options) {
+            if (option == expected) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private PlayerSeat invokeChooseNextActivationSeat(Game game) throws Exception {
         Method method = Game.class.getDeclaredMethod("chooseNextActivationSeat");
         method.setAccessible(true);
@@ -408,6 +475,19 @@ class RulesTest {
         @Override
         public Personnel chooseTarget(PlayerSeat seat, SelectionType selectionType, util.MyArrayList<Personnel> availableTargets) {
             return availableTargets.get(0);
+        }
+    }
+
+    private static final class BlastRecordingGame extends Game {
+        private int recordedBlastValue;
+
+        private BlastRecordingGame() {
+            super(null, new GameSessionConfig(1), MissionDefinition.forOption(MissionOption.MISSION_ONE), null, false);
+        }
+
+        @Override
+        public void handleAttack(Personnel activeFigure) {
+            recordedBlastValue = activeFigure.getBlastValue();
         }
     }
 

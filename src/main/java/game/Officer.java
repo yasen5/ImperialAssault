@@ -18,7 +18,7 @@ public class Officer extends Imperial {
 
     @Override
     public Equipment.SurgeOptions[] getSurgeOptions() {
-        return new Equipment.SurgeOptions[] { Equipment.SurgeOptions.FOCUS, Equipment.SurgeOptions.ACCURACY1,
+        return new Equipment.SurgeOptions[] { Equipment.SurgeOptions.FOCUS, Equipment.SurgeOptions.ACCURACY2,
                 Equipment.SurgeOptions.DAMAGE1 };
     }
 

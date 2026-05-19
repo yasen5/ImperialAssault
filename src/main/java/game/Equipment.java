@@ -34,6 +34,7 @@ public class Equipment {
         RECOVER2,
         ACCURACY1,
         ACCURACY2,
+        ACCURACY3,
         PIERCE1,
         PIERCE2,
         STUN,
@@ -68,6 +69,9 @@ public class Equipment {
         });
         surgeEffects.put(SurgeOptions.ACCURACY2, (Personnel[] combatants, TotalAttackResult totalResults) -> {
             totalResults.addAccuracy(2);
+        });
+        surgeEffects.put(SurgeOptions.ACCURACY3, (Personnel[] combatants, TotalAttackResult totalResults) -> {
+            totalResults.addAccuracy(3);
         });
         surgeEffects.put(SurgeOptions.PIERCE1, (Personnel[] combatants, TotalAttackResult totalResults) -> {
             if (totalResults.getDamage() < 0) {
