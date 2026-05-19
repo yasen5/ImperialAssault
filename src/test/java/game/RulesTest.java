@@ -2,7 +2,11 @@ package game;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
 import org.junit.jupiter.api.Test;
 
@@ -11,6 +15,7 @@ import game.Die.DefenseRoll;
 import game.Die.OffenseDieResult;
 import game.Die.OffenseRoll;
 import game.Personnel.Directions;
+import net.GameDecisionProvider;
 import net.structs.GameSessionConfig;
 import net.structs.MatchSnapshot;
 import net.structs.MissionOption;
@@ -102,6 +107,128 @@ class RulesTest {
     }
 
     @Test
+    void sessionConfigSupportsFourRebelSeats() {
+        GameSessionConfig config = new GameSessionConfig(4);
+
+        assertEquals(PlayerSeat.REBEL_1, config.rebelTurnOrder().get(0));
+        assertEquals(PlayerSeat.REBEL_2, config.rebelTurnOrder().get(1));
+        assertEquals(PlayerSeat.REBEL_3, config.rebelTurnOrder().get(2));
+        assertEquals(PlayerSeat.REBEL_4, config.rebelTurnOrder().get(3));
+        assertEquals(5, config.requiredSeats().size());
+    }
+
+    @Test
+    void tutorialSetupUsesFullFourHeroRosterAndImperials() {
+        Game game = new Game(null, new GameSessionConfig(4), MissionDefinition.forOption(MissionOption.MISSION_ONE),
+                null, true);
+
+        assertEquals(4, game.getHeroes().size());
+        assertInstanceOf(DialaPassil.class, game.getHeroes().get(0));
+        assertInstanceOf(Gaarkhan.class, game.getHeroes().get(1));
+        assertInstanceOf(FennSignis.class, game.getHeroes().get(2));
+        assertInstanceOf(MakEshray.class, game.getHeroes().get(3));
+        assertEquals(PlayerSeat.REBEL_4, game.getHeroes().get(3).getOwnerSeat());
+        assertTrue(hasGroup(game, "StormTrooper"));
+        assertTrue(hasGroup(game, "ImperialOfficer"));
+        assertTrue(hasGroup(game, "ProbeDroid"));
+        assertTrue(hasGroup(game, "EWebEngineer"));
+        assertEquals(0, game.getThreatLevel());
+        assertEquals(0, game.getRoundLimit());
+    }
+
+    @Test
+    void tutorialSetupScalesProbeDroidAndEWebByHeroCount() {
+        Game twoHeroGame = new Game(null, new GameSessionConfig(2),
+                MissionDefinition.forOption(MissionOption.MISSION_ONE), null, true);
+        Game threeHeroGame = new Game(null, new GameSessionConfig(3),
+                MissionDefinition.forOption(MissionOption.MISSION_ONE), null, true);
+
+        assertFalse(hasGroup(twoHeroGame, "ProbeDroid"));
+        assertFalse(hasGroup(twoHeroGame, "EWebEngineer"));
+        assertTrue(hasGroup(threeHeroGame, "ProbeDroid"));
+        assertFalse(hasGroup(threeHeroGame, "EWebEngineer"));
+    }
+
+    @Test
+    void tutorialSnapshotRoundTripsNewFigures() {
+        Game game = new Game(null, new GameSessionConfig(4), MissionDefinition.forOption(MissionOption.MISSION_ONE),
+                null, true);
+
+        MatchSnapshot snapshot = game.createSnapshot();
+        Game copy = new Game(null, new GameSessionConfig(4), MissionDefinition.forOption(MissionOption.MISSION_ONE),
+                null, false);
+        copy.loadSnapshot(snapshot);
+
+        assertInstanceOf(FennSignis.class, copy.getHeroes().get(2));
+        assertInstanceOf(MakEshray.class, copy.getHeroes().get(3));
+        assertTrue(hasGroup(copy, "ProbeDroid"));
+        assertTrue(hasGroup(copy, "EWebEngineer"));
+    }
+
+    @Test
+    void tutorialObjectivesEndOnHeroWoundOrBothTerminals() {
+        Game heroWoundGame = new Game(null, new GameSessionConfig(2),
+                MissionDefinition.forOption(MissionOption.MISSION_ONE), null, true);
+        heroWoundGame.getHeroes().get(0).dealDamage(50);
+        heroWoundGame.checkEndGame();
+
+        assertTrue(heroWoundGame.isGameEnd());
+        assertFalse(heroWoundGame.rebelsWin());
+
+        Game terminalGame = new Game(null, new GameSessionConfig(2),
+                MissionDefinition.forOption(MissionOption.MISSION_ONE), null, true);
+        terminalGame.getInteractables()[0].applySnapshotState(false);
+        terminalGame.getInteractables()[1].applySnapshotState(false);
+        terminalGame.checkEndGame();
+
+        assertTrue(terminalGame.isGameEnd());
+        assertFalse(terminalGame.rebelsWin());
+    }
+
+    @Test
+    void rebelSideVotesForNextActivationAndThenImperialsAct() throws Exception {
+        VotingDecisionProvider decisionProvider = new VotingDecisionProvider(2, 2, 1, 2);
+        Game game = new Game(null, new GameSessionConfig(4), MissionDefinition.forOption(MissionOption.MISSION_ONE),
+                decisionProvider, true);
+        decisionProvider.resetPromptCount();
+
+        assertEquals(PlayerSeat.REBEL_3, invokeChooseNextActivationSeat(game));
+        assertEquals(4, decisionProvider.multipleChoicePrompts);
+
+        setCurrentTurnSeat(game, PlayerSeat.IMPERIAL);
+
+        assertEquals(PlayerSeat.IMPERIAL, invokeChooseNextActivationSeat(game));
+    }
+
+    @Test
+    void movementStopsWhenNoLegalDirectionExists() {
+        CountingDecisionProvider decisionProvider = new CountingDecisionProvider();
+        Game game = new Game(null, new GameSessionConfig(1), MissionDefinition.forOption(MissionOption.MISSION_ONE),
+                decisionProvider, true);
+        Hero hero = game.getHeroes().get(0);
+        hero.setPos(new Pos(0, 0));
+
+        game.handleMoves(hero, 1);
+
+        assertEquals(0, decisionProvider.directionPrompts);
+    }
+
+    @Test
+    void setupPromptsRebelHeroesInJoinOrder() {
+        VotingDecisionProvider decisionProvider = new VotingDecisionProvider(2, 0, 0, 0);
+        Game game = new Game(null, new GameSessionConfig(4), MissionDefinition.forOption(MissionOption.MISSION_ONE),
+                decisionProvider, false);
+        game.setRebelHeroSelectionOrder(util.MyArrayList.of(PlayerSeat.REBEL_3, PlayerSeat.REBEL_1,
+                PlayerSeat.REBEL_4, PlayerSeat.REBEL_2));
+
+        game.setup();
+
+        assertInstanceOf(FennSignis.class, game.getHeroes().get(0));
+        assertEquals(PlayerSeat.REBEL_3, game.getHeroes().get(0).getOwnerSeat());
+        assertEquals(PlayerSeat.REBEL_1, game.getHeroes().get(1).getOwnerSeat());
+    }
+
+    @Test
     void deploymentGroupTracksReinforcementCapacityAndCost() {
         DeploymentGroup<StormTrooper> group = new DeploymentGroup<>(
                 new Pos[] { new Pos(4, 11), new Pos(4, 12), new Pos(5, 11) },
@@ -118,6 +245,95 @@ class RulesTest {
 
         assertEquals(3, group.getMembers().size());
         assertFalse(group.canReinforce(2));
+    }
+
+    private boolean hasGroup(Game game, String name) {
+        for (DeploymentGroup<? extends Imperial> group : game.getDeploymentGroups()) {
+            if (group.toString().equals(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private PlayerSeat invokeChooseNextActivationSeat(Game game) throws Exception {
+        Method method = Game.class.getDeclaredMethod("chooseNextActivationSeat");
+        method.setAccessible(true);
+        return (PlayerSeat) method.invoke(game);
+    }
+
+    private void setCurrentTurnSeat(Game game, PlayerSeat seat) throws Exception {
+        Field field = Game.class.getDeclaredField("currentTurnSeat");
+        field.setAccessible(true);
+        field.set(game, seat);
+    }
+
+    private static final class VotingDecisionProvider implements GameDecisionProvider {
+        private final int[] votes;
+        private int multipleChoicePrompts;
+
+        private VotingDecisionProvider(int... votes) {
+            this.votes = votes;
+        }
+
+        private void resetPromptCount() {
+            multipleChoicePrompts = 0;
+        }
+
+        @Override
+        public int chooseMultipleChoice(PlayerSeat seat, String name, String explanation, Object[] options) {
+            return votes[multipleChoicePrompts++ % votes.length];
+        }
+
+        @Override
+        public boolean chooseYesNo(PlayerSeat seat, String name, String explanation) {
+            return false;
+        }
+
+        @Override
+        public int chooseNumericChoice(PlayerSeat seat, String name, int minValue, int maxValue) {
+            return minValue;
+        }
+
+        @Override
+        public Directions chooseDirection(PlayerSeat seat, Personnel activeFigure, util.MyArrayList<Directions> allowedDirections) {
+            return allowedDirections.get(0);
+        }
+
+        @Override
+        public Personnel chooseTarget(PlayerSeat seat, SelectionType selectionType, util.MyArrayList<Personnel> availableTargets) {
+            return availableTargets.get(0);
+        }
+    }
+
+    private static final class CountingDecisionProvider implements GameDecisionProvider {
+        private int directionPrompts;
+
+        @Override
+        public int chooseMultipleChoice(PlayerSeat seat, String name, String explanation, Object[] options) {
+            return 0;
+        }
+
+        @Override
+        public boolean chooseYesNo(PlayerSeat seat, String name, String explanation) {
+            return false;
+        }
+
+        @Override
+        public int chooseNumericChoice(PlayerSeat seat, String name, int minValue, int maxValue) {
+            return minValue;
+        }
+
+        @Override
+        public Directions chooseDirection(PlayerSeat seat, Personnel activeFigure, util.MyArrayList<Directions> allowedDirections) {
+            directionPrompts++;
+            return allowedDirections.get(0);
+        }
+
+        @Override
+        public Personnel chooseTarget(PlayerSeat seat, SelectionType selectionType, util.MyArrayList<Personnel> availableTargets) {
+            return availableTargets.get(0);
+        }
     }
 
     @Test

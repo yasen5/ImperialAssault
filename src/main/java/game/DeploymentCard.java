@@ -23,7 +23,11 @@ public class DeploymentCard {
   // Constructor
   public DeploymentCard(String name, boolean rebel, FullDeployment parent) {
     // Try both .jpg and .png
-    image = LoaderUtils.getImage(name + "Deployment");
+    try {
+      image = LoaderUtils.getImage(name + "Deployment");
+    } catch (RuntimeException ex) {
+      image = LoaderUtils.getImage(name);
+    }
     exhausted = false;
     this.parent = parent;
   }

@@ -48,3 +48,13 @@ tasks.register('runClient', JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'runners.ClientRunner'
 }
+
+tasks.register('smokeTutorialNetwork', JavaExec) {
+    group = 'verification'
+    description = 'Runs a headless socket-level smoke test through lobby, hero selection, and first Rebel action prompt.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'runners.HeadlessNetworkSmokeTest'
+    if (project.hasProperty('args')) {
+        args project.property('args').toString().split('\\s+')
+    }
+}

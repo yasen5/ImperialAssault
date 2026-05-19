@@ -21,6 +21,7 @@ import net.structs.RemotePrompt;
 import net.structs.RemotePromptCancel;
 import net.structs.PromptResponse;
 import net.structs.ClientMissionSelection;
+import visual.WindowFocus;
 
 public class GameClient {
   private final String host;
@@ -66,7 +67,7 @@ public class GameClient {
       frame.add(screen);
       frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
       frame.pack();
-      frame.setVisible(true);
+      WindowFocus.showWithoutTakingFocus(frame);
     });
     while (true) {
       Object message = in.readObject();
@@ -95,7 +96,8 @@ public class GameClient {
     try {
       String value = switch (prompt.type()) {
         case MULTIPLE_CHOICE -> String.valueOf(
-            screen.promptMultipleChoice(prompt.promptId(), prompt.title(), prompt.message(), prompt.optionLabels().toArray()));
+            screen.promptMultipleChoice(prompt.promptId(), prompt.title(), prompt.message(),
+                prompt.optionLabels().toArray()));
         case YES_NO -> String.valueOf(screen.promptYesNo(prompt.promptId(), prompt.title(), prompt.message()));
         case NUMERIC -> String.valueOf(
             screen.promptNumericChoice(prompt.promptId(), prompt.title(), prompt.message(), prompt.minValue(),

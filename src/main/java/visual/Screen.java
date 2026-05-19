@@ -632,6 +632,8 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
       case IMPERIAL -> "Imperial";
       case REBEL_1 -> "Rebel 1";
       case REBEL_2 -> "Rebel 2";
+      case REBEL_3 -> "Rebel 3";
+      case REBEL_4 -> "Rebel 4";
     };
   }
 

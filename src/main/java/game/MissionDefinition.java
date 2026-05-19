@@ -7,16 +7,18 @@ public record MissionDefinition(
         String displayName,
         int threatLevel,
         int roundLimit,
+        boolean usesThreat,
+        boolean tutorialObjectives,
         Pos[] terminalPositions,
         Pos[] doorPositions,
         Pos[] cratePositions) {
     public static MissionDefinition forOption(MissionOption option) {
         return switch (option) {
-            case MISSION_ONE -> new MissionDefinition(option, "Aftermath", 2, 6,
+            case MISSION_ONE -> new MissionDefinition(option, "Tutorial", 0, 0, false, true,
                     new Pos[] { new Pos(7, 0), new Pos(0, 3) },
                     new Pos[] { new Pos(0, 6), new Pos(6, 8) },
                     new Pos[] { new Pos(3, 3) });
-            case MISSION_TWO -> new MissionDefinition(option, "A New Threat", 3, 7,
+            case MISSION_TWO -> new MissionDefinition(option, "A New Threat", 3, 7, true, false,
                     new Pos[] { new Pos(7, 0) },
                     new Pos[] { new Pos(0, 6), new Pos(6, 8) },
                     new Pos[] { new Pos(3, 3), new Pos(8, 9) });

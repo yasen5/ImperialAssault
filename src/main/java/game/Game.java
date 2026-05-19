@@ -58,6 +58,7 @@ public class Game {
   private int nextSupplyEquipmentIndex;
   private final GameSessionConfig sessionConfig;
   private final MissionDefinition missionDefinition;
+  private MyArrayList<PlayerSeat> rebelHeroSelectionOrder = new MyArrayList<>();
 
   public static record MapTile(BufferedImage img, int[][] tileArray) {
   }
@@ -120,6 +121,11 @@ public class Game {
 
   public void setDecisionProvider(GameDecisionProvider decisionProvider) {
     this.decisionProvider = decisionProvider;
+  }
+
+  public void setRebelHeroSelectionOrder(MyArrayList<PlayerSeat> rebelHeroSelectionOrder) {
+    this.rebelHeroSelectionOrder = rebelHeroSelectionOrder == null ? new MyArrayList<>()
+        : new MyArrayList<>(rebelHeroSelectionOrder);
   }
 
   public void setSnapshotListener(Consumer<MatchSnapshot> snapshotListener) {
@@ -197,36 +203,25 @@ public class Game {
         finishRoundTransition();
         return;
       }
-      MyArrayList<PlayerSeat> turnOrder = currentRoundTurnOrder();
-      int startIndex = getTurnIndex(currentTurnSeat, turnOrder);
-      for (int i = startIndex; i < turnOrder.size(); i++) {
-        PlayerSeat seat = turnOrder.get(i);
-        if (seat == PlayerSeat.IMPERIAL) {
-          MyArrayList<DeploymentGroup<? extends Imperial>> imperialExhaustOptions = getImperialExhaustOptions();
-          if (!imperialExhaustOptions.isEmpty()) {
-            startTurn(PlayerSeat.IMPERIAL);
-            activateImperials(imperialExhaustOptions);
-            if (gameEnd) {
-              return;
-            }
-            endTurn(PlayerSeat.IMPERIAL);
-          }
-        } else {
-          MyArrayList<Hero> seatOptions = getHeroExhaustOptions(seat);
-          if (!seatOptions.isEmpty()) {
-            startTurn(seat);
-            activateHero(seat, seatOptions);
-            if (gameEnd) {
-              return;
-            }
-            endTurn(seat);
-          }
+      PlayerSeat seat = chooseNextActivationSeat();
+      if (seat == null) {
+        resolveStatusPhase();
+      } else if (seat == PlayerSeat.IMPERIAL) {
+        startTurn(PlayerSeat.IMPERIAL);
+        activateImperials(getImperialExhaustOptions());
+        if (gameEnd) {
+          return;
         }
+        endTurn(PlayerSeat.IMPERIAL);
+      } else {
+        startTurn(seat);
+        activateHero(seat, getHeroExhaustOptions(seat));
+        if (gameEnd) {
+          return;
+        }
+        endTurn(seat);
       }
       repaint();
-      if (getHeroExhaustOptions().isEmpty() && getImperialExhaustOptions().isEmpty()) {
-        resolveStatusPhase();
-      }
       checkEndGame();
     } catch (CancellationException ex) {
       if (advanceStatusPhaseRequested) {
@@ -235,6 +230,71 @@ public class Game {
         return;
       }
       throw ex;
+    }
+  }
+
+  private PlayerSeat chooseNextActivationSeat() {
+    boolean rebelsReady = !getHeroExhaustOptions().isEmpty();
+    boolean imperialsReady = !getImperialExhaustOptions().isEmpty();
+    if (!rebelsReady && !imperialsReady) {
+      return null;
+    }
+    if (currentTurnSeat == PlayerSeat.IMPERIAL) {
+      return imperialsReady ? PlayerSeat.IMPERIAL : chooseNextRebelSeatByVote();
+    }
+    return rebelsReady ? chooseNextRebelSeatByVote() : PlayerSeat.IMPERIAL;
+  }
+
+  private PlayerSeat chooseNextRebelSeatByVote() {
+    MyArrayList<RebelActivationChoice> choices = readyRebelActivationChoices();
+    if (choices.isEmpty()) {
+      return null;
+    }
+    if (choices.size() == 1) {
+      return choices.get(0).seat();
+    }
+    int[] votes = new int[choices.size()];
+    MyArrayList<PlayerSeat> voters = sessionConfig.rebelTurnOrder();
+    if (voters.isEmpty()) {
+      voters = readyRebelSeats();
+    }
+    for (PlayerSeat voter : voters) {
+      int vote = promptMultipleChoice(voter, "Rebel Initiative",
+          "Vote for the Rebel player who should activate next", choices.toArray());
+      votes[vote]++;
+    }
+    int winningIndex = 0;
+    for (int i = 1; i < votes.length; i++) {
+      if (votes[i] > votes[winningIndex]) {
+        winningIndex = i;
+      }
+    }
+    return choices.get(winningIndex).seat();
+  }
+
+  private MyArrayList<RebelActivationChoice> readyRebelActivationChoices() {
+    MyArrayList<RebelActivationChoice> choices = new MyArrayList<>();
+    for (PlayerSeat seat : readyRebelSeats()) {
+      choices.add(new RebelActivationChoice(seat, formatSeat(seat)));
+    }
+    return choices;
+  }
+
+  private MyArrayList<PlayerSeat> readyRebelSeats() {
+    MyArrayList<PlayerSeat> seats = new MyArrayList<>();
+    for (Hero hero : heroes) {
+      PlayerSeat seat = hero.getOwnerSeat();
+      if (!hero.getExhausted() && seat.isRebel() && !seats.contains(seat)) {
+        seats.add(seat);
+      }
+    }
+    return seats;
+  }
+
+  private record RebelActivationChoice(PlayerSeat seat, String label) {
+    @Override
+    public String toString() {
+      return label;
     }
   }
 
@@ -308,18 +368,22 @@ public class Game {
     try {
       currentTurnSeat = firstTurnSeat();
       roundDial++;
-      threatDial += threatLevel;
-      triggerBanner("Threat dial increased to " + threatDial);
       replenishDeployments();
-      resolveImperialOptionalDeployments();
-      resolveImperialReinforcements();
+      if (missionDefinition.usesThreat()) {
+        threatDial += threatLevel;
+        triggerBanner("Threat dial increased to " + threatDial);
+        resolveImperialOptionalDeployments();
+        resolveImperialReinforcements();
+      } else {
+        triggerBanner("Status phase complete");
+      }
     } finally {
       statusPhaseInProgress = false;
     }
   }
 
   public void increaseThreat() {
-    if (gameEnd) {
+    if (gameEnd || !missionDefinition.usesThreat()) {
       return;
     }
     threatDial++;
@@ -530,6 +594,14 @@ public class Game {
       endGameInternal(false);
       return;
     }
+    if (missionDefinition.tutorialObjectives()) {
+      for (Hero hero : heroes) {
+        if (hero.isWounded()) {
+          endGameInternal(false);
+          return;
+        }
+      }
+    }
     boolean anyHeroAble = false;
     for (Hero hero : heroes) {
       if (!hero.isDefeated()) {
@@ -538,6 +610,10 @@ public class Game {
       }
     }
     if (!anyHeroAble) {
+      endGameInternal(false);
+      return;
+    }
+    if (missionDefinition.tutorialObjectives() && allTerminalsInactive()) {
       endGameInternal(false);
       return;
     }
@@ -551,6 +627,19 @@ public class Game {
     if (allDeploymentGroupsEmpty) {
       endGameInternal(true);
     }
+  }
+
+  private boolean allTerminalsInactive() {
+    boolean foundTerminal = false;
+    for (Interactable<? extends Personnel> interactable : interactables) {
+      if (interactable instanceof Terminal<?>) {
+        foundTerminal = true;
+        if (interactable.canInteract()) {
+          return false;
+        }
+      }
+    }
+    return foundTerminal;
   }
 
   public void removeDeadFigures() {
@@ -803,7 +892,9 @@ public class Game {
 
   private void handleMovesInternal(Personnel activeFigure, int numMoves) {
     for (int j = 0; j < numMoves; j++) {
-      handleMoveInternal(activeFigure);
+      if (!handleMoveInternal(activeFigure)) {
+        break;
+      }
     }
     if (ui != null) {
       ui.deactiveateMovementButtons();
@@ -822,17 +913,22 @@ public class Game {
     return promptNumericChoice(seat, "# of moves you'll use", 0, leftoverMoves);
   }
 
-  private void handleMoveInternal(Personnel activeFigure) {
+  private boolean handleMoveInternal(Personnel activeFigure) {
     MyArrayList<Directions> availableDirections = new MyArrayList<>();
     for (Directions direction : Directions.values()) {
       if (activeFigure.canMove(direction)) {
         availableDirections.add(direction);
       }
     }
+    if (availableDirections.isEmpty()) {
+      triggerBanner(activeFigure.getName() + " cannot move farther");
+      return false;
+    }
     Directions chosenDir = decisionProvider.chooseDirection(activeFigure.getOwnerSeat(), activeFigure,
         availableDirections);
     activeFigure.move(chosenDir);
     repaint();
+    return true;
   }
 
   private void handleAttackInternal(Personnel activeFigure) {
@@ -900,13 +996,8 @@ public class Game {
     actingSeat = currentTurnSeat;
     heroes.clear();
     imperialDeployments.clear();
-    Hero diala = new DialaPassil(new Pos(6, 5));
-    Hero gaarkhan = new Gaarkhan(new Pos(1, 4));
-    configureHero(diala, "hero-diala", PlayerSeat.REBEL_1);
-    configureHero(gaarkhan, "hero-gaarkhan",
-        sessionConfig.rebelPlayerCount() == 2 ? PlayerSeat.REBEL_2 : PlayerSeat.REBEL_1);
-    heroes.add(diala);
-    heroes.add(gaarkhan);
+    addSelectedHeroes();
+    int heroCount = heroes.size();
 
     DeploymentGroup<StormTrooper> troopers = new DeploymentGroup<>(
         new Pos[] { new Pos(4, 11), new Pos(4, 12), new Pos(5, 11) },
@@ -921,13 +1012,32 @@ public class Game {
     configureDeploymentGroup(officers, "imperial-officer", PlayerSeat.IMPERIAL);
     imperialDeployments.add(troopers);
     imperialDeployments.add(officers);
-    DeploymentGroup<StormTrooper> reserveTroopers = new DeploymentGroup<>(
-        new Pos[] { new Pos(8, 9), new Pos(9, 9), new Pos(8, 10) },
-        StormTrooper::new, "StormTrooper");
-    reserveTroopers.setDeploymentCost(6);
-    reserveTroopers.setDeployed(false);
-    configureDeploymentGroup(reserveTroopers, "imperial-stormtroopers-reserve", PlayerSeat.IMPERIAL);
-    imperialDeployments.add(reserveTroopers);
+    if (missionDefinition.tutorialObjectives()) {
+      if (heroCount >= 3) {
+        DeploymentGroup<ProbeDroid> probeDroid = new DeploymentGroup<>(
+            new Pos[] { new Pos(5, 12) }, ProbeDroid::new, "ProbeDroid");
+        probeDroid.setDeploymentCost(5);
+        probeDroid.setDeployed(true);
+        configureDeploymentGroup(probeDroid, "imperial-probe-droid", PlayerSeat.IMPERIAL);
+        imperialDeployments.add(probeDroid);
+      }
+      if (heroCount >= 4) {
+        DeploymentGroup<EWebEngineer> eWebEngineer = new DeploymentGroup<>(
+            new Pos[] { new Pos(6, 11) }, EWebEngineer::new, "EWebEngineer");
+        eWebEngineer.setDeploymentCost(6);
+        eWebEngineer.setDeployed(true);
+        configureDeploymentGroup(eWebEngineer, "imperial-e-web-engineer", PlayerSeat.IMPERIAL);
+        imperialDeployments.add(eWebEngineer);
+      }
+    } else {
+      DeploymentGroup<StormTrooper> reserveTroopers = new DeploymentGroup<>(
+          new Pos[] { new Pos(8, 9), new Pos(9, 9), new Pos(8, 10) },
+          StormTrooper::new, "StormTrooper");
+      reserveTroopers.setDeploymentCost(6);
+      reserveTroopers.setDeployed(false);
+      configureDeploymentGroup(reserveTroopers, "imperial-stormtroopers-reserve", PlayerSeat.IMPERIAL);
+      imperialDeployments.add(reserveTroopers);
+    }
     bindGameReferences();
     repaint();
   }
@@ -951,6 +1061,58 @@ public class Game {
   private void configureHero(Hero hero, String id, PlayerSeat seat) {
     hero.setId(id);
     hero.setOwnerSeat(seat);
+  }
+
+  private void addSelectedHeroes() {
+    MyArrayList<HeroSetupOption> availableHeroes = MyArrayList.of(
+        new HeroSetupOption("Diala Passil", "hero-diala", DialaPassil::new),
+        new HeroSetupOption("Gaarkhan", "hero-gaarkhan", Gaarkhan::new),
+        new HeroSetupOption("Fenn Signis", "hero-fenn", FennSignis::new),
+        new HeroSetupOption("Mak Eshka'rey", "hero-mak", MakEshray::new));
+    Pos[] heroPositions = new Pos[] { new Pos(0, 4), new Pos(0, 5), new Pos(7, 4), new Pos(7, 5) };
+    MyArrayList<PlayerSeat> owners = heroSelectionOwners();
+    for (int i = 0; i < owners.size(); i++) {
+      HeroSetupOption option = chooseHeroSetupOption(owners.get(i), availableHeroes);
+      Hero hero = option.constructor().apply(heroPositions[i]);
+      configureHero(hero, option.id(), owners.get(i));
+      heroes.add(hero);
+      availableHeroes.remove(option);
+    }
+  }
+
+  private MyArrayList<PlayerSeat> heroSelectionOwners() {
+    int heroCount = Math.max(2, sessionConfig.rebelPlayerCount());
+    MyArrayList<PlayerSeat> owners = new MyArrayList<>();
+    MyArrayList<PlayerSeat> selectionOrder = rebelHeroSelectionOrder.isEmpty()
+        ? sessionConfig.rebelTurnOrder()
+        : new MyArrayList<>(rebelHeroSelectionOrder);
+    if (selectionOrder.isEmpty()) {
+      selectionOrder.add(PlayerSeat.REBEL_1);
+    }
+    for (PlayerSeat seat : selectionOrder) {
+      if (owners.size() < heroCount && seat.isRebel()) {
+        owners.add(seat);
+      }
+    }
+    while (owners.size() < heroCount) {
+      owners.add(selectionOrder.get(owners.size() % selectionOrder.size()));
+    }
+    return owners;
+  }
+
+  private HeroSetupOption chooseHeroSetupOption(PlayerSeat owner, MyArrayList<HeroSetupOption> availableHeroes) {
+    if (decisionProvider == null || sessionConfig.rebelPlayerCount() == 0 || availableHeroes.size() == 1) {
+      return availableHeroes.get(0);
+    }
+    int choice = promptMultipleChoice(owner, "Hero Selection", "Choose your hero", availableHeroes.toArray());
+    return availableHeroes.get(choice);
+  }
+
+  private record HeroSetupOption(String label, String id, java.util.function.Function<Pos, Hero> constructor) {
+    @Override
+    public String toString() {
+      return label;
+    }
   }
 
   private void configureDeploymentGroup(DeploymentGroup<? extends Imperial> group, String id, PlayerSeat seat) {
@@ -1237,28 +1399,8 @@ public class Game {
     announceTurnEnd(seat);
   }
 
-  private MyArrayList<PlayerSeat> currentRoundTurnOrder() {
-    MyArrayList<PlayerSeat> turnOrder = sessionConfig.rebelTurnOrder();
-    turnOrder.add(PlayerSeat.IMPERIAL);
-    return turnOrder;
-  }
-
-  private int getTurnIndex(PlayerSeat seat, MyArrayList<PlayerSeat> turnOrder) {
-    for (int i = 0; i < turnOrder.size(); i++) {
-      if (turnOrder.get(i) == seat) {
-        return i;
-      }
-    }
-    return 0;
-  }
-
   private PlayerSeat nextTurnSeatAfter(PlayerSeat seat) {
-    MyArrayList<PlayerSeat> turnOrder = currentRoundTurnOrder();
-    int index = getTurnIndex(seat, turnOrder);
-    if (index + 1 < turnOrder.size()) {
-      return turnOrder.get(index + 1);
-    }
-    return firstTurnSeat();
+    return seat == PlayerSeat.IMPERIAL ? firstTurnSeat() : PlayerSeat.IMPERIAL;
   }
 
   private PlayerSeat firstTurnSeat() {
@@ -1281,6 +1423,8 @@ public class Game {
       case IMPERIAL -> "Imperial";
       case REBEL_1 -> "Rebel 1";
       case REBEL_2 -> "Rebel 2";
+      case REBEL_3 -> "Rebel 3";
+      case REBEL_4 -> "Rebel 4";
     };
   }
 
@@ -1288,6 +1432,8 @@ public class Game {
     return switch (heroSnapshot.name()) {
       case "DialaPassil" -> new DialaPassil(new Pos(heroSnapshot.x(), heroSnapshot.y()));
       case "Gaarkhan" -> new Gaarkhan(new Pos(heroSnapshot.x(), heroSnapshot.y()));
+      case "FennSignis" -> new FennSignis(new Pos(heroSnapshot.x(), heroSnapshot.y()));
+      case "MakEshray" -> new MakEshray(new Pos(heroSnapshot.x(), heroSnapshot.y()));
       default -> throw new IllegalArgumentException("Unknown hero " + heroSnapshot.name());
     };
   }
@@ -1301,6 +1447,8 @@ public class Game {
     return switch (groupSnapshot.name()) {
       case "StormTrooper" -> new DeploymentGroup<StormTrooper>(poses, StormTrooper::new, "StormTrooper");
       case "ImperialOfficer" -> new DeploymentGroup<Officer>(poses, Officer::new, "ImperialOfficer");
+      case "ProbeDroid" -> new DeploymentGroup<ProbeDroid>(poses, ProbeDroid::new, "ProbeDroid");
+      case "EWebEngineer" -> new DeploymentGroup<EWebEngineer>(poses, EWebEngineer::new, "EWebEngineer");
       default -> throw new IllegalArgumentException("Unknown group " + groupSnapshot.name());
     };
   }

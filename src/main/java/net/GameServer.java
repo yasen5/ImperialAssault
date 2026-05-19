@@ -12,6 +12,7 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import util.MyArrayList;
 import util.MyHashMap;
 import java.util.Enumeration;
@@ -44,6 +45,7 @@ import net.structs.PromptResponse;
 import net.structs.RemotePromptCancel;
 import net.structs.RemotePrompt;
 import visual.Screen;
+import visual.WindowFocus;
 
 public class GameServer {
   private final int port;
@@ -52,26 +54,35 @@ public class GameServer {
   private final Path savePath;
   private final Object saveLock = new Object();
   private final MyHashMap<PlayerSeat, ClientConnection> clients = new MyHashMap<>(PlayerSeat.class);
+  private final MyArrayList<PlayerSeat> rebelJoinOrder = new MyArrayList<>();
   private final AtomicLong promptIds = new AtomicLong(1);
   private final Object lobbyLock = new Object();
   private volatile Game spectatorGame;
   private volatile Screen spectatorScreen;
   private volatile String hostAddress;
+  private final boolean showSpectator;
 
   public GameServer(int port, int rebelPlayers) {
     this(port, rebelPlayers, true);
   }
 
   public GameServer(int port, int rebelPlayers, boolean loadPreviousGame) {
+    this(port, rebelPlayers, loadPreviousGame, true);
+  }
+
+  public GameServer(int port, int rebelPlayers, boolean loadPreviousGame, boolean showSpectator) {
     this.port = port;
     this.config = new GameSessionConfig(rebelPlayers);
     this.loadPreviousGame = loadPreviousGame;
+    this.showSpectator = showSpectator;
     this.savePath = Path.of("server-game-state.ser");
   }
 
   public void run() throws Exception {
     hostAddress = resolveHostAddress();
-    startSpectatorDisplay();
+    if (showSpectator) {
+      startSpectatorDisplay();
+    }
     try (ServerSocket serverSocket = new ServerSocket(port, 50,
         InetAddress.getByName(NetworkConfig.SERVER_BIND_ADDRESS))) {
       while (true) {
@@ -92,6 +103,9 @@ public class GameServer {
           clients.put(request.requestedSeat(), connection);
           connection.seat = request.requestedSeat();
           connection.mission = null;
+          if (request.requestedSeat().isRebel()) {
+            rebelJoinOrder.add(request.requestedSeat());
+          }
         }
         LobbySnapshot lobbySnapshot = config.rebelPlayerCount() == 0 ? null : createLobbySnapshot();
         connection.out.writeObject(
@@ -112,10 +126,12 @@ public class GameServer {
           : getSelectedMission();
       Game game = createGameForMission(mission);
       MatchSnapshot loadedSnapshot = loadPreviousGame ? tryLoadSavedSnapshot() : null;
+      game.setSnapshotListener(this::broadcastSnapshot);
       if (loadedSnapshot != null) {
         game.loadSnapshot(loadedSnapshot);
+      } else {
+        game.setup();
       }
-      game.setSnapshotListener(this::broadcastSnapshot);
       SwingUtilities.invokeLater(() -> {
         if (spectatorScreen != null) {
           spectatorScreen.setIncreaseThreatAction(() -> new Thread(game::increaseThreat, "Manual Threat").start());
@@ -221,9 +237,12 @@ public class GameServer {
 
   private Game createGameForMission(MissionOption mission) {
     Game game = switch (mission) {
-      case MISSION_ONE, MISSION_TWO -> new Game(null, config, MissionDefinition.forOption(mission), null, true);
+      case MISSION_ONE, MISSION_TWO -> new Game(null, config, MissionDefinition.forOption(mission), null, false);
     };
     game.setDecisionProvider(new RemoteDecisionProvider(game));
+    synchronized (lobbyLock) {
+      game.setRebelHeroSelectionOrder(new MyArrayList<>(rebelJoinOrder));
+    }
     return game;
   }
 
@@ -242,6 +261,10 @@ public class GameServer {
   private void broadcastSnapshot(MatchSnapshot snapshot) {
     saveSnapshot(snapshot);
     updateSpectatorSnapshot(snapshot);
+    sendSnapshotToClients(snapshot);
+  }
+
+  private void sendSnapshotToClients(MatchSnapshot snapshot) {
     MyArrayList<ClientConnection> connections;
     synchronized (lobbyLock) {
       connections = new MyArrayList<>(clients.values());
@@ -262,7 +285,7 @@ public class GameServer {
       frame.add(spectatorScreen);
       frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
       frame.pack();
-      frame.setVisible(true);
+      WindowFocus.showWithoutTakingFocus(frame);
       spectatorScreen.updateLobbySnapshot(createLobbySnapshot());
     });
   }
@@ -417,7 +440,8 @@ public class GameServer {
     }
 
     @Override
-    public Personnel chooseTarget(PlayerSeat seat, SelectionType selectionType, MyArrayList<Personnel> availableTargets) {
+    public Personnel chooseTarget(PlayerSeat seat, SelectionType selectionType,
+        MyArrayList<Personnel> availableTargets) {
       if (availableTargets.size() == 1) {
         return availableTargets.get(0);
       }
@@ -445,7 +469,7 @@ public class GameServer {
         waitingThread.interrupt();
       });
       try {
-        connection.send(game.createSnapshot());
+        sendSnapshotToClients(game.createSnapshot());
         connection.send(prompt);
         PromptResponse response;
         do {
@@ -484,7 +508,7 @@ public class GameServer {
               handleClientMissionSelection(this, clientMissionSelection);
             }
           }
-        } catch (EOFException eof) {
+        } catch (EOFException | SocketException eof) {
         } catch (Exception ex) {
           throw new RuntimeException(ex);
         }
