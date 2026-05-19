@@ -26,6 +26,7 @@ test {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+    options.debug = true
 }
 
 jar {
@@ -37,8 +38,9 @@ tasks.register('runServer', JavaExec) {
     description = 'Runs the multiplayer server.'
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'runners.ServerRunner'
-    if (project.hasProperty('args')) {
-        args project.property('args').toString().split('\\s+')
+    def projectArgs = project.findProperty('args')?.toString()?.trim()
+    if (projectArgs) {
+        args projectArgs.split('\\s+')
     }
 }
 
@@ -47,6 +49,10 @@ tasks.register('runClient', JavaExec) {
     description = 'Runs the multiplayer client.'
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'runners.ClientRunner'
+    def projectArgs = project.findProperty('args')?.toString()?.trim()
+    if (projectArgs) {
+        args projectArgs.split('\\s+')
+    }
 }
 
 tasks.register('smokeTutorialNetwork', JavaExec) {
@@ -54,7 +60,8 @@ tasks.register('smokeTutorialNetwork', JavaExec) {
     description = 'Runs a headless socket-level smoke test through lobby, hero selection, and first Rebel action prompt.'
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'runners.HeadlessNetworkSmokeTest'
-    if (project.hasProperty('args')) {
-        args project.property('args').toString().split('\\s+')
+    def projectArgs = project.findProperty('args')?.toString()?.trim()
+    if (projectArgs) {
+        args projectArgs.split('\\s+')
     }
 }

@@ -6,6 +6,7 @@ import java.awt.image.BufferedImage;
 import util.MyArrayList;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 import game.Constants;
 import game.Constants.WallLine;
@@ -391,6 +392,22 @@ public abstract class Personnel {
   @Override
   public String toString() {
     return name;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (!(obj instanceof Personnel other)) {
+      return false;
+    }
+    return id != null && other.id != null && id.equals(other.id);
+  }
+
+  @Override
+  public int hashCode() {
+    return id == null ? System.identityHashCode(this) : Objects.hash(id);
   }
 
   public void setFocused(boolean focused) {

@@ -122,6 +122,33 @@ class RulesTest {
     }
 
     @Test
+    void personnelWithSameIdCompareAsSameFigure() {
+        FennSignis first = new FennSignis(new Pos(1, 1));
+        FennSignis second = new FennSignis(new Pos(5, 5));
+        FennSignis unassigned = new FennSignis(new Pos(1, 1));
+        first.setId("hero-fenn");
+        second.setId("hero-fenn");
+
+        assertEquals(first, second);
+        assertEquals(first.hashCode(), second.hashCode());
+        assertFalse(first.equals(unassigned));
+        assertFalse(unassigned.equals(new FennSignis(new Pos(1, 1))));
+    }
+
+    @Test
+    void movementIgnoresSameIdFigureOccupyingItsCurrentFootprint() {
+        Game game = new Game(null, new GameSessionConfig(4), MissionDefinition.forOption(MissionOption.MISSION_ONE),
+                null, true);
+        EWebEngineer boardEWeb = findEWeb(game);
+        boardEWeb.setPos(new Pos(4, 4));
+        EWebEngineer movingCopy = new EWebEngineer(new Pos(4, 4));
+        movingCopy.setId(boardEWeb.getId());
+        movingCopy.setGame(game);
+
+        assertTrue(MovementRules.canMoveOneSpace(movingCopy, Directions.UP, game));
+    }
+
+    @Test
     void eWebEngineerCanAttackTwiceButCannotMixMoveAndAttack() {
         Game attackGame = new Game(null, new GameSessionConfig(4),
                 MissionDefinition.forOption(MissionOption.MISSION_ONE), new CountingDecisionProvider(), true);

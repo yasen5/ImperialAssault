@@ -1,0 +1,147 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "gradle: runServer",
+      "type": "shell",
+      "command": "./gradlew",
+      "args": [
+        "runServer",
+        "-Pargs=${input:serverArgs}"
+      ],
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "gradle: compileJava",
+      "type": "shell",
+      "command": "./gradlew",
+      "args": [
+        "compileJava"
+      ],
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "gradle: runClient",
+      "type": "shell",
+      "command": "./gradlew",
+      "args": [
+        "runClient",
+        "-Pargs=${input:clientSeat}"
+      ],
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "gradle: debugServer",
+      "type": "shell",
+      "command": "./gradlew",
+      "args": [
+        "runServer",
+        "--debug-jvm",
+        "-Pargs=${input:serverArgs}"
+      ],
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "java-debug",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Listening for transport dt_socket at address: 5005"
+        }
+      }
+    },
+    {
+      "label": "gradle: debugClient",
+      "type": "shell",
+      "command": "./gradlew",
+      "args": [
+        "runClient",
+        "--debug-jvm",
+        "-Pargs=${input:clientSeat}"
+      ],
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "java-debug",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Listening for transport dt_socket at address: 5005"
+        }
+      }
+    },
+    {
+      "label": "gradle: smokeTutorialNetwork",
+      "type": "shell",
+      "command": "./gradlew",
+      "args": [
+        "smokeTutorialNetwork",
+        "-Pargs=${input:smokeArgs}"
+      ],
+      "group": "test",
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "serverArgs",
+      "type": "pickString",
+      "description": "Server options",
+      "default": "",
+      "options": [
+        "",
+        "--single-client",
+        "1",
+        "2",
+        "3",
+        "4",
+        "--fresh",
+        "--fresh --no-ui",
+        "--single-client --fresh",
+        "--single-client --fresh --no-ui",
+        "1 --fresh",
+        "1 --fresh --no-ui",
+        "2 --fresh",
+        "2 --fresh --no-ui",
+        "3 --fresh",
+        "3 --fresh --no-ui",
+        "4 --fresh",
+        "4 --fresh --no-ui"
+      ]
+    },
+    {
+      "id": "clientSeat",
+      "type": "pickString",
+      "description": "Client seat",
+      "default": "REBEL_1",
+      "options": [
+        "REBEL_1",
+        "REBEL_2",
+        "REBEL_3",
+        "REBEL_4",
+        "IMPERIAL"
+      ]
+    },
+    {
+      "id": "smokeArgs",
+      "type": "pickString",
+      "description": "Smoke test options",
+      "default": "",
+      "options": [
+        "",
+        "--fresh",
+        "--no-ui",
+        "--fresh --no-ui"
+      ]
+    }
+  ]
+}

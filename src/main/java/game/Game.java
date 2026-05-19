@@ -768,7 +768,8 @@ public class Game {
       return;
     }
     Equipment.Item item = usableEquipment.get(usableEquipment.size() == 1 ? 0
-        : promptMultipleChoice(owner.getOwnerSeat(), "Equipment", "Choose equipment to use", usableEquipment.toArray()));
+        : promptMultipleChoice(owner.getOwnerSeat(), "Equipment", "Choose equipment to use",
+            usableEquipment.toArray()));
     MyArrayList<Hero> targets = getFriendlyAdjacentHeroes(owner);
     if (targets.isEmpty()) {
       return;
@@ -896,7 +897,7 @@ public class Game {
     return readyDeployments;
   }
 
-  public boolean isSpaceAvailableInternal(Pos pos) {
+  public boolean isSpaceAvailable(Pos pos) {
     for (Hero hero : heroes) {
       if (hero.occupiesSpace(pos)) {
         return false;
@@ -908,6 +909,25 @@ public class Game {
       }
       for (Imperial imperial : depGroup.getMembers()) {
         if (imperial.occupiesSpace(pos)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  public boolean isSpaceAvailable(Pos pos, Personnel ignore) {
+    for (Hero hero : heroes) {
+      if ((ignore == null || !ignore.equals(hero)) && hero.occupiesSpace(pos)) {
+        return false;
+      }
+    }
+    for (DeploymentGroup<? extends Imperial> depGroup : imperialDeployments) {
+      if (!depGroup.getDeployed()) {
+        continue;
+      }
+      for (Imperial imperial : depGroup.getMembers()) {
+        if ((ignore == null || !ignore.equals(imperial)) && imperial.occupiesSpace(pos)) {
           return false;
         }
       }
@@ -1077,7 +1097,7 @@ public class Game {
     imperialDeployments.add(troopers);
     imperialDeployments.add(officers);
     if (missionDefinition.tutorialObjectives()) {
-      if (heroCount >= 3) {
+      if (heroCount >= 2) { // TODO revert to 3
         DeploymentGroup<ProbeDroid> probeDroid = new DeploymentGroup<>(
             new Pos[] { new Pos(5, 12) }, ProbeDroid::new, "ProbeDroid");
         probeDroid.setDeploymentCost(5);
@@ -1085,7 +1105,7 @@ public class Game {
         configureDeploymentGroup(probeDroid, "imperial-probe-droid", PlayerSeat.IMPERIAL);
         imperialDeployments.add(probeDroid);
       }
-      if (heroCount >= 4) {
+      if (heroCount >= 2) { // TODO revert to 4
         DeploymentGroup<EWebEngineer> eWebEngineer = new DeploymentGroup<>(
             new Pos[] { new Pos(6, 11) }, EWebEngineer::new, "EWebEngineer");
         eWebEngineer.setDeploymentCost(6);
@@ -1573,10 +1593,6 @@ public class Game {
 
   public int getRoundLimit() {
     return roundLimit;
-  }
-
-  public boolean isSpaceAvailable(Pos pos) {
-    return isSpaceAvailableInternal(pos);
   }
 
   public void addOffenseResult(GraphicOffenseDieResult offenseResult) {
