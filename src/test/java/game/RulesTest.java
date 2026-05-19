@@ -87,6 +87,16 @@ class RulesTest {
     }
 
     @Test
+    void diagonalMovementCanCrossWallCorners() {
+        Game game = new Game(null, new GameSessionConfig(1), null, true);
+        Hero hero = game.getHeroes().get(0);
+        hero.setPos(new Pos(3, 4));
+
+        assertFalse(hero.getPos().canMove(Directions.RIGHT, false, true, game));
+        assertTrue(MovementRules.canMoveOneSpace(hero, Directions.DOWNRIGHT, game));
+    }
+
+    @Test
     void missionSnapshotCarriesThreatRoundAndConditions() {
         Game game = new Game(null, new GameSessionConfig(1), MissionDefinition.forOption(MissionOption.MISSION_TWO),
                 null, true);
