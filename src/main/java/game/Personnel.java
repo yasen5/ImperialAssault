@@ -360,6 +360,18 @@ public abstract class Personnel {
     return actions;
   }
 
+  public boolean gainsMoveBeforeImperialAction() {
+    return true;
+  }
+
+  public int getImperialActionCount() {
+    return 1;
+  }
+
+  public boolean canTakeAction(Actions action, MyArrayList<Actions> actionsUsedThisActivation) {
+    return true;
+  }
+
   public PersonnelStatus getStatus() {
     return new PersonnelStatus(health, strain, stunned, focused, bleeding, false, defeated);
   }

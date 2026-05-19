@@ -122,6 +122,35 @@ class RulesTest {
     }
 
     @Test
+    void eWebEngineerCanAttackTwiceButCannotMixMoveAndAttack() {
+        Game attackGame = new Game(null, new GameSessionConfig(4),
+                MissionDefinition.forOption(MissionOption.MISSION_ONE), new CountingDecisionProvider(), true);
+        EWebEngineer attacker = findEWeb(attackGame);
+        attacker.setPos(new Pos(4, 4));
+        attackGame.getHeroes().get(0).setPos(new Pos(4, 6));
+
+        assertFalse(attacker.gainsMoveBeforeImperialAction());
+        assertEquals(2, attacker.getImperialActionCount());
+        assertTrue(attackGame.getAvailableActions(attacker, false).contains(Personnel.Actions.ATTACK));
+
+        attackGame.takeAction(attacker, Personnel.Actions.ATTACK);
+
+        assertTrue(attackGame.getAvailableActions(attacker, false).contains(Personnel.Actions.ATTACK));
+        assertFalse(attackGame.getAvailableActions(attacker, false).contains(Personnel.Actions.MOVE));
+
+        Game moveGame = new Game(null, new GameSessionConfig(4),
+                MissionDefinition.forOption(MissionOption.MISSION_ONE), new CountingDecisionProvider(), true);
+        EWebEngineer mover = findEWeb(moveGame);
+        mover.setPos(new Pos(4, 4));
+        moveGame.getHeroes().get(0).setPos(new Pos(4, 6));
+
+        moveGame.takeAction(mover, Personnel.Actions.MOVE);
+
+        assertFalse(moveGame.getAvailableActions(mover, false).contains(Personnel.Actions.ATTACK));
+        assertTrue(moveGame.getAvailableActions(mover, false).contains(Personnel.Actions.MOVE));
+    }
+
+    @Test
     void missionSnapshotCarriesThreatRoundAndConditions() {
         Game game = new Game(null, new GameSessionConfig(1), MissionDefinition.forOption(MissionOption.MISSION_TWO),
                 null, true);

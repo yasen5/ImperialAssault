@@ -38,6 +38,7 @@ public class Game {
   private CompletableFuture<Personnel> currentSelected = new CompletableFuture<>();
   private MyArrayList<Personnel> availableTargets = new MyArrayList<>();
   private final Set<Personnel> specialUsedThisActivation = new HashSet<>();
+  private final MyArrayList<Actions> actionsUsedThisActivation = new MyArrayList<>();
   private int threatDial = 0;
   private int threatLevel = 1;
   private int roundDial = 1;
@@ -306,6 +307,7 @@ public class Game {
             "Choose deployment card to exhaust", seatOptions.toArray()));
     activeFigure.setActive(true);
     specialUsedThisActivation.clear();
+    actionsUsedThisActivation.clear();
     activeFigure.setExhausted(true);
     repaint();
     int leftoverMoves = 0;
@@ -320,6 +322,7 @@ public class Game {
     handlePendingMoves(activeFigure, rebelSeat, leftoverMoves);
     activeFigure.setActive(false);
     specialUsedThisActivation.clear();
+    actionsUsedThisActivation.clear();
     repaint();
   }
 
@@ -334,12 +337,15 @@ public class Game {
     for (Imperial imperial : deploymentGroup.getMembers()) {
       imperial.setActive(true);
       specialUsedThisActivation.clear();
+      actionsUsedThisActivation.clear();
       repaint();
       int leftoverMoves = 0;
-      if (!imperial.stunned()) {
+      if (!imperial.stunned() && imperial.gainsMoveBeforeImperialAction()) {
         leftoverMoves += takeAction(imperial, Actions.MOVE);
       }
-      leftoverMoves += takeAction(imperial, false);
+      for (int i = 0; i < imperial.getImperialActionCount(); i++) {
+        leftoverMoves += takeAction(imperial, false);
+      }
       checkEndGame();
       if (gameEnd) {
         return;
@@ -347,6 +353,7 @@ public class Game {
       handlePendingMoves(imperial, PlayerSeat.IMPERIAL, leftoverMoves);
       imperial.setActive(false);
       specialUsedThisActivation.clear();
+      actionsUsedThisActivation.clear();
     }
     repaint();
   }
@@ -657,25 +664,9 @@ public class Game {
 
   public int takeAction(Personnel activeFigure, boolean rebel) {
     int leftoverMoves = 0;
-    MyArrayList<Actions> availableActions = new MyArrayList<>();
-    availableActions.addAll(activeFigure.getActions());
-    availableTargets = availableDefenders(activeFigure, rebel);
-    if (activeFigure.stunned()) {
-      availableActions.remove(Actions.ATTACK);
-      availableActions.remove(Actions.SPECIAL);
-      availableActions.add(Actions.DISCARD_CONDITION);
-    }
-    if (availableTargets.size() == 0) {
-      availableActions.remove(Actions.ATTACK);
-    }
-    if (canInteract(activeFigure)) {
-      availableActions.add(Actions.INTERACT);
-    }
-    if (specialUsedThisActivation.contains(activeFigure)) {
-      availableActions.remove(Actions.SPECIAL);
-    }
-    if (activeFigure instanceof Hero hero && hero.hasUsableEquipment(Equipment.UseTiming.DURING_ACTIVATION)) {
-      availableActions.add(Actions.USE_EQUIPMENT);
+    MyArrayList<Actions> availableActions = getAvailableActions(activeFigure, rebel);
+    if (availableActions.isEmpty()) {
+      return 0;
     }
     Actions chosenAction = availableActions.get(promptMultipleChoice(activeFigure.getOwnerSeat(), "Action Selection",
         "Choose an action to take", availableActions.toArray()));
@@ -718,7 +709,38 @@ public class Game {
       case INTERACT -> handleInteraction(activeFigure);
     }
     applyAfterActionConditions(activeFigure, action);
+    actionsUsedThisActivation.add(action);
     return leftoverMoves;
+  }
+
+  MyArrayList<Actions> getAvailableActions(Personnel activeFigure, boolean rebel) {
+    MyArrayList<Actions> availableActions = new MyArrayList<>();
+    availableActions.addAll(activeFigure.getActions());
+    availableTargets = availableDefenders(activeFigure, rebel);
+    if (activeFigure.stunned()) {
+      availableActions.remove(Actions.ATTACK);
+      availableActions.remove(Actions.SPECIAL);
+      availableActions.add(Actions.DISCARD_CONDITION);
+    }
+    if (availableTargets.size() == 0) {
+      availableActions.remove(Actions.ATTACK);
+    }
+    if (canInteract(activeFigure)) {
+      availableActions.add(Actions.INTERACT);
+    }
+    if (specialUsedThisActivation.contains(activeFigure)) {
+      availableActions.remove(Actions.SPECIAL);
+    }
+    if (activeFigure instanceof Hero hero && hero.hasUsableEquipment(Equipment.UseTiming.DURING_ACTIVATION)) {
+      availableActions.add(Actions.USE_EQUIPMENT);
+    }
+    for (int i = 0; i < availableActions.size(); i++) {
+      if (!activeFigure.canTakeAction(availableActions.get(i), actionsUsedThisActivation)) {
+        availableActions.remove(i);
+        i--;
+      }
+    }
+    return availableActions;
   }
 
   private void applyAfterActionConditions(Personnel activeFigure, Actions action) {
