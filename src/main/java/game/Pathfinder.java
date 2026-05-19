@@ -117,7 +117,13 @@ public class Pathfinder {
             boolean closeToFinish = pointDistance(c_x, c_y, g_x, g_y) < closeDistance;
             c_x += (closeToFinish ? closeRaySpeed : raySpeed) * Math.cos(angle);
             c_y += (closeToFinish ? closeRaySpeed : raySpeed) * Math.sin(angle);
-            if (Constants.tileMatrix[(int) (c_y / Constants.tileSize)][(int) (c_x / Constants.tileSize)] == 0) {
+            int tileY = (int) (c_y / Constants.tileSize);
+            int tileX = (int) (c_x / Constants.tileSize);
+            if (tileY < 0 || tileY >= Constants.tileMatrix.length
+                    || tileX < 0 || tileX >= Constants.tileMatrix[tileY].length) {
+                return false;
+            }
+            if (Constants.tileMatrix[tileY][tileX] == 0) {
                 return false;
             }
             if (numIters >= maxIters) {

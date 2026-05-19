@@ -284,7 +284,8 @@ public class GameServer {
       UiContext.setFrame(frame);
       frame.add(spectatorScreen);
       frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-      WindowFocus.packAndShowWithoutTakingFocus(frame);
+      frame.pack();
+      WindowFocus.showWithoutTakingFocus(frame);
       spectatorScreen.updateLobbySnapshot(createLobbySnapshot());
     });
   }
@@ -392,7 +393,7 @@ public class GameServer {
 
     @Override
     public int chooseMultipleChoice(PlayerSeat seat, String name, String explanation, Object[] options) {
-      if (options.length == 1) {
+      if (options.length == 1 && !shouldPromptSingleChoice(name)) {
         return 0;
       }
       MyArrayList<String> labels = new MyArrayList<>();
@@ -402,6 +403,10 @@ public class GameServer {
       RemotePrompt prompt = new RemotePrompt(promptIds.getAndIncrement(), seat, RemotePrompt.PromptType.MULTIPLE_CHOICE,
           name, explanation, labels, 0, labels.size() - 1, labels, null, null);
       return Integer.parseInt(requestResponse(prompt));
+    }
+
+    private boolean shouldPromptSingleChoice(String name) {
+      return "Deployment Selection".equals(name);
     }
 
     @Override

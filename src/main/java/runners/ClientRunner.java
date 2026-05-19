@@ -3,11 +3,9 @@ package runners;
 import game.PlayerSeat;
 import net.GameClient;
 import net.NetworkConfig;
-import visual.WindowFocus;
 
 public class ClientRunner {
     public static void main(String[] args) throws Exception {
-        WindowFocus.configureProcessForNonActivatingWindows();
         String host = NetworkConfig.SERVER_HOST;
         int port = NetworkConfig.PORT;
         PlayerSeat seat = args.length > 0 ? PlayerSeat.valueOf(args[0]) : PlayerSeat.REBEL_1;

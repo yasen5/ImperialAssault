@@ -66,8 +66,7 @@ public abstract class Personnel {
     this.specialRequiresSelection = specialRequiresSelection;
     image = LoaderUtils.getImage(name);
     this.pos = pos;
-    this.corners = new Pos[] { pos, pos.getNextPos(Directions.RIGHT), pos.getNextPos(Directions.DOWN),
-        pos.getNextPos(Directions.DOWNRIGHT) };
+    updateCorners();
     this.actions = new MyArrayList<>(Arrays.asList(Actions.MOVE, Actions.ATTACK));
     if (hasSpecial) {
       actions.add(Actions.SPECIAL);
@@ -114,8 +113,7 @@ public abstract class Personnel {
 
   public void move(Directions dir) {
     pos.move(dir);
-    this.corners = new Pos[] { pos, pos.getNextPos(Directions.RIGHT), pos.getNextPos(Directions.DOWN),
-        pos.getNextPos(Directions.DOWNRIGHT) };
+    updateCorners();
   }
 
   public void setStunned(boolean value) {
@@ -247,13 +245,24 @@ public abstract class Personnel {
   // spaces away
   public boolean canAttack(Personnel other) {
     int range = getRange();
-    if (range != Integer.MAX_VALUE && !Pathfinder.canReachPoint(pos, other.getPos(), range, false, game)) {
-      return false;
+    for (Pos attackSpace : getOccupiedSpaces()) {
+      for (Pos targetSpace : other.getOccupiedSpaces()) {
+        if (range != Integer.MAX_VALUE && !Pathfinder.canReachPoint(attackSpace, targetSpace, range, false, game)) {
+          continue;
+        }
+        if (hasLineOfSightToSpace(attackSpace, targetSpace)) {
+          return true;
+        }
+      }
     }
-    for (Pos corner : corners) {
+    return false;
+  }
+
+  private boolean hasLineOfSightToSpace(Pos attackSpace, Pos targetSpace) {
+    for (Pos corner : getCornersForSpace(attackSpace)) {
       Pos[] cornersUsed = new Pos[2];
       int sightCount = 0;
-      for (Pos enemyCorner : other.getCorners()) {
+      for (Pos enemyCorner : getCornersForSpace(targetSpace)) {
         for (WallLine wallLine : Constants.wallLines) {
           if (!wallLine.softBarrier()) {
             for (Pos hardEnd : wallLine.getHardEnds()) {
@@ -267,7 +276,7 @@ public abstract class Personnel {
           cornersUsed[sightCount >= 2 ? 0 : sightCount] = enemyCorner;
           sightCount++;
           if (sightCount >= 2) {
-            if (!Pos.onOneLine(pos, cornersUsed[0], cornersUsed[1])) {
+            if (!Pos.onOneLine(attackSpace, cornersUsed[0], cornersUsed[1])) {
               return true;
             }
           }
@@ -279,6 +288,49 @@ public abstract class Personnel {
 
   public Pos[] getCorners() {
     return corners;
+  }
+
+  public Pos[] getOccupiedSpaces() {
+    Pos[] occupiedSpaces = new Pos[xSize * ySize];
+    int index = 0;
+    for (int y = 0; y < ySize; y++) {
+      for (int x = 0; x < xSize; x++) {
+        occupiedSpaces[index++] = new Pos(pos.getX() + x, pos.getY() + y);
+      }
+    }
+    return occupiedSpaces;
+  }
+
+  public boolean occupiesSpace(Pos space) {
+    for (Pos occupiedSpace : getOccupiedSpaces()) {
+      if (occupiedSpace.equalTo(space)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public boolean isLargeFigure() {
+    return xSize * ySize > 1;
+  }
+
+  protected void setFigureSize(int xSize, int ySize) {
+    if (xSize < 1 || ySize < 1) {
+      throw new IllegalArgumentException("Figure dimensions must be positive");
+    }
+    this.xSize = xSize;
+    this.ySize = ySize;
+    updateCorners();
+  }
+
+  private void updateCorners() {
+    this.corners = new Pos[] { pos, new Pos(pos.getX() + xSize, pos.getY()),
+        new Pos(pos.getX(), pos.getY() + ySize), new Pos(pos.getX() + xSize, pos.getY() + ySize) };
+  }
+
+  private Pos[] getCornersForSpace(Pos space) {
+    return new Pos[] { space, space.getNextPos(Directions.RIGHT), space.getNextPos(Directions.DOWN),
+        space.getNextPos(Directions.DOWNRIGHT) };
   }
 
   // Get the closest corner to the other Personnel
@@ -352,8 +404,7 @@ public abstract class Personnel {
 
   public void setPos(Pos pos) {
     this.pos = pos;
-    this.corners = new Pos[] { pos, pos.getNextPos(Directions.RIGHT), pos.getNextPos(Directions.DOWN),
-        pos.getNextPos(Directions.DOWNRIGHT) };
+    updateCorners();
   }
 
   public boolean isPossibleTarget() {

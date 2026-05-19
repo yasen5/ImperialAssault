@@ -873,7 +873,7 @@ public class Game {
 
   public boolean isSpaceAvailableInternal(Pos pos) {
     for (Hero hero : heroes) {
-      if (hero.getPos().equalTo(pos)) {
+      if (hero.occupiesSpace(pos)) {
         return false;
       }
     }
@@ -882,7 +882,7 @@ public class Game {
         continue;
       }
       for (Imperial imperial : depGroup.getMembers()) {
-        if (imperial.getPos().equalTo(pos)) {
+        if (imperial.occupiesSpace(pos)) {
           return false;
         }
       }
@@ -1150,14 +1150,14 @@ public class Game {
     for (DeploymentGroup<? extends Imperial> deployment : imperialDeployments) {
       if (deployment.getDeployed()) {
         for (Imperial imperial : deployment.getMembers()) {
-          if (imperial.getPos().equalTo(pos)) {
+          if (imperial.occupiesSpace(pos)) {
             return imperial;
           }
         }
       }
     }
     for (Hero hero : heroes) {
-      if (hero.getPos().equalTo(pos)) {
+      if (hero.occupiesSpace(pos)) {
         return hero;
       }
     }
@@ -1186,14 +1186,14 @@ public class Game {
     for (DeploymentGroup<? extends Imperial> deployment : imperialDeployments) {
       if (deployment.getDeployed()) {
         for (Imperial imperial : deployment.getMembers()) {
-          if (imperial.getPos().equalTo(pos)) {
+          if (imperial.occupiesSpace(pos)) {
             return deployment.getDeploymentCard();
           }
         }
       }
     }
     for (Hero hero : heroes) {
-      if (hero.getPos().equalTo(pos)) {
+      if (hero.occupiesSpace(pos)) {
         return hero.getDeploymentCard();
       }
     }

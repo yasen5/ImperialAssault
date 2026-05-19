@@ -66,7 +66,8 @@ public class GameClient {
       UiContext.setFrame(frame);
       frame.add(screen);
       frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-      WindowFocus.packAndShowWithoutTakingFocus(frame);
+      frame.pack();
+      WindowFocus.showWithoutTakingFocus(frame);
     });
     while (true) {
       Object message = in.readObject();

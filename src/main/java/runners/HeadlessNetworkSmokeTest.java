@@ -23,6 +23,7 @@ public class HeadlessNetworkSmokeTest {
         int rebelPlayers = args.length > 0 ? Integer.parseInt(args[0]) : 4;
         int port = findOpenPort();
         CountDownLatch imperialTurnReached = new CountDownLatch(1);
+        CountDownLatch rebel4DeploymentPromptReached = new CountDownLatch(rebelPlayers >= 4 ? 1 : 0);
         AtomicReference<Throwable> failure = new AtomicReference<>();
 
         Thread serverThread = new Thread(() -> {
@@ -36,13 +37,14 @@ public class HeadlessNetworkSmokeTest {
         serverThread.start();
 
         Thread.sleep(250L);
-        startBot(port, PlayerSeat.IMPERIAL, imperialTurnReached, failure);
+        startBot(port, PlayerSeat.IMPERIAL, imperialTurnReached, rebel4DeploymentPromptReached, failure);
         for (int i = 0; i < rebelPlayers; i++) {
-            startBot(port, PlayerSeat.values()[PlayerSeat.REBEL_1.ordinal() + i], imperialTurnReached, failure);
+            startBot(port, PlayerSeat.values()[PlayerSeat.REBEL_1.ordinal() + i], imperialTurnReached,
+                    rebel4DeploymentPromptReached, failure);
         }
 
         boolean reached = imperialTurnReached.await(20, TimeUnit.SECONDS);
-        if (!reached || failure.get() != null) {
+        if (!reached || rebel4DeploymentPromptReached.getCount() > 0 || failure.get() != null) {
             Throwable ex = failure.get();
             if (ex != null) {
                 ex.printStackTrace(System.err);
@@ -60,7 +62,7 @@ public class HeadlessNetworkSmokeTest {
     }
 
     private static void startBot(int port, PlayerSeat seat, CountDownLatch imperialTurnReached,
-            AtomicReference<Throwable> failure) {
+            CountDownLatch rebel4DeploymentPromptReached, AtomicReference<Throwable> failure) {
         Thread thread = new Thread(() -> {
             try (Socket socket = new Socket("127.0.0.1", port)) {
                 ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
@@ -78,6 +80,9 @@ public class HeadlessNetworkSmokeTest {
                 while (imperialTurnReached.getCount() > 0) {
                     Object message = in.readObject();
                     if (message instanceof RemotePrompt prompt) {
+                        if (prompt.seat() == PlayerSeat.REBEL_4 && "Deployment Selection".equals(prompt.title())) {
+                            rebel4DeploymentPromptReached.countDown();
+                        }
                         if (prompt.seat() == PlayerSeat.IMPERIAL && "Deployment Selection".equals(prompt.title())) {
                             imperialTurnReached.countDown();
                         }

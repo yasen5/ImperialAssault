@@ -97,6 +97,31 @@ class RulesTest {
     }
 
     @Test
+    void eWebEngineerOccupiesTwoSpaces() {
+        Game game = new Game(null, new GameSessionConfig(4), MissionDefinition.forOption(MissionOption.MISSION_ONE),
+                null, true);
+        EWebEngineer eWeb = findEWeb(game);
+
+        assertTrue(eWeb.isLargeFigure());
+        assertTrue(eWeb.occupiesSpace(new Pos(6, 11)));
+        assertTrue(eWeb.occupiesSpace(new Pos(6, 12)));
+        assertEquals(eWeb, game.getPersonnelAtPos(new Pos(6, 12)));
+    }
+
+    @Test
+    void eWebEngineerCannotMoveDiagonallyOrIntoOccupiedFootprint() {
+        EWebEngineer eWeb = new EWebEngineer(new Pos(6, 10));
+        Game game = new Game(null, new GameSessionConfig(4), MissionDefinition.forOption(MissionOption.MISSION_ONE),
+                null, true);
+        Hero blocker = game.getHeroes().get(0);
+        blocker.setPos(new Pos(7, 11));
+        eWeb.setGame(game);
+
+        assertFalse(MovementRules.canMoveOneSpace(eWeb, Directions.DOWNRIGHT, game));
+        assertFalse(MovementRules.canMoveOneSpace(eWeb, Directions.RIGHT, game));
+    }
+
+    @Test
     void missionSnapshotCarriesThreatRoundAndConditions() {
         Game game = new Game(null, new GameSessionConfig(1), MissionDefinition.forOption(MissionOption.MISSION_TWO),
                 null, true);
@@ -264,6 +289,17 @@ class RulesTest {
             }
         }
         return false;
+    }
+
+    private EWebEngineer findEWeb(Game game) {
+        for (DeploymentGroup<? extends Imperial> group : game.getDeploymentGroups()) {
+            for (Imperial member : group.getMembers()) {
+                if (member instanceof EWebEngineer eWeb) {
+                    return eWeb;
+                }
+            }
+        }
+        throw new AssertionError("E-Web Engineer not found");
     }
 
     private PlayerSeat invokeChooseNextActivationSeat(Game game) throws Exception {

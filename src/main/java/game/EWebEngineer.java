@@ -9,6 +9,7 @@ public class EWebEngineer extends Imperial {
                 ImperialType.TROOPER, new DefenseDieType[] { DefenseDieType.BLACK },
                 new OffenseDieType[] { OffenseDieType.BLUE, OffenseDieType.RED, OffenseDieType.YELLOW },
                 false, false);
+        setFigureSize(1, 2);
     }
 
     @Override
