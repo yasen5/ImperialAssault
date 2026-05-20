@@ -30,6 +30,7 @@ import game.MissionDefinition;
 import net.structs.MissionOption;
 import game.Personnel;
 import game.PlayerSeat;
+import game.RotationMove;
 import game.SelectionType;
 import visual.UiContext;
 import game.Personnel.Directions;
@@ -432,29 +433,33 @@ public class GameServer {
     @Override
     public Directions chooseDirection(PlayerSeat seat, Personnel activeFigure,
         MyArrayList<Directions> allowedDirections) {
-      return chooseMovement(seat, activeFigure, allowedDirections, false).direction();
+      return chooseMovement(seat, activeFigure, allowedDirections, new MyArrayList<>()).direction();
     }
 
     @Override
     public MovementChoice chooseMovement(PlayerSeat seat, Personnel activeFigure,
-        MyArrayList<Directions> allowedDirections, boolean canRotate) {
-      if (allowedDirections.size() == 1 && !canRotate) {
+        MyArrayList<Directions> allowedDirections, MyArrayList<RotationMove> legalRotations) {
+      if (allowedDirections.size() == 1 && legalRotations.isEmpty()) {
         return MovementChoice.direction(allowedDirections.get(0));
       }
-      if (allowedDirections.isEmpty() && canRotate) {
-        return MovementChoice.rotate();
+      if (allowedDirections.isEmpty() && legalRotations.size() == 1) {
+        return MovementChoice.rotate(legalRotations.get(0));
       }
       MyArrayList<String> values = new MyArrayList<>();
       for (Directions direction : allowedDirections) {
         values.add(direction.name());
       }
-      if (canRotate) {
-        values.add("ROTATE");
+      for (RotationMove rotationMove : legalRotations) {
+        values.add(rotationMove.token());
       }
       RemotePrompt prompt = new RemotePrompt(promptIds.getAndIncrement(), seat, RemotePrompt.PromptType.DIRECTION,
           "Movement", "Choose a direction", values, 0, 0, values, activeFigure.getId(), null);
       String response = requestResponse(prompt);
-      return "ROTATE".equals(response) ? MovementChoice.rotate() : MovementChoice.direction(Directions.valueOf(response));
+      if ("ROTATE".equals(response)) {
+        return MovementChoice.rotate(legalRotations.get(0));
+      }
+      return RotationMove.isToken(response) ? MovementChoice.rotate(RotationMove.fromToken(response))
+          : MovementChoice.direction(Directions.valueOf(response));
     }
 
     @Override

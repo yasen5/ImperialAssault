@@ -7,6 +7,7 @@ import game.Personnel.Directions;
 import game.PlayerSeat;
 import game.Personnel;
 import game.MovementChoice;
+import game.RotationMove;
 import game.SelectionType;
 
 public interface GameDecisionProvider {
@@ -18,10 +19,10 @@ public interface GameDecisionProvider {
 
     Directions chooseDirection(PlayerSeat seat, Personnel activeFigure, MyArrayList<Directions> allowedDirections);
 
-    default MovementChoice chooseMovement(PlayerSeat seat, Personnel activeFigure, MyArrayList<Directions> allowedDirections,
-            boolean canRotate) {
-        if (canRotate && allowedDirections.isEmpty()) {
-            return MovementChoice.rotate();
+    default MovementChoice chooseMovement(PlayerSeat seat, Personnel activeFigure,
+            MyArrayList<Directions> allowedDirections, MyArrayList<RotationMove> legalRotations) {
+        if (!legalRotations.isEmpty() && allowedDirections.isEmpty()) {
+            return MovementChoice.rotate(legalRotations.get(0));
         }
         return MovementChoice.direction(chooseDirection(seat, activeFigure, allowedDirections));
     }

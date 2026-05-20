@@ -966,20 +966,35 @@ public class Game {
         availableDirections.add(direction);
       }
     }
-    boolean canRotate = activeFigure.canRotate();
-    if (availableDirections.isEmpty() && !canRotate) {
+    MyArrayList<RotationMove> legalRotations = MovementRules.getLegalRotations(activeFigure, this);
+    if (availableDirections.isEmpty() && legalRotations.isEmpty()) {
       triggerBanner(activeFigure.getName() + " cannot move farther");
       return false;
     }
     MovementChoice choice = decisionProvider.chooseMovement(activeFigure.getOwnerSeat(), activeFigure,
-        availableDirections, canRotate);
+        availableDirections, legalRotations);
     if (choice.rotateAction()) {
-      activeFigure.rotate();
+      RotationMove rotationMove = choice.rotationMove() == null ? legalRotations.get(0) : choice.rotationMove();
+      if (!containsRotation(legalRotations, rotationMove)) {
+        triggerBanner(activeFigure.getName() + " cannot rotate there");
+        return false;
+      }
+      activeFigure.rotateTo(rotationMove);
     } else {
       activeFigure.move(choice.direction());
     }
     repaint();
     return true;
+  }
+
+  private boolean containsRotation(MyArrayList<RotationMove> legalRotations, RotationMove target) {
+    for (RotationMove rotation : legalRotations) {
+      if (rotation.anchor().equalTo(target.anchor()) && rotation.xSize() == target.xSize()
+          && rotation.ySize() == target.ySize()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private void handleAttackInternal(Personnel activeFigure) {

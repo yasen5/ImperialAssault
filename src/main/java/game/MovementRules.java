@@ -1,6 +1,7 @@
 package game;
 
 import game.Personnel.Directions;
+import util.MyArrayList;
 
 public final class MovementRules {
   private MovementRules() {
@@ -25,11 +26,30 @@ public final class MovementRules {
   }
 
   public static boolean canRotate(Personnel figure, Game game) {
+    return !getLegalRotations(figure, game).isEmpty();
+  }
+
+  public static MyArrayList<RotationMove> getLegalRotations(Personnel figure, Game game) {
+    MyArrayList<RotationMove> legalRotations = new MyArrayList<>();
     if (!figure.isNonSquareLargeFigure()) {
-      return false;
+      return legalRotations;
     }
     Pos[] currentSpaces = figure.getOccupiedSpaces();
-    Pos[] rotatedSpaces = occupiedSpacesAtSize(figure.getPos(), figure.getYSize(), figure.getXSize());
+    int rotatedXSize = figure.getYSize();
+    int rotatedYSize = figure.getXSize();
+    for (int y = 0; y < Constants.tileMatrix.length; y++) {
+      for (int x = 0; x < Constants.tileMatrix[y].length; x++) {
+        Pos anchor = new Pos(x, y);
+        Pos[] rotatedSpaces = occupiedSpacesAtSize(anchor, rotatedXSize, rotatedYSize);
+        if (isLegalRotation(currentSpaces, rotatedSpaces, figure, game)) {
+          legalRotations.add(new RotationMove(anchor, rotatedXSize, rotatedYSize));
+        }
+      }
+    }
+    return legalRotations;
+  }
+
+  private static boolean isLegalRotation(Pos[] currentSpaces, Pos[] rotatedSpaces, Personnel figure, Game game) {
     int overlapCount = 0;
     for (Pos rotatedSpace : rotatedSpaces) {
       if (!isLegalBoardSpace(rotatedSpace)) {

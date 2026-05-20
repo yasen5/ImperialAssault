@@ -12,6 +12,7 @@ import game.MovementChoice;
 import game.Personnel;
 import game.Personnel.Directions;
 import game.PlayerSeat;
+import game.RotationMove;
 import game.SelectionType;
 import net.GameDecisionProvider;
 
@@ -39,15 +40,15 @@ public class LocalGameDecisionProvider implements GameDecisionProvider {
 
   @Override
   public Directions chooseDirection(PlayerSeat seat, Personnel activeFigure, MyArrayList<Directions> allowedDirections) {
-    return chooseMovement(seat, activeFigure, allowedDirections, false).direction();
+    return chooseMovement(seat, activeFigure, allowedDirections, new MyArrayList<>()).direction();
   }
 
   @Override
   public MovementChoice chooseMovement(PlayerSeat seat, Personnel activeFigure, MyArrayList<Directions> allowedDirections,
-      boolean canRotate) {
-    CompletableFuture<Directions> dir = new CompletableFuture<>();
-    ui.getGame().setActivePromptCancelAction(() -> dir.cancel(true));
-    ui.setMovementButtonOutput(dir);
+      MyArrayList<RotationMove> legalRotations) {
+    CompletableFuture<String> movement = new CompletableFuture<>();
+    ui.getGame().setActivePromptCancelAction(() -> movement.cancel(true));
+    ui.setMovementButtonOutput(movement);
     double[] angleRads = { Math.PI / 4.0 };
     try {
       SwingUtilities.invokeLater(() -> {
@@ -61,14 +62,14 @@ public class LocalGameDecisionProvider implements GameDecisionProvider {
             ui.deactivateMovementButton(direction);
           }
         }
-        if (canRotate) {
-          ui.moveAndActivateRotateButton(activeFigure.getPos().getX(), activeFigure.getPos().getY());
-        } else {
-          ui.deactivateRotateButton();
+        ui.deactivateRotateButton();
+        for (RotationMove rotationMove : legalRotations) {
+          ui.moveAndActivateRotateButton(rotationMove);
         }
       });
-      Directions result = dir.join();
-      return result == null ? MovementChoice.rotate() : MovementChoice.direction(result);
+      String result = movement.join();
+      return RotationMove.isToken(result) ? MovementChoice.rotate(RotationMove.fromToken(result))
+          : MovementChoice.direction(Directions.valueOf(result));
     } finally {
       ui.getGame().clearActivePromptCancelAction();
     }

@@ -128,6 +128,13 @@ public abstract class Personnel {
     updateCorners();
   }
 
+  public void rotateTo(RotationMove rotationMove) {
+    pos = rotationMove.anchor();
+    xSize = rotationMove.xSize();
+    ySize = rotationMove.ySize();
+    updateCorners();
+  }
+
   public void setStunned(boolean value) {
     stunned = value;
   }

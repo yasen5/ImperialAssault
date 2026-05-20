@@ -126,6 +126,7 @@ class RulesTest {
         EWebEngineer eWeb = new EWebEngineer(new Pos(4, 4));
 
         assertTrue(MovementRules.canRotate(eWeb, null));
+        assertEquals(4, MovementRules.getLegalRotations(eWeb, null).size());
 
         eWeb.rotate();
 
@@ -135,10 +136,35 @@ class RulesTest {
     }
 
     @Test
-    void rotationCannotEnterOccupiedSpace() {
+    void rotationCanShiftAroundOccupiedSpace() {
         EWebEngineer eWeb = new EWebEngineer(new Pos(4, 4));
         Game game = new Game(null, new GameSessionConfig(1), null, true);
         game.getHeroes().get(0).setPos(new Pos(5, 4));
+        eWeb.setGame(game);
+
+        assertTrue(eWeb.canRotate());
+
+        RotationMove shifted = findRotation(MovementRules.getLegalRotations(eWeb, game), 3, 4, 2, 1);
+        eWeb.rotateTo(shifted);
+
+        assertEquals(3, eWeb.getPos().getX());
+        assertEquals(4, eWeb.getPos().getY());
+        assertEquals(2, eWeb.getXSize());
+        assertEquals(1, eWeb.getYSize());
+        assertTrue(eWeb.occupiesSpace(new Pos(3, 4)));
+        assertTrue(eWeb.occupiesSpace(new Pos(4, 4)));
+        assertFalse(eWeb.occupiesSpace(new Pos(5, 4)));
+    }
+
+    @Test
+    void rotationCannotEnterOccupiedSpaceWhenAllPivotsAreBlocked() {
+        EWebEngineer eWeb = new EWebEngineer(new Pos(4, 4));
+        Game game = new Game(null, new GameSessionConfig(4), MissionDefinition.forOption(MissionOption.MISSION_ONE),
+                null, true);
+        game.getHeroes().get(0).setPos(new Pos(3, 4));
+        game.getHeroes().get(1).setPos(new Pos(5, 4));
+        game.getHeroes().get(2).setPos(new Pos(3, 5));
+        game.getHeroes().get(3).setPos(new Pos(5, 5));
         eWeb.setGame(game);
 
         assertFalse(eWeb.canRotate());
@@ -198,6 +224,23 @@ class RulesTest {
 
         assertFalse(moveGame.getAvailableActions(mover, false).contains(Personnel.Actions.ATTACK));
         assertTrue(moveGame.getAvailableActions(mover, false).contains(Personnel.Actions.MOVE));
+    }
+
+    @Test
+    void movementRotationAppliesSelectedShiftedPlacement() {
+        RotatingDecisionProvider decisionProvider = new RotatingDecisionProvider(3, 4);
+        Game game = new Game(null, new GameSessionConfig(4),
+                MissionDefinition.forOption(MissionOption.MISSION_ONE), decisionProvider, true);
+        EWebEngineer eWeb = findEWeb(game);
+        eWeb.setPos(new Pos(4, 4));
+        game.getHeroes().get(0).setPos(new Pos(5, 4));
+
+        game.takeAction(eWeb, Personnel.Actions.MOVE);
+
+        assertEquals(3, eWeb.getPos().getX());
+        assertEquals(4, eWeb.getPos().getY());
+        assertEquals(2, eWeb.getXSize());
+        assertEquals(1, eWeb.getYSize());
     }
 
     @Test
@@ -428,6 +471,16 @@ class RulesTest {
         throw new AssertionError("E-Web Engineer not found");
     }
 
+    private RotationMove findRotation(util.MyArrayList<RotationMove> rotations, int x, int y, int xSize, int ySize) {
+        for (RotationMove rotation : rotations) {
+            if (rotation.anchor().getX() == x && rotation.anchor().getY() == y
+                    && rotation.xSize() == xSize && rotation.ySize() == ySize) {
+                return rotation;
+            }
+        }
+        throw new AssertionError("Rotation not found");
+    }
+
     private StormTrooper findStormTrooper(Game game) {
         for (DeploymentGroup<? extends Imperial> group : game.getDeploymentGroups()) {
             for (Imperial member : group.getMembers()) {
@@ -520,6 +573,52 @@ class RulesTest {
         public Directions chooseDirection(PlayerSeat seat, Personnel activeFigure, util.MyArrayList<Directions> allowedDirections) {
             directionPrompts++;
             return allowedDirections.get(0);
+        }
+
+        @Override
+        public Personnel chooseTarget(PlayerSeat seat, SelectionType selectionType, util.MyArrayList<Personnel> availableTargets) {
+            return availableTargets.get(0);
+        }
+    }
+
+    private static final class RotatingDecisionProvider implements GameDecisionProvider {
+        private final int targetX;
+        private final int targetY;
+
+        private RotatingDecisionProvider(int targetX, int targetY) {
+            this.targetX = targetX;
+            this.targetY = targetY;
+        }
+
+        @Override
+        public int chooseMultipleChoice(PlayerSeat seat, String name, String explanation, Object[] options) {
+            return 0;
+        }
+
+        @Override
+        public boolean chooseYesNo(PlayerSeat seat, String name, String explanation) {
+            return false;
+        }
+
+        @Override
+        public int chooseNumericChoice(PlayerSeat seat, String name, int minValue, int maxValue) {
+            return Math.min(1, maxValue);
+        }
+
+        @Override
+        public Directions chooseDirection(PlayerSeat seat, Personnel activeFigure, util.MyArrayList<Directions> allowedDirections) {
+            return allowedDirections.get(0);
+        }
+
+        @Override
+        public MovementChoice chooseMovement(PlayerSeat seat, Personnel activeFigure,
+                util.MyArrayList<Directions> allowedDirections, util.MyArrayList<RotationMove> legalRotations) {
+            for (RotationMove rotation : legalRotations) {
+                if (rotation.anchor().getX() == targetX && rotation.anchor().getY() == targetY) {
+                    return MovementChoice.rotate(rotation);
+                }
+            }
+            throw new AssertionError("Expected rotation not offered");
         }
 
         @Override
