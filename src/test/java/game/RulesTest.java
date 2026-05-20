@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 
 import org.junit.jupiter.api.Test;
 
@@ -103,9 +104,9 @@ class RulesTest {
         EWebEngineer eWeb = findEWeb(game);
 
         assertTrue(eWeb.isLargeFigure());
+        assertTrue(eWeb.occupiesSpace(new Pos(6, 10)));
         assertTrue(eWeb.occupiesSpace(new Pos(6, 11)));
-        assertTrue(eWeb.occupiesSpace(new Pos(6, 12)));
-        assertEquals(eWeb, game.getPersonnelAtPos(new Pos(6, 12)));
+        assertEquals(eWeb, game.getPersonnelAtPos(new Pos(6, 11)));
     }
 
     @Test
@@ -126,7 +127,8 @@ class RulesTest {
         EWebEngineer eWeb = new EWebEngineer(new Pos(4, 4));
 
         assertTrue(MovementRules.canRotate(eWeb, null));
-        assertEquals(4, MovementRules.getLegalRotations(eWeb, null).size());
+        assertEquals(3, MovementRules.getLegalRotations(eWeb, null).size());
+        assertFalse(hasRotation(MovementRules.getLegalRotations(eWeb, null), 3, 4, 2, 1));
 
         eWeb.rotate();
 
@@ -144,15 +146,17 @@ class RulesTest {
 
         assertTrue(eWeb.canRotate());
 
-        RotationMove shifted = findRotation(MovementRules.getLegalRotations(eWeb, game), 3, 4, 2, 1);
+        assertFalse(hasRotation(MovementRules.getLegalRotations(eWeb, game), 3, 4, 2, 1));
+
+        RotationMove shifted = findRotation(MovementRules.getLegalRotations(eWeb, game), 3, 5, 2, 1);
         eWeb.rotateTo(shifted);
 
         assertEquals(3, eWeb.getPos().getX());
-        assertEquals(4, eWeb.getPos().getY());
+        assertEquals(5, eWeb.getPos().getY());
         assertEquals(2, eWeb.getXSize());
         assertEquals(1, eWeb.getYSize());
-        assertTrue(eWeb.occupiesSpace(new Pos(3, 4)));
-        assertTrue(eWeb.occupiesSpace(new Pos(4, 4)));
+        assertTrue(eWeb.occupiesSpace(new Pos(3, 5)));
+        assertTrue(eWeb.occupiesSpace(new Pos(4, 5)));
         assertFalse(eWeb.occupiesSpace(new Pos(5, 4)));
     }
 
@@ -228,7 +232,7 @@ class RulesTest {
 
     @Test
     void movementRotationAppliesSelectedShiftedPlacement() {
-        RotatingDecisionProvider decisionProvider = new RotatingDecisionProvider(3, 4);
+        RotatingDecisionProvider decisionProvider = new RotatingDecisionProvider(3, 5);
         Game game = new Game(null, new GameSessionConfig(4),
                 MissionDefinition.forOption(MissionOption.MISSION_ONE), decisionProvider, true);
         EWebEngineer eWeb = findEWeb(game);
@@ -238,7 +242,7 @@ class RulesTest {
         game.takeAction(eWeb, Personnel.Actions.MOVE);
 
         assertEquals(3, eWeb.getPos().getX());
-        assertEquals(4, eWeb.getPos().getY());
+        assertEquals(5, eWeb.getPos().getY());
         assertEquals(2, eWeb.getXSize());
         assertEquals(1, eWeb.getYSize());
     }
@@ -430,6 +434,7 @@ class RulesTest {
         assertInstanceOf(FennSignis.class, game.getHeroes().get(0));
         assertEquals(PlayerSeat.REBEL_3, game.getHeroes().get(0).getOwnerSeat());
         assertEquals(PlayerSeat.REBEL_1, game.getHeroes().get(1).getOwnerSeat());
+        assertFalse(decisionProvider.promptNames.contains("Deployment Orientation"));
     }
 
     @Test
@@ -481,6 +486,16 @@ class RulesTest {
         throw new AssertionError("Rotation not found");
     }
 
+    private boolean hasRotation(util.MyArrayList<RotationMove> rotations, int x, int y, int xSize, int ySize) {
+        for (RotationMove rotation : rotations) {
+            if (rotation.anchor().getX() == x && rotation.anchor().getY() == y
+                    && rotation.xSize() == xSize && rotation.ySize() == ySize) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private StormTrooper findStormTrooper(Game game) {
         for (DeploymentGroup<? extends Imperial> group : game.getDeploymentGroups()) {
             for (Imperial member : group.getMembers()) {
@@ -515,6 +530,7 @@ class RulesTest {
 
     private static final class VotingDecisionProvider implements GameDecisionProvider {
         private final int[] votes;
+        private final ArrayList<String> promptNames = new ArrayList<>();
         private int multipleChoicePrompts;
 
         private VotingDecisionProvider(int... votes) {
@@ -527,6 +543,7 @@ class RulesTest {
 
         @Override
         public int chooseMultipleChoice(PlayerSeat seat, String name, String explanation, Object[] options) {
+            promptNames.add(name);
             return votes[multipleChoicePrompts++ % votes.length];
         }
 

@@ -1,5 +1,7 @@
 package game;
 
+import game.Constants.WallLine;
+import game.Pathfinder.FullPos;
 import game.Personnel.Directions;
 import util.MyArrayList;
 
@@ -50,11 +52,11 @@ public final class MovementRules {
   }
 
   private static boolean isLegalRotation(Pos[] currentSpaces, Pos[] rotatedSpaces, Personnel figure, Game game) {
+    if (!isLegalFootprint(rotatedSpaces)) {
+      return false;
+    }
     int overlapCount = 0;
     for (Pos rotatedSpace : rotatedSpaces) {
-      if (!isLegalBoardSpace(rotatedSpace)) {
-        return false;
-      }
       if (contains(currentSpaces, rotatedSpace)) {
         overlapCount++;
       }
@@ -63,6 +65,39 @@ public final class MovementRules {
       }
     }
     return overlapCount * 2 >= rotatedSpaces.length;
+  }
+
+  public static boolean isLegalFootprint(Pos[] spaces) {
+    for (Pos space : spaces) {
+      if (!isLegalBoardSpace(space)) {
+        return false;
+      }
+    }
+    for (int i = 0; i < spaces.length; i++) {
+      for (int j = i + 1; j < spaces.length; j++) {
+        if (areAdjacent(spaces[i], spaces[j]) && barrierBetween(spaces[i], spaces[j])) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  private static boolean barrierBetween(Pos first, Pos second) {
+    FullPos firstCenter = first.getCenterPos();
+    FullPos secondCenter = second.getCenterPos();
+    for (WallLine wallLine : Constants.wallLines) {
+      if (wallLine.intersects(firstCenter, secondCenter, true)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean areAdjacent(Pos first, Pos second) {
+    int deltaX = Math.abs(first.getX() - second.getX());
+    int deltaY = Math.abs(first.getY() - second.getY());
+    return deltaX + deltaY == 1;
   }
 
   private static Pos[] occupiedSpacesAt(Personnel figure, Pos anchor) {
