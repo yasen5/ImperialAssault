@@ -428,6 +428,11 @@ class RulesTest {
 
         assertEquals(PlayerSeat.REBEL_3, invokeChooseNextActivationSeat(game));
         assertEquals(4, decisionProvider.multipleChoicePrompts);
+        Object[] initiativeOptions = decisionProvider.multipleChoiceOptions.get(0);
+        assertEquals("Fenn Signis", initiativeOptions[0].toString());
+        assertEquals("Mak Eshka'rey", initiativeOptions[1].toString());
+        assertEquals("Gaarkhan", initiativeOptions[2].toString());
+        assertEquals("Diala Passil", initiativeOptions[3].toString());
 
         setCurrentTurnSeat(game, PlayerSeat.IMPERIAL);
 
@@ -557,6 +562,7 @@ class RulesTest {
     private static final class VotingDecisionProvider implements GameDecisionProvider {
         private final int[] votes;
         private final ArrayList<String> promptNames = new ArrayList<>();
+        private final ArrayList<Object[]> multipleChoiceOptions = new ArrayList<>();
         private int multipleChoicePrompts;
 
         private VotingDecisionProvider(int... votes) {
@@ -565,11 +571,13 @@ class RulesTest {
 
         private void resetPromptCount() {
             multipleChoicePrompts = 0;
+            multipleChoiceOptions.clear();
         }
 
         @Override
         public int chooseMultipleChoice(PlayerSeat seat, String name, String explanation, Object[] options) {
             promptNames.add(name);
+            multipleChoiceOptions.add(options);
             return votes[multipleChoicePrompts++ % votes.length];
         }
 

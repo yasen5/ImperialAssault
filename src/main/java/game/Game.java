@@ -308,9 +308,33 @@ public class Game {
   private MyArrayList<RebelActivationChoice> readyRebelActivationChoices() {
     MyArrayList<RebelActivationChoice> choices = new MyArrayList<>();
     for (PlayerSeat seat : readyRebelSeats()) {
-      choices.add(new RebelActivationChoice(seat, formatSeat(seat)));
+      choices.add(new RebelActivationChoice(seat, formatReadyRebelActivationChoice(seat)));
     }
     return choices;
+  }
+
+  private String formatReadyRebelActivationChoice(PlayerSeat seat) {
+    MyArrayList<Hero> readyHeroes = getHeroExhaustOptions(seat);
+    if (readyHeroes.isEmpty()) {
+      return formatSeat(seat);
+    }
+    StringBuilder label = new StringBuilder();
+    for (Hero hero : readyHeroes) {
+      if (label.length() > 0) {
+        label.append(" / ");
+      }
+      label.append(formatHeroDeploymentCardName(hero));
+    }
+    return label.toString();
+  }
+
+  private String formatHeroDeploymentCardName(Hero hero) {
+    return switch (hero.getName()) {
+      case "DialaPassil" -> "Diala Passil";
+      case "FennSignis" -> "Fenn Signis";
+      case "MakEshray" -> "Mak Eshka'rey";
+      default -> hero.getDeploymentCard().getLabel();
+    };
   }
 
   private MyArrayList<PlayerSeat> readyRebelSeats() {
