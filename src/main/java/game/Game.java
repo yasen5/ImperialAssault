@@ -1118,7 +1118,7 @@ public class Game {
     imperialDeployments.add(troopers);
     imperialDeployments.add(officers);
     if (missionDefinition.tutorialObjectives()) {
-      if (heroCount >= 2) {
+      if (heroCount >= 3) {
         DeploymentGroup<ProbeDroid> probeDroid = new DeploymentGroup<>(
             new Pos[] { new Pos(6, 11) }, ProbeDroid::new, "ProbeDroid");
         probeDroid.setDeploymentCost(5);
@@ -1126,7 +1126,7 @@ public class Game {
         configureDeploymentGroup(probeDroid, "imperial-probe-droid", PlayerSeat.IMPERIAL);
         imperialDeployments.add(probeDroid);
       }
-      if (heroCount >= 2) {
+      if (heroCount >= 4) {
         DeploymentGroup<EWebEngineer> eWebEngineer = new DeploymentGroup<>(
             new Pos[] { new Pos(4, 10) }, EWebEngineer::new, "EWebEngineer");
         eWebEngineer.setDeploymentCost(6);
