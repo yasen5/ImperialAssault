@@ -98,7 +98,6 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   private final JButton numericSubmitButton = new JButton("Submit");
   private final JButton increaseThreatButton = new JButton("+ Threat");
   private final JButton nextRoundButton = new JButton("Next Round");
-  private final JButton finishGameButton = new JButton("Finish Game");
   private final JButton restartGameButton = new JButton("Restart");
   private final JButton missionOneButton = new JButton("Mission 1");
   private final JButton missionTwoButton = new JButton("Mission 2");
@@ -244,7 +243,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         performIncreaseThreat();
       } else if (keyCode == KeyEvent.VK_N) {
         performAdvanceStatusPhase();
-      } else if (keyCode == KeyEvent.VK_F) {
+      } else if (keyCode == KeyEvent.VK_U) {
         performFinishGame();
       } else if (keyCode == KeyEvent.VK_R) {
         performRestartGame();
@@ -261,6 +260,8 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
       performIncreaseThreat();
     } else if (!remoteMode && keyCode == KeyEvent.VK_N) {
       performAdvanceStatusPhase();
+    } else if (keyCode == KeyEvent.VK_U) {
+      performFinishGame();
     } else if (!remoteMode && keyCode == KeyEvent.VK_C) {
       game.clearDice();
     } else if (!remoteMode && keyCode == KeyEvent.VK_R) {
@@ -360,9 +361,6 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     nextRoundButton.addActionListener(e -> performAdvanceStatusPhase());
     nextRoundButton.setVisible(false);
     add(nextRoundButton);
-    finishGameButton.addActionListener(e -> performFinishGame());
-    finishGameButton.setVisible(false);
-    add(finishGameButton);
     restartGameButton.addActionListener(e -> performRestartGame());
     restartGameButton.setVisible(false);
     add(restartGameButton);
@@ -1092,13 +1090,10 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     layoutHandler.setSidebarState(getScreenWidth(), getScreenHeight(), game.getMapDrawWidth(), promptPanel.isVisible());
     increaseThreatButton.setVisible(shouldShowThreatButton());
     nextRoundButton.setVisible(shouldShowNextRoundButton());
-    finishGameButton.setVisible(shouldShowFinishGameButton());
     restartGameButton.setVisible(shouldShowRestartButton());
     layoutHandler.addVisualComponent(increaseThreatButton, LayoutHandler.Priority.HIGH,
         layoutHandler.getSidebarButtonWidth(), layoutHandler.getSidebarButtonHeight());
     layoutHandler.addVisualComponent(nextRoundButton, LayoutHandler.Priority.HIGH,
-        layoutHandler.getSidebarButtonWidth(), layoutHandler.getSidebarButtonHeight());
-    layoutHandler.addVisualComponent(finishGameButton, LayoutHandler.Priority.HIGH,
         layoutHandler.getSidebarButtonWidth(), layoutHandler.getSidebarButtonHeight());
     layoutHandler.addVisualComponent(restartGameButton, LayoutHandler.Priority.HIGH,
         layoutHandler.getSidebarButtonWidth(), layoutHandler.getSidebarButtonHeight());
@@ -1153,10 +1148,6 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     return shouldShowThreatButton();
   }
 
-  private boolean shouldShowFinishGameButton() {
-    return shouldShowThreatButton();
-  }
-
   private boolean shouldShowRestartButton() {
     return readOnly && gameStarted;
   }
@@ -1188,8 +1179,12 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
       finishGameAction.run();
       return;
     }
+    if (remoteMode) {
+      finishGameAction.run();
+      return;
+    }
     if (!remoteMode) {
-      game.finishCurrentRound();
+      game.skipToEndScreen();
       repaint();
     }
   }

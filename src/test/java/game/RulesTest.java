@@ -374,23 +374,49 @@ class RulesTest {
     }
 
     @Test
-    void tutorialObjectivesEndOnHeroWoundOrBothTerminals() {
-        Game heroWoundGame = new Game(null, new GameSessionConfig(2),
+    void imperialWinsWhenAllRebelsAreDefeated() {
+        Game game = new Game(null, new GameSessionConfig(1),
                 MissionDefinition.forOption(MissionOption.MISSION_ONE), null, true);
-        heroWoundGame.getHeroes().get(0).dealDamage(50);
-        heroWoundGame.checkEndGame();
+        for (Hero hero : game.getHeroes()) {
+            hero.dealDamage(50);
+        }
+        game.checkEndGame();
 
-        assertTrue(heroWoundGame.isGameEnd());
-        assertFalse(heroWoundGame.rebelsWin());
+        assertFalse(game.isGameEnd());
 
-        Game terminalGame = new Game(null, new GameSessionConfig(2),
+        for (Hero hero : game.getHeroes()) {
+            hero.dealDamage(50);
+        }
+        game.checkEndGame();
+
+        assertTrue(game.isGameEnd());
+        assertFalse(game.rebelsWin());
+    }
+
+    @Test
+    void rebelsWinWhenAllDeployedImperialsAreDefeated() {
+        Game game = new Game(null, new GameSessionConfig(2),
                 MissionDefinition.forOption(MissionOption.MISSION_ONE), null, true);
-        terminalGame.getInteractables()[0].applySnapshotState(false);
-        terminalGame.getInteractables()[1].applySnapshotState(false);
-        terminalGame.checkEndGame();
+        for (Imperial imperial : game.getImperials()) {
+            imperial.setDefeated(true);
+        }
 
-        assertTrue(terminalGame.isGameEnd());
-        assertFalse(terminalGame.rebelsWin());
+        game.checkEndGame();
+
+        assertTrue(game.isGameEnd());
+        assertTrue(game.rebelsWin());
+    }
+
+    @Test
+    void imperialWinsWhenImperialInteractsWithTerminal() {
+        Game game = new Game(null, new GameSessionConfig(2),
+                MissionDefinition.forOption(MissionOption.MISSION_ONE), null, true);
+        Imperial imperial = findStormTrooper(game);
+
+        game.getInteractables()[0].interact(imperial);
+
+        assertTrue(game.isGameEnd());
+        assertFalse(game.rebelsWin());
     }
 
     @Test

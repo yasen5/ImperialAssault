@@ -13,7 +13,11 @@ public class Terminal<ValidInteractors extends Personnel> extends Interactable<V
     public void safeInteract(ValidInteractors interactor) {
         active = false;
         if (game != null) {
-            game.repaintScreen();
+            if (interactor instanceof Imperial) {
+                game.endGame(false);
+            } else {
+                game.repaintScreen();
+            }
         }
     }
 

@@ -248,6 +248,10 @@ public class Game {
       repaint();
       checkEndGame();
     } catch (CancellationException ex) {
+      if (gameEnd) {
+        Thread.interrupted();
+        return;
+      }
       if (restartRequested) {
         Thread.interrupted();
         restartFromBeginningInternal();
@@ -438,6 +442,13 @@ public class Game {
     }
     requestAdvanceStatusPhase();
     repaint();
+  }
+
+  public void skipToEndScreen() {
+    if (gameEnd) {
+      return;
+    }
+    endGameInternal(rebelsWin);
   }
 
   public void requestRestartFromBeginning() {
@@ -648,56 +659,42 @@ public class Game {
   }
 
   public void checkEndGame() {
+    if (gameEnd) {
+      return;
+    }
     if (roundLimit > 0 && roundDial > roundLimit) {
       endGameInternal(false);
       return;
     }
-    if (missionDefinition.tutorialObjectives()) {
-      for (Hero hero : heroes) {
-        if (hero.isWounded()) {
-          endGameInternal(false);
-          return;
-        }
-      }
-    }
-    boolean anyHeroAble = false;
+    boolean anyHeroAlive = false;
     for (Hero hero : heroes) {
       if (!hero.isDefeated()) {
-        anyHeroAble = true;
+        anyHeroAlive = true;
         break;
       }
     }
-    if (!anyHeroAble) {
+    if (!anyHeroAlive) {
       endGameInternal(false);
       return;
     }
-    if (missionDefinition.tutorialObjectives() && allTerminalsInactive()) {
-      endGameInternal(false);
-      return;
-    }
-    boolean allDeploymentGroupsEmpty = true;
+    boolean anyImperialAlive = false;
     for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
-      if (!group.isEmpty()) {
-        allDeploymentGroupsEmpty = false;
-        break;
+      if (!group.getDeployed()) {
+        continue;
       }
-    }
-    if (allDeploymentGroupsEmpty) {
-      endGameInternal(true);
-    }
-  }
-
-  private boolean allTerminalsInactive() {
-    boolean foundTerminal = false;
-    for (Interactable<? extends Personnel> interactable : interactables) {
-      if (interactable instanceof Terminal<?>) {
-        foundTerminal = true;
-        if (interactable.canInteract()) {
-          return false;
+      for (Imperial imperial : group.getMembers()) {
+        if (!imperial.isDefeated()) {
+          anyImperialAlive = true;
+          break;
         }
       }
+      if (anyImperialAlive) {
+        break;
+      }
     }
-    return foundTerminal;
+    if (!anyImperialAlive) {
+      endGameInternal(true);
+    }
   }
 
   public void removeDeadFigures() {
@@ -741,6 +738,7 @@ public class Game {
       case ATTACK -> {
         handleAttackInternal(activeFigure);
         removeDeadFigures();
+        checkEndGame();
       }
       case RECOVER -> {
         Hero hero = (Hero) activeFigure;
@@ -757,10 +755,17 @@ public class Game {
         specialUsedThisActivation.add(activeFigure);
         handleSpecial(activeFigure);
       }
-      case INTERACT -> handleInteraction(activeFigure);
+      case INTERACT -> {
+        handleInteraction(activeFigure);
+        checkEndGame();
+      }
+    }
+    if (gameEnd) {
+      return leftoverMoves;
     }
     applyAfterActionConditions(activeFigure, action);
     actionsUsedThisActivation.add(action);
+    checkEndGame();
     return leftoverMoves;
   }
 
@@ -1159,7 +1164,7 @@ public class Game {
     troopers.setDeployed(true);
     configureDeploymentGroup(troopers, "imperial-stormtroopers", PlayerSeat.IMPERIAL);
     DeploymentGroup<Officer> officers = new DeploymentGroup<>(
-        new Pos[] { new Pos(7, 11) }, Officer::new, "ImperialOfficer");
+        new Pos[] { new Pos(1, 5) }, Officer::new, "ImperialOfficer");
     officers.setDeploymentCost(4);
     officers.setDeployed(true);
     configureDeploymentGroup(officers, "imperial-officer", PlayerSeat.IMPERIAL);
@@ -1404,11 +1409,13 @@ public class Game {
 
   private void endGameInternal(boolean rebelsWin) {
     this.rebelsWin = rebelsWin;
+    gameEnd = true;
+    cancelActivePrompt();
     if (ui != null) {
+      ui.resetTransientTurnState();
       ui.endGame(rebelsWin);
       ui.deactiveateMovementButtons();
     }
-    gameEnd = true;
     repaint();
   }
 
@@ -1550,6 +1557,9 @@ public class Game {
     }
     if (ui != null) {
       ui.setTurnStatus(actingSeat);
+      if (gameEnd) {
+        ui.endGame(rebelsWin);
+      }
     }
     bindGameReferences();
     repaint();

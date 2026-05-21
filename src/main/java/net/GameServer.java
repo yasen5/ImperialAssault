@@ -38,6 +38,7 @@ import game.MovementChoice;
 import net.GameDecisionProvider;
 import net.NetworkConfig;
 import net.structs.ClientMissionSelection;
+import net.structs.ClientFinishGameRequest;
 import net.structs.GameSessionConfig;
 import net.structs.JoinRequest;
 import net.structs.JoinResponse;
@@ -60,6 +61,7 @@ public class GameServer {
   private final AtomicLong promptIds = new AtomicLong(1);
   private final Object lobbyLock = new Object();
   private volatile Game spectatorGame;
+  private volatile Game activeGame;
   private volatile Screen spectatorScreen;
   private volatile String hostAddress;
   private final boolean showSpectator;
@@ -127,6 +129,7 @@ public class GameServer {
       MissionOption mission = config.rebelPlayerCount() == 0 ? MissionOption.MISSION_ONE
           : getSelectedMission();
       Game game = createGameForMission(mission);
+      activeGame = game;
       MatchSnapshot loadedSnapshot = loadPreviousGame ? tryLoadSavedSnapshot() : null;
       game.setSnapshotListener(this::broadcastSnapshot);
       if (loadedSnapshot != null) {
@@ -138,7 +141,7 @@ public class GameServer {
         if (spectatorScreen != null) {
           spectatorScreen.setIncreaseThreatAction(() -> new Thread(game::increaseThreat, "Manual Threat").start());
           spectatorScreen.setNextRoundAction(game::requestAdvanceStatusPhase);
-          spectatorScreen.setFinishGameAction(() -> new Thread(game::finishCurrentRound, "Finish Game").start());
+          spectatorScreen.setFinishGameAction(() -> new Thread(game::skipToEndScreen, "Finish Game").start());
           spectatorScreen.setRestartGameAction(
               () -> new Thread(game::requestRestartFromBeginning, "Restart Game").start());
         }
@@ -237,6 +240,13 @@ public class GameServer {
       lobbyLock.notifyAll();
     }
     broadcastLobbyState();
+  }
+
+  private void handleClientFinishGameRequest() {
+    Game game = activeGame;
+    if (game != null) {
+      new Thread(game::skipToEndScreen, "Finish Game").start();
+    }
   }
 
   private Game createGameForMission(MissionOption mission) {
@@ -531,6 +541,8 @@ public class GameServer {
               responses.put(response);
             } else if (object instanceof ClientMissionSelection clientMissionSelection) {
               handleClientMissionSelection(this, clientMissionSelection);
+            } else if (object instanceof ClientFinishGameRequest) {
+              handleClientFinishGameRequest();
             }
           }
         } catch (EOFException | SocketException eof) {

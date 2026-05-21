@@ -21,6 +21,7 @@ import net.structs.RemotePrompt;
 import net.structs.RemotePromptCancel;
 import net.structs.PromptResponse;
 import net.structs.ClientMissionSelection;
+import net.structs.ClientFinishGameRequest;
 import visual.WindowFocus;
 
 public class GameClient {
@@ -55,6 +56,13 @@ public class GameClient {
       screen.setMissionSelectionAction((MissionOption mission) -> {
         try {
           send(new ClientMissionSelection(mission));
+        } catch (Exception ex) {
+          throw new RuntimeException(ex);
+        }
+      });
+      screen.setFinishGameAction(() -> {
+        try {
+          send(new ClientFinishGameRequest());
         } catch (Exception ex) {
           throw new RuntimeException(ex);
         }
