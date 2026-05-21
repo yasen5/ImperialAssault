@@ -99,6 +99,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   private final JButton increaseThreatButton = new JButton("+ Threat");
   private final JButton nextRoundButton = new JButton("Next Round");
   private final JButton finishGameButton = new JButton("Finish Game");
+  private final JButton restartGameButton = new JButton("Restart");
   private final JButton missionOneButton = new JButton("Mission 1");
   private final JButton missionTwoButton = new JButton("Mission 2");
   private final LayoutHandler layoutHandler = new LayoutHandler();
@@ -119,6 +120,8 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   private Runnable nextRoundAction = () -> {
   };
   private Runnable finishGameAction = () -> {
+  };
+  private Runnable restartGameAction = () -> {
   };
   private game.PlayerSeat localSeat;
   private volatile String serverStatusText;
@@ -207,7 +210,9 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     });
     registerKeyBinding(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "endGame", () -> gameEnd = true);
     registerKeyBinding(KeyStroke.getKeyStroke(KeyEvent.VK_R, 0), "resetGame", () -> {
-      if (!remoteMode) {
+      if (readOnly) {
+        performRestartGame();
+      } else if (!remoteMode) {
         reset();
       }
     });
@@ -241,6 +246,8 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         performAdvanceStatusPhase();
       } else if (keyCode == KeyEvent.VK_F) {
         performFinishGame();
+      } else if (keyCode == KeyEvent.VK_R) {
+        performRestartGame();
       } else if (keyCode == KeyEvent.VK_ESCAPE) {
         gameEnd = true;
       } else {
@@ -356,6 +363,9 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     finishGameButton.addActionListener(e -> performFinishGame());
     finishGameButton.setVisible(false);
     add(finishGameButton);
+    restartGameButton.addActionListener(e -> performRestartGame());
+    restartGameButton.setVisible(false);
+    add(restartGameButton);
     System.out.println("INITIALIZED BUTTONS");
   }
 
@@ -1083,11 +1093,14 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     increaseThreatButton.setVisible(shouldShowThreatButton());
     nextRoundButton.setVisible(shouldShowNextRoundButton());
     finishGameButton.setVisible(shouldShowFinishGameButton());
+    restartGameButton.setVisible(shouldShowRestartButton());
     layoutHandler.addVisualComponent(increaseThreatButton, LayoutHandler.Priority.HIGH,
         layoutHandler.getSidebarButtonWidth(), layoutHandler.getSidebarButtonHeight());
     layoutHandler.addVisualComponent(nextRoundButton, LayoutHandler.Priority.HIGH,
         layoutHandler.getSidebarButtonWidth(), layoutHandler.getSidebarButtonHeight());
     layoutHandler.addVisualComponent(finishGameButton, LayoutHandler.Priority.HIGH,
+        layoutHandler.getSidebarButtonWidth(), layoutHandler.getSidebarButtonHeight());
+    layoutHandler.addVisualComponent(restartGameButton, LayoutHandler.Priority.HIGH,
         layoutHandler.getSidebarButtonWidth(), layoutHandler.getSidebarButtonHeight());
     buttonSize = layoutHandler.getMovementButtonSize();
   }
@@ -1144,6 +1157,10 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     return shouldShowThreatButton();
   }
 
+  private boolean shouldShowRestartButton() {
+    return readOnly && gameStarted;
+  }
+
   private void performIncreaseThreat() {
     if (readOnly) {
       increaseThreatAction.run();
@@ -1177,6 +1194,18 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     }
   }
 
+  private void performRestartGame() {
+    if (readOnly) {
+      gameEnd = false;
+      restartGameAction.run();
+      repaint();
+      return;
+    }
+    if (!remoteMode) {
+      reset();
+    }
+  }
+
   public void setIncreaseThreatAction(Runnable increaseThreatAction) {
     this.increaseThreatAction = increaseThreatAction == null ? () -> {
     } : increaseThreatAction;
@@ -1190,6 +1219,11 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   public void setFinishGameAction(Runnable finishGameAction) {
     this.finishGameAction = finishGameAction == null ? () -> {
     } : finishGameAction;
+  }
+
+  public void setRestartGameAction(Runnable restartGameAction) {
+    this.restartGameAction = restartGameAction == null ? () -> {
+    } : restartGameAction;
   }
 
   private void startBannerTimer(long token) {

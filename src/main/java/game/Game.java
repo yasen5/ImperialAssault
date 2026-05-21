@@ -50,6 +50,8 @@ public class Game {
   private volatile boolean advanceStatusPhaseRequested;
   private volatile boolean statusPhaseInProgress;
   private volatile boolean abortStatusPhasePrompts;
+  private volatile boolean restartRequested;
+  private volatile boolean playLoopActive;
   private volatile Runnable activePromptCancelAction = () -> {
   };
   private long bannerId;
@@ -193,8 +195,29 @@ public class Game {
   }
 
   public void playRound() {
-    while (!gameEnd) {
-      playCycle();
+    synchronized (this) {
+      if (playLoopActive) {
+        return;
+      }
+      playLoopActive = true;
+    }
+    try {
+      while (!gameEnd) {
+        if (restartRequested) {
+          restartFromBeginningInternal();
+          continue;
+        }
+        playCycle();
+      }
+    } finally {
+      boolean shouldResume;
+      synchronized (this) {
+        playLoopActive = false;
+        shouldResume = restartRequested && !gameEnd;
+      }
+      if (shouldResume) {
+        playRound();
+      }
     }
   }
 
@@ -225,6 +248,11 @@ public class Game {
       repaint();
       checkEndGame();
     } catch (CancellationException ex) {
+      if (restartRequested) {
+        Thread.interrupted();
+        restartFromBeginningInternal();
+        return;
+      }
       if (advanceStatusPhaseRequested) {
         Thread.interrupted();
         finishRoundTransition();
@@ -412,6 +440,18 @@ public class Game {
     repaint();
   }
 
+  public void requestRestartFromBeginning() {
+    restartRequested = true;
+    gameEnd = false;
+    cancelActivePrompt();
+    if (ui != null) {
+      ui.resetTransientTurnState();
+    }
+    if (!playLoopActive) {
+      playRound();
+    }
+  }
+
   public void requestAdvanceStatusPhase() {
     if (gameEnd) {
       return;
@@ -449,6 +489,16 @@ public class Game {
     cleanupTransientTurnState();
     resolveStatusPhase();
     checkEndGame();
+  }
+
+  private void restartFromBeginningInternal() {
+    restartRequested = false;
+    advanceStatusPhaseRequested = false;
+    abortStatusPhasePrompts = false;
+    statusPhaseInProgress = false;
+    cleanupTransientTurnState();
+    resetStateForNewGame();
+    triggerBanner("Game restarted");
   }
 
   private void cleanupTransientTurnState() {
@@ -1074,21 +1124,19 @@ public class Game {
   }
 
   public void reset() {
+    resetStateForNewGame();
+    playRound();
+  }
+
+  private void resetStateForNewGame() {
     gameEnd = false;
     rebelsWin = true;
-    threatDial = 0;
-    roundDial = 1;
-    nextSupplyEquipmentIndex = 0;
-    currentTurnSeat = firstTurnSeat();
-    actingSeat = currentTurnSeat;
-    heroes.clear();
-    imperialDeployments.clear();
-    clearDiceInternal();
+    offenseResults.clear();
+    defenseResults.clear();
     for (Interactable<? extends Personnel> interactable : interactables) {
       interactable.applySnapshotState(true);
     }
     setup();
-    playRound();
   }
 
   public void setup() {

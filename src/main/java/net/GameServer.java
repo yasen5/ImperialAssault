@@ -139,6 +139,8 @@ public class GameServer {
           spectatorScreen.setIncreaseThreatAction(() -> new Thread(game::increaseThreat, "Manual Threat").start());
           spectatorScreen.setNextRoundAction(game::requestAdvanceStatusPhase);
           spectatorScreen.setFinishGameAction(() -> new Thread(game::finishCurrentRound, "Finish Game").start());
+          spectatorScreen.setRestartGameAction(
+              () -> new Thread(game::requestRestartFromBeginning, "Restart Game").start());
         }
       });
       broadcastSnapshot(game.createSnapshot());
