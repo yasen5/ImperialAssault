@@ -56,7 +56,7 @@ public record MissionDefinition(
           3, 6, true, true,
           new Pos[] { new Pos(1, 6), new Pos(2, 6), new Pos(2, 7), new Pos(3, 7) },
           new Pos[] { new Pos(2, 6), new Pos(6, 1), new Pos(5, 3), new Pos(9, 7) },
-          new DoorSpec[] { new DoorSpec(new Pos(6, 3), true) },
+          new DoorSpec[] { new DoorSpec(new Pos(6, 5), true) },
           new Pos[] {},
           new DeploymentSpec[] {
               new DeploymentSpec("imperial-stormtroopers", "StormTrooper",

@@ -15,19 +15,19 @@ public class Door<ValidInteractors extends Personnel> extends Interactable<Valid
         this(pos, validInteractorClass, false);
     }
 
-    public Door(Pos pos, Class<ValidInteractors> validInteractorClass, boolean vertical) {
-        super(pos, validInteractorClass, "Black-Rectangle-PNG",
+    public Door(Pos topLeftHinge, Class<ValidInteractors> validInteractorClass, boolean vertical) {
+        super(topLeftHinge, validInteractorClass, "Black-Rectangle-PNG",
                 vertical ? shortSize : longSize,
                 vertical ? longSize : shortSize,
-                wallLines(pos, vertical));
+                wallLinesFromTopLeftHinge(topLeftHinge, vertical));
     }
 
-    private static WallLine[] wallLines(Pos pos, boolean vertical) {
+    private static WallLine[] wallLinesFromTopLeftHinge(Pos topLeftHinge, boolean vertical) {
         return vertical
-                ? new WallLine[] { new WallLine(pos, true, false, false, false),
-                        new WallLine(pos.getNextPos(Directions.DOWN), true, false, false, false) }
-                : new WallLine[] { new WallLine(pos, false, false, false, false),
-                        new WallLine(pos.getNextPos(Directions.RIGHT), false, false, false, false) };
+                ? new WallLine[] { new WallLine(topLeftHinge, true, false, false, false),
+                        new WallLine(topLeftHinge.getNextPos(Directions.DOWN), true, false, false, false) }
+                : new WallLine[] { new WallLine(topLeftHinge, false, false, false, false),
+                        new WallLine(topLeftHinge.getNextPos(Directions.RIGHT), false, false, false, false) };
     }
 
     // Repaint to show that the door isn't there

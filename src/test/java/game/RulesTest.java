@@ -98,7 +98,19 @@ class RulesTest {
     }
 
     @Test
-    void verticalDoorUsesVerticalBlockingSegments() {
+    void horizontalDoorExtendsRightFromSpecPosition() {
+        Door<Personnel> door = new Door<>(new Pos(4, 3), Personnel.class, false);
+        Constants.WallLine[] wallLines = door.getWallLines();
+
+        assertEquals(2, wallLines.length);
+        assertFalse(wallLines[0].vertical());
+        assertFalse(wallLines[1].vertical());
+        assertTrue(wallLines[0].pos().equalTo(new Pos(4, 3)));
+        assertTrue(wallLines[1].pos().equalTo(new Pos(5, 3)));
+    }
+
+    @Test
+    void verticalDoorExtendsDownFromSpecPosition() {
         Door<Personnel> door = new Door<>(new Pos(4, 3), Personnel.class, true);
         Constants.WallLine[] wallLines = door.getWallLines();
 
