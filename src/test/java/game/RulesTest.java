@@ -98,6 +98,18 @@ class RulesTest {
     }
 
     @Test
+    void verticalDoorUsesVerticalBlockingSegments() {
+        Door<Personnel> door = new Door<>(new Pos(4, 3), Personnel.class, true);
+        Constants.WallLine[] wallLines = door.getWallLines();
+
+        assertEquals(2, wallLines.length);
+        assertTrue(wallLines[0].vertical());
+        assertTrue(wallLines[1].vertical());
+        assertTrue(wallLines[0].pos().equalTo(new Pos(4, 3)));
+        assertTrue(wallLines[1].pos().equalTo(new Pos(4, 4)));
+    }
+
+    @Test
     void eWebEngineerOccupiesTwoSpaces() {
         Game game = new Game(null, new GameSessionConfig(4), MissionDefinition.forOption(MissionOption.MISSION_ONE),
                 null, true);
@@ -307,9 +319,10 @@ class RulesTest {
                 null, false);
         copy.loadSnapshot(snapshot);
 
+        assertEquals(MissionOption.MISSION_TWO, snapshot.mission());
         assertEquals(3, copy.getThreatLevel());
         assertEquals(1, copy.getRoundDial());
-        assertEquals(7, copy.getRoundLimit());
+        assertEquals(6, copy.getRoundLimit());
         assertTrue(copy.getHeroes().get(0).isWounded());
         assertTrue(copy.getHeroes().get(0).hasCondition(Condition.BLEEDING));
     }

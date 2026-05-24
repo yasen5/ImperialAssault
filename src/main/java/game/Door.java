@@ -9,12 +9,25 @@ import game.Personnel.Directions;
 // Interactable that blocks attacks and movement until interacted with
 public class Door<ValidInteractors extends Personnel> extends Interactable<ValidInteractors> {
     private boolean active = true;
-    private static final int xSize = Constants.tileSize * 2, ySize = 10;
+    private static final int longSize = Constants.tileSize * 2, shortSize = 10;
 
     public Door(Pos pos, Class<ValidInteractors> validInteractorClass) {
-        super(pos, validInteractorClass, "Black-Rectangle-PNG", xSize, ySize,
-                new WallLine[] { new WallLine(pos, false, false, false, false),
-                        new WallLine(pos.getNextPos(Directions.RIGHT), false, false, false, false) });
+        this(pos, validInteractorClass, false);
+    }
+
+    public Door(Pos pos, Class<ValidInteractors> validInteractorClass, boolean vertical) {
+        super(pos, validInteractorClass, "Black-Rectangle-PNG",
+                vertical ? shortSize : longSize,
+                vertical ? longSize : shortSize,
+                wallLines(pos, vertical));
+    }
+
+    private static WallLine[] wallLines(Pos pos, boolean vertical) {
+        return vertical
+                ? new WallLine[] { new WallLine(pos, true, false, false, false),
+                        new WallLine(pos.getNextPos(Directions.DOWN), true, false, false, false) }
+                : new WallLine[] { new WallLine(pos, false, false, false, false),
+                        new WallLine(pos.getNextPos(Directions.RIGHT), false, false, false, false) };
     }
 
     // Repaint to show that the door isn't there
@@ -41,5 +54,12 @@ public class Door<ValidInteractors extends Personnel> extends Interactable<Valid
     @Override
     public void applySnapshotState(boolean active) {
         this.active = active;
+    }
+
+    public void close() {
+        active = true;
+        if (game != null) {
+            game.repaint();
+        }
     }
 }

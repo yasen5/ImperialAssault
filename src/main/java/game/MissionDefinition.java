@@ -3,25 +3,75 @@ package game;
 import net.structs.MissionOption;
 
 public record MissionDefinition(
-        MissionOption option,
-        String displayName,
-        int threatLevel,
-        int roundLimit,
-        boolean usesThreat,
-        boolean tutorialObjectives,
-        Pos[] terminalPositions,
-        Pos[] doorPositions,
-        Pos[] cratePositions) {
-    public static MissionDefinition forOption(MissionOption option) {
-        return switch (option) {
-            case MISSION_ONE -> new MissionDefinition(option, "Tutorial", 0, 0, false, true,
-                    new Pos[] { new Pos(7, 0), new Pos(0, 3) },
-                    new Pos[] { new Pos(0, 6), new Pos(6, 8) },
-                    new Pos[] { new Pos(3, 3) });
-            case MISSION_TWO -> new MissionDefinition(option, "A New Threat", 3, 7, true, false,
-                    new Pos[] { new Pos(7, 0) },
-                    new Pos[] { new Pos(0, 6), new Pos(6, 8) },
-                    new Pos[] { new Pos(3, 3), new Pos(8, 9) });
-        };
+    MissionOption option,
+    String displayName,
+    String mapImageName,
+    int[][] tileMatrix,
+    Constants.WallLine[] wallLines,
+    int threatLevel,
+    int roundLimit,
+    boolean usesThreat,
+    boolean attackableTerminals,
+    Pos[] heroPositions,
+    Pos[] terminalPositions,
+    DoorSpec[] doors,
+    Pos[] cratePositions,
+    DeploymentSpec[] deployments) {
+  public record DoorSpec(Pos pos, boolean vertical) {
+  }
+
+  public record DeploymentSpec(String id, String groupName, Pos[] positions, int deploymentCost, boolean deployed,
+      int minimumHeroCount, Boolean horizontal) {
+    public DeploymentSpec(String id, String groupName, Pos[] positions, int deploymentCost, boolean deployed) {
+      this(id, groupName, positions, deploymentCost, deployed, 0, null);
     }
+
+    public DeploymentSpec(String id, String groupName, Pos[] positions, int deploymentCost, boolean deployed,
+        int minimumHeroCount) {
+      this(id, groupName, positions, deploymentCost, deployed, minimumHeroCount, null);
+    }
+  }
+
+  public static MissionDefinition forOption(MissionOption option) {
+    return switch (option) {
+      case MISSION_ONE -> new MissionDefinition(option, "Tutorial", "TutorialTile",
+          Constants.TUTORIAL_TILE_MATRIX, Constants.TUTORIAL_WALL_LINES,
+          0, 0, false, false,
+          new Pos[] { new Pos(0, 4), new Pos(0, 5), new Pos(7, 4), new Pos(7, 5) },
+          new Pos[] { new Pos(7, 0), new Pos(0, 3) },
+          new DoorSpec[] { new DoorSpec(new Pos(0, 6), false), new DoorSpec(new Pos(6, 8), false) },
+          new Pos[] { new Pos(3, 3) },
+          new DeploymentSpec[] {
+              new DeploymentSpec("imperial-stormtroopers", "StormTrooper",
+                  new Pos[] { new Pos(4, 11), new Pos(4, 12), new Pos(5, 11) }, 6, true),
+              new DeploymentSpec("imperial-officer", "ImperialOfficer",
+                  new Pos[] { new Pos(1, 5) }, 4, true),
+              new DeploymentSpec("imperial-probe-droid", "ProbeDroid",
+                  new Pos[] { new Pos(7, 11) }, 5, true, 3),
+              new DeploymentSpec("imperial-e-web-engineer", "EWebEngineer",
+                  new Pos[] { new Pos(6, 10) }, 6, true, 4)
+          });
+      case MISSION_TWO -> new MissionDefinition(option, "Aftermath", "Mission2Map",
+          Constants.MISSION_TWO_TILE_MATRIX, Constants.MISSION_TWO_WALL_LINES,
+          3, 6, true, true,
+          new Pos[] { new Pos(1, 6), new Pos(2, 6), new Pos(2, 7), new Pos(3, 7) },
+          new Pos[] { new Pos(2, 6), new Pos(6, 1), new Pos(5, 3), new Pos(9, 7) },
+          new DoorSpec[] { new DoorSpec(new Pos(6, 3), true) },
+          new Pos[] {},
+          new DeploymentSpec[] {
+              new DeploymentSpec("imperial-stormtroopers", "StormTrooper",
+                  new Pos[] { new Pos(0, 5), new Pos(2, 4), new Pos(1, 3) }, 6, true),
+              new DeploymentSpec("imperial-officer", "ImperialOfficer",
+                  new Pos[] { new Pos(4, 6) }, 4, true),
+              new DeploymentSpec("imperial-probe-droid", "ProbeDroid",
+                  new Pos[] { new Pos(2, 5) }, 5, true),
+              new DeploymentSpec("imperial-e-web-engineer-reserve", "EWebEngineer",
+                  new Pos[] { new Pos(10, 5) }, 6, false, 0, false),
+              new DeploymentSpec("imperial-stormtroopers-reserve", "StormTrooper",
+                  new Pos[] { new Pos(5, 1), new Pos(6, 1), new Pos(6, 2) }, 6, false),
+              new DeploymentSpec("imperial-officer-reserve", "ImperialOfficer",
+                  new Pos[] { new Pos(7, 2) }, 4, false)
+          });
+    };
+  }
 }

@@ -7,6 +7,7 @@ import util.MyArrayList;
 import game.PlayerSeat;
 
 public record MatchSnapshot(
+        MissionOption mission,
         GameSessionConfig config,
         PlayerSeat actingSeat,
         PlayerSeat currentTurnSeat,
@@ -19,6 +20,7 @@ public record MatchSnapshot(
         long bannerExpiresAt,
         MyArrayList<FigureSnapshot> heroes,
         MyArrayList<DeploymentGroupSnapshot> imperialGroups,
+        MyArrayList<FigureSnapshot> missionTerminals,
         MyArrayList<Boolean> interactableStates,
         int nextSupplyEquipmentIndex,
         MyArrayList<String> offenseResults,

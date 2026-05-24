@@ -25,12 +25,13 @@ import net.structs.GameSessionConfig;
 import net.GameDecisionProvider;
 
 public class Game {
-  private final MapTile mapTile;
+  private MapTile mapTile;
   private final MyArrayList<DeploymentGroup<? extends Imperial>> imperialDeployments = new MyArrayList<>();
   private final MyArrayList<Hero> heroes = new MyArrayList<>();
+  private final MyArrayList<MissionTerminal> missionTerminals = new MyArrayList<>();
   private final MyArrayList<GraphicOffenseDieResult> offenseResults = new MyArrayList<>();
   private final MyArrayList<GraphicDefenseDieResult> defenseResults = new MyArrayList<>();
-  public final Interactable<? extends Personnel>[] interactables;
+  public Interactable<? extends Personnel>[] interactables;
 
   private GameUi ui;
   private GameDecisionProvider decisionProvider;
@@ -60,8 +61,12 @@ public class Game {
   private long lastAppliedBannerId;
   private int nextSupplyEquipmentIndex;
   private final GameSessionConfig sessionConfig;
-  private final MissionDefinition missionDefinition;
+  private MissionDefinition missionDefinition;
   private MyArrayList<PlayerSeat> rebelHeroSelectionOrder = new MyArrayList<>();
+  private boolean fortifiedResolved;
+  private boolean lockdownResolved;
+  private boolean missionDoorOpenedThisRound;
+  private Door<?> atriumDoor;
 
   public static record MapTile(BufferedImage img, int[][] tileArray) {
   }
@@ -82,9 +87,13 @@ public class Game {
     this.ui = ui;
     this.sessionConfig = sessionConfig;
     this.decisionProvider = decisionProvider;
-    this.missionDefinition = missionDefinition;
-    this.interactables = createInteractables(missionDefinition);
-    this.mapTile = new MapTile(LoaderUtils.getImage("TutorialTile"), Constants.tileMatrix);
+    this.missionDefinition = missionDefinition == null
+        ? MissionDefinition.forOption(net.structs.MissionOption.MISSION_ONE)
+        : missionDefinition;
+    Constants.useMissionDefinition(this.missionDefinition);
+    this.interactables = createInteractables(this.missionDefinition);
+    this.mapTile = new MapTile(LoaderUtils.getImage(this.missionDefinition.mapImageName()),
+        this.missionDefinition.tileMatrix());
     if (authoritative) {
       setup();
     }
@@ -92,12 +101,20 @@ public class Game {
 
   @SuppressWarnings("unchecked")
   private Interactable<? extends Personnel>[] createInteractables(MissionDefinition missionDefinition) {
+    atriumDoor = null;
     MyArrayList<Interactable<? extends Personnel>> missionInteractables = new MyArrayList<>();
-    for (Pos pos : missionDefinition.terminalPositions()) {
-      missionInteractables.add(new Terminal<Imperial>(pos, Imperial.class));
+    if (!missionDefinition.attackableTerminals()) {
+      for (Pos pos : missionDefinition.terminalPositions()) {
+        missionInteractables.add(new Terminal<Imperial>(pos, Imperial.class));
+      }
     }
-    for (Pos pos : missionDefinition.doorPositions()) {
-      missionInteractables.add(new Door<Personnel>(pos, Personnel.class));
+    for (MissionDefinition.DoorSpec doorSpec : missionDefinition.doors()) {
+      Door<?> door = missionDefinition.attackableTerminals() ? new MissionDoor(doorSpec.pos(), doorSpec.vertical())
+          : new Door<Personnel>(doorSpec.pos(), Personnel.class, doorSpec.vertical());
+      if (atriumDoor == null) {
+        atriumDoor = door;
+      }
+      missionInteractables.add(door);
     }
     for (Pos pos : missionDefinition.cratePositions()) {
       missionInteractables.add(new SupplyBox(pos));
@@ -144,6 +161,9 @@ public class Game {
     }
     for (DeploymentGroup<? extends Imperial> deployment : imperialDeployments) {
       deployment.draw(g);
+    }
+    for (MissionTerminal terminal : missionTerminals) {
+      terminal.draw(g);
     }
     drawThreatHud(g);
     drawDiceSection(g, offenseResults, true);
@@ -430,6 +450,7 @@ public class Game {
     abortStatusPhasePrompts = false;
     try {
       currentTurnSeat = firstTurnSeat();
+      resolveMissionEndOfRoundEvents();
       roundDial++;
       replenishDeployments();
       if (missionDefinition.usesThreat()) {
@@ -524,6 +545,61 @@ public class Game {
     cleanupTransientTurnState();
     resolveStatusPhase();
     checkEndGame();
+  }
+
+  public void onMissionDoorOpened(Door<?> door) {
+    if (!missionDefinition.attackableTerminals()) {
+      return;
+    }
+    missionDoorOpenedThisRound = true;
+    if (fortifiedResolved) {
+      return;
+    }
+    fortifiedResolved = true;
+    deployReservedMissionTwoGroups();
+    triggerBanner("Fortified: reserved Imperial groups deployed");
+  }
+
+  private void resolveMissionEndOfRoundEvents() {
+    if (!missionDefinition.attackableTerminals() || lockdownResolved || !missionDoorOpenedThisRound) {
+      return;
+    }
+    lockdownResolved = true;
+    missionDoorOpenedThisRound = false;
+    Object[] options = new Object[] {
+        "Each terminal has 7 Health instead of 4",
+        "The Atrium door closes and is locked"
+    };
+    int choice = decisionProvider == null ? 0
+        : promptMultipleChoice(PlayerSeat.IMPERIAL, "Lockdown",
+            "Choose the Imperial lockdown effect", options);
+    if (choice == 0) {
+      for (MissionTerminal terminal : missionTerminals) {
+        terminal.harden();
+      }
+      triggerBanner("Lockdown: terminals hardened");
+    } else if (atriumDoor != null) {
+      atriumDoor.close();
+      triggerBanner("Lockdown: Atrium door closed");
+    }
+  }
+
+  private void deployReservedMissionTwoGroups() {
+    for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
+      if (group.getDeployed() || group.getId() == null || !group.getId().contains("reserve")) {
+        continue;
+      }
+      group.setDeployed(true);
+      if (group.getId().contains("e-web")) {
+        for (Imperial imperial : group.getMembers()) {
+          imperial.setFocused(true);
+        }
+      }
+      for (Imperial imperial : group.getMembers()) {
+        imperial.setGame(this);
+      }
+    }
+    repaint();
   }
 
   private void restartFromBeginningInternal() {
@@ -701,6 +777,14 @@ public class Game {
       endGameInternal(false);
       return;
     }
+    if (missionDefinition.attackableTerminals() && allHeroesWounded()) {
+      endGameInternal(false);
+      return;
+    }
+    if (missionDefinition.attackableTerminals() && allMissionTerminalsDestroyed()) {
+      endGameInternal(true);
+      return;
+    }
     boolean anyImperialAlive = false;
     for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
       if (!group.getDeployed()) {
@@ -719,6 +803,30 @@ public class Game {
     if (!anyImperialAlive) {
       endGameInternal(true);
     }
+  }
+
+  private boolean allHeroesWounded() {
+    if (heroes.isEmpty()) {
+      return false;
+    }
+    for (Hero hero : heroes) {
+      if (!hero.isWounded()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean allMissionTerminalsDestroyed() {
+    if (missionTerminals.isEmpty()) {
+      return false;
+    }
+    for (MissionTerminal terminal : missionTerminals) {
+      if (!terminal.isDefeated()) {
+        return false;
+      }
+    }
+    return true;
   }
 
   public void removeDeadFigures() {
@@ -885,6 +993,15 @@ public class Game {
     return xDistance <= 1 && yDistance <= 1 && (xDistance + yDistance) > 0;
   }
 
+  public boolean isAdjacentToImperial(Pos pos) {
+    for (Imperial imperial : getImperials()) {
+      if (isAdjacent(pos, imperial.getPos())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   public void handleSpecial(Personnel activeFigure) {
     if (activeFigure.specialRequiresSelection()) {
       performSpecialInternal(activeFigure);
@@ -935,6 +1052,11 @@ public class Game {
               defenders.add(member);
             }
           }
+        }
+      }
+      for (MissionTerminal terminal : missionTerminals) {
+        if (!terminal.isDefeated() && attacker.canAttack(terminal)) {
+          defenders.add(terminal);
         }
       }
     } else {
@@ -1134,6 +1256,7 @@ public class Game {
     MyArrayList<Personnel> personnel = new MyArrayList<>();
     personnel.addAll(heroes);
     personnel.addAll(getImperials());
+    personnel.addAll(missionTerminals);
     return personnel;
   }
 
@@ -1160,6 +1283,9 @@ public class Game {
   private void resetStateForNewGame() {
     gameEnd = false;
     rebelsWin = true;
+    fortifiedResolved = false;
+    lockdownResolved = false;
+    missionDoorOpenedThisRound = false;
     offenseResults.clear();
     defenseResults.clear();
     for (Interactable<? extends Personnel> interactable : interactables) {
@@ -1178,51 +1304,52 @@ public class Game {
     actingSeat = currentTurnSeat;
     heroes.clear();
     imperialDeployments.clear();
+    missionTerminals.clear();
     addSelectedHeroes();
     int heroCount = heroes.size();
-
-    DeploymentGroup<StormTrooper> troopers = new DeploymentGroup<>(
-        new Pos[] { new Pos(4, 11), new Pos(4, 12), new Pos(5, 11) },
-        StormTrooper::new, "StormTrooper");
-    troopers.setDeploymentCost(6);
-    troopers.setDeployed(true);
-    configureDeploymentGroup(troopers, "imperial-stormtroopers", PlayerSeat.IMPERIAL);
-    DeploymentGroup<Officer> officers = new DeploymentGroup<>(
-        new Pos[] { new Pos(1, 5) }, Officer::new, "ImperialOfficer");
-    officers.setDeploymentCost(4);
-    officers.setDeployed(true);
-    configureDeploymentGroup(officers, "imperial-officer", PlayerSeat.IMPERIAL);
-    imperialDeployments.add(troopers);
-    imperialDeployments.add(officers);
-    if (missionDefinition.tutorialObjectives()) {
-      if (heroCount >= 3) {
-        DeploymentGroup<ProbeDroid> probeDroid = new DeploymentGroup<>(
-            new Pos[] { new Pos(6, 11) }, ProbeDroid::new, "ProbeDroid");
-        probeDroid.setDeploymentCost(5);
-        probeDroid.setDeployed(true);
-        configureDeploymentGroup(probeDroid, "imperial-probe-droid", PlayerSeat.IMPERIAL);
-        imperialDeployments.add(probeDroid);
-      }
-      if (heroCount >= 4) {
-        DeploymentGroup<EWebEngineer> eWebEngineer = new DeploymentGroup<>(
-            new Pos[] { new Pos(4, 10) }, EWebEngineer::new, "EWebEngineer");
-        eWebEngineer.setDeploymentCost(6);
-        eWebEngineer.setDeployed(true);
-        initializeDeploymentOrientations(eWebEngineer, true);
-        configureDeploymentGroup(eWebEngineer, "imperial-e-web-engineer", PlayerSeat.IMPERIAL);
-        imperialDeployments.add(eWebEngineer);
-      }
-    } else {
-      DeploymentGroup<StormTrooper> reserveTroopers = new DeploymentGroup<>(
-          new Pos[] { new Pos(8, 9), new Pos(9, 9), new Pos(8, 10) },
-          StormTrooper::new, "StormTrooper");
-      reserveTroopers.setDeploymentCost(6);
-      reserveTroopers.setDeployed(false);
-      configureDeploymentGroup(reserveTroopers, "imperial-stormtroopers-reserve", PlayerSeat.IMPERIAL);
-      imperialDeployments.add(reserveTroopers);
+    setupMissionDeployments(heroCount);
+    if (missionDefinition.attackableTerminals()) {
+      setupMissionTerminals();
     }
     bindGameReferences();
     repaint();
+  }
+
+  private void setupMissionDeployments(int heroCount) {
+    for (MissionDefinition.DeploymentSpec spec : missionDefinition.deployments()) {
+      if (heroCount < spec.minimumHeroCount()) {
+        continue;
+      }
+      DeploymentGroup<? extends Imperial> group = createDeploymentGroup(spec);
+      group.setDeploymentCost(spec.deploymentCost());
+      group.setDeployed(spec.deployed());
+      if (spec.horizontal() != null) {
+        initializeDeploymentOrientations(group, spec.horizontal());
+      }
+      configureDeploymentGroup(group, spec.id(), PlayerSeat.IMPERIAL);
+      imperialDeployments.add(group);
+    }
+  }
+
+  private DeploymentGroup<? extends Imperial> createDeploymentGroup(MissionDefinition.DeploymentSpec spec) {
+    return switch (spec.groupName()) {
+      case "StormTrooper" -> new DeploymentGroup<StormTrooper>(spec.positions(), StormTrooper::new, "StormTrooper");
+      case "ImperialOfficer" -> new DeploymentGroup<Officer>(spec.positions(), Officer::new, "ImperialOfficer");
+      case "ProbeDroid" -> new DeploymentGroup<ProbeDroid>(spec.positions(), ProbeDroid::new, "ProbeDroid");
+      case "EWebEngineer" -> new DeploymentGroup<EWebEngineer>(spec.positions(), EWebEngineer::new, "EWebEngineer");
+      default -> throw new IllegalArgumentException("Unknown deployment group: " + spec.groupName());
+    };
+  }
+
+  private void setupMissionTerminals() {
+    int index = 0;
+    for (Pos pos : missionDefinition.terminalPositions()) {
+      MissionTerminal terminal = new MissionTerminal(pos);
+      terminal.setId("mission-terminal-" + index);
+      terminal.setGame(this);
+      missionTerminals.add(terminal);
+      index++;
+    }
   }
 
   private void bindGameReferences() {
@@ -1239,6 +1366,9 @@ public class Game {
     for (Interactable<? extends Personnel> interactable : interactables) {
       interactable.setGame(this);
     }
+    for (MissionTerminal terminal : missionTerminals) {
+      terminal.setGame(this);
+    }
   }
 
   private void configureHero(Hero hero, String id, PlayerSeat seat) {
@@ -1252,7 +1382,7 @@ public class Game {
         new HeroSetupOption("Gaarkhan", "hero-gaarkhan", Gaarkhan::new),
         new HeroSetupOption("Fenn Signis", "hero-fenn", FennSignis::new),
         new HeroSetupOption("Mak Eshka'rey", "hero-mak", MakEshray::new));
-    Pos[] heroPositions = new Pos[] { new Pos(0, 4), new Pos(0, 5), new Pos(7, 4), new Pos(7, 5) };
+    Pos[] heroPositions = missionDefinition.heroPositions();
     MyArrayList<PlayerSeat> owners = heroSelectionOwners();
     for (int i = 0; i < owners.size(); i++) {
       HeroSetupOption option = chooseHeroSetupOption(owners.get(i), availableHeroes);
@@ -1394,6 +1524,11 @@ public class Game {
         }
       }
     }
+    for (MissionTerminal terminal : missionTerminals) {
+      if (id.equals(terminal.getId())) {
+        return terminal;
+      }
+    }
     return null;
   }
 
@@ -1510,6 +1645,14 @@ public class Game {
           group.getDeployed(), group.getDeploymentCost(), group.getReinforcementCost(), group.getMaxMemberCount(),
           group.getOwnerSeat(), members));
     }
+    MyArrayList<FigureSnapshot> terminalSnapshots = new MyArrayList<>();
+    for (MissionTerminal terminal : missionTerminals) {
+      terminalSnapshots.add(new FigureSnapshot(terminal.getId(), terminal.getName(), terminal.getPos().getX(),
+          terminal.getPos().getY(), terminal.getXSize(), terminal.getYSize(),
+          terminal.getHealth(), terminal.getStrain(), terminal.stunned(), false,
+          terminal.isActive(), terminal.isPossibleTarget(), false, terminal.getOwnerSeat(), new MyArrayList<>(),
+          terminal.getConditionNames(), false, terminal.isDefeated()));
+    }
     MyArrayList<Boolean> interactableStates = new MyArrayList<>();
     for (Interactable<? extends Personnel> interactable : interactables) {
       interactableStates.add(interactable.snapshotState());
@@ -1522,16 +1665,20 @@ public class Game {
     for (GraphicDefenseDieResult die : defenseResults) {
       defense.add(die.die().name() + ":" + die.face());
     }
-    return new MatchSnapshot(sessionConfig, actingSeat, currentTurnSeat, threatDial, threatLevel, roundDial, roundLimit,
+    return new MatchSnapshot(missionDefinition.option(), sessionConfig, actingSeat, currentTurnSeat, threatDial,
+        threatLevel, roundDial, roundLimit,
         bannerId, bannerText,
         bannerExpiresAt,
         heroSnapshots,
-        groupSnapshots, interactableStates, nextSupplyEquipmentIndex, offense, defense, gameEnd, rebelsWin);
+        groupSnapshots, terminalSnapshots, interactableStates, nextSupplyEquipmentIndex, offense, defense, gameEnd,
+        rebelsWin);
   }
 
   public void loadSnapshot(MatchSnapshot snapshot) {
+    applySnapshotMission(snapshot);
     heroes.clear();
     imperialDeployments.clear();
+    missionTerminals.clear();
     clearDiceInternal();
     for (FigureSnapshot heroSnapshot : snapshot.heroes()) {
       Hero hero = createHero(heroSnapshot);
@@ -1551,6 +1698,13 @@ public class Game {
         applyFigureSnapshot(group.getMembers().get(i), groupSnapshot.members().get(i));
       }
       imperialDeployments.add(group);
+    }
+    if (snapshot.missionTerminals() != null) {
+      for (FigureSnapshot terminalSnapshot : snapshot.missionTerminals()) {
+        MissionTerminal terminal = new MissionTerminal(new Pos(terminalSnapshot.x(), terminalSnapshot.y()));
+        applyFigureSnapshot(terminal, terminalSnapshot);
+        missionTerminals.add(terminal);
+      }
     }
     for (int i = 0; i < interactables.length && i < snapshot.interactableStates().size(); i++) {
       interactables[i].applySnapshotState(snapshot.interactableStates().get(i));
@@ -1587,6 +1741,20 @@ public class Game {
     }
     bindGameReferences();
     repaint();
+  }
+
+  private void applySnapshotMission(MatchSnapshot snapshot) {
+    net.structs.MissionOption snapshotMission = snapshot.mission() == null
+        ? net.structs.MissionOption.MISSION_ONE
+        : snapshot.mission();
+    if (missionDefinition.option() == snapshotMission) {
+      Constants.useMissionDefinition(missionDefinition);
+      return;
+    }
+    missionDefinition = MissionDefinition.forOption(snapshotMission);
+    Constants.useMissionDefinition(missionDefinition);
+    interactables = createInteractables(missionDefinition);
+    mapTile = new MapTile(LoaderUtils.getImage(missionDefinition.mapImageName()), missionDefinition.tileMatrix());
   }
 
   private void updateTurnStatus() {

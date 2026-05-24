@@ -57,7 +57,7 @@ public class Constants {
     }
 
     public static final int tileSize = 70;
-    public static final int[][] tileMatrix = new int[][] {
+    public static final int[][] TUTORIAL_TILE_MATRIX = new int[][] {
             new int[] { 0, 0, 0, 1, 1, 0, 1, 1, 0, 0 },
             new int[] { 0, 0, 0, 1, 1, 0, 1, 1, 0, 0 },
             new int[] { 0, 0, 0, 1, 1, 0, 1, 1, 0, 0 },
@@ -73,7 +73,18 @@ public class Constants {
             new int[] { 0, 0, 0, 0, 1, 1, 1, 1, 1, 1 }
     };
 
-    public static final WallLine[] wallLines = new WallLine[] {
+    public static final int[][] MISSION_TWO_TILE_MATRIX = new int[][] {
+            new int[] { 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0 },
+            new int[] { 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0 },
+            new int[] { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0 },
+            new int[] { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0 },
+            new int[] { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
+            new int[] { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
+            new int[] { 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0 },
+            new int[] { 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0 }
+    };
+
+    public static final WallLine[] TUTORIAL_WALL_LINES = new WallLine[] {
             new WallLine(new Pos(2, 5), true, true, false, false),
             new WallLine(new Pos(6, 5), true, true, false, false),
             new WallLine(new Pos(6, 9), true, false, true, true),
@@ -84,4 +95,24 @@ public class Constants {
             new WallLine(new Pos(8, 12), false, false, true, true),
             new WallLine(new Pos(4, 4), true, true, true, true),
     };
+
+    public static final WallLine[] MISSION_TWO_WALL_LINES = new WallLine[] {
+            new WallLine(new Pos(4, 1), true, false, false, false),
+            new WallLine(new Pos(4, 2), true, false, false, false),
+            new WallLine(new Pos(4, 3), true, false, false, false),
+            new WallLine(new Pos(8, 1), true, false, false, false),
+            new WallLine(new Pos(8, 2), true, false, false, false),
+            new WallLine(new Pos(8, 3), true, false, false, false),
+            new WallLine(new Pos(7, 5), false, false, false, false),
+            new WallLine(new Pos(8, 5), false, false, false, false),
+            new WallLine(new Pos(9, 5), false, false, false, false),
+    };
+
+    public static int[][] tileMatrix = TUTORIAL_TILE_MATRIX;
+    public static WallLine[] wallLines = TUTORIAL_WALL_LINES;
+
+    public static void useMissionDefinition(MissionDefinition missionDefinition) {
+        tileMatrix = missionDefinition.tileMatrix();
+        wallLines = missionDefinition.wallLines();
+    }
 }
