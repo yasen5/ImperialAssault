@@ -2,6 +2,7 @@ package net;
 
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.ConnectException;
 import java.net.Socket;
 import java.util.concurrent.CompletableFuture;
 
@@ -25,6 +26,8 @@ import net.structs.ClientFinishGameRequest;
 import visual.WindowFocus;
 
 public class GameClient {
+  private static final long CONNECT_RETRY_DELAY_MS = 500L;
+
   private final String host;
   private final int port;
   private final PlayerSeat requestedSeat;
@@ -39,7 +42,7 @@ public class GameClient {
   }
 
   public void run() throws Exception {
-    Socket socket = new Socket(host, port);
+    Socket socket = connectWhenAvailable();
     out = new ObjectOutputStream(socket.getOutputStream());
     out.flush();
     ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
@@ -96,6 +99,21 @@ public class GameClient {
         new Thread(() -> handlePrompt(prompt), "Remote Prompt").start();
       } else if (message instanceof RemotePromptCancel cancel) {
         SwingUtilities.invokeLater(() -> screen.cancelPrompt(cancel.promptId()));
+      }
+    }
+  }
+
+  private Socket connectWhenAvailable() throws Exception {
+    while (true) {
+      try {
+        return new Socket(host, port);
+      } catch (ConnectException ex) {
+        try {
+          Thread.sleep(CONNECT_RETRY_DELAY_MS);
+        } catch (InterruptedException interrupted) {
+          Thread.currentThread().interrupt();
+          throw interrupted;
+        }
       }
     }
   }
