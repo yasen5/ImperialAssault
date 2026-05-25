@@ -1,7 +1,7 @@
 package game;
 
 import game.Constants;
-import game.Constants.WallLine;
+import game.Constants.EndpointTouchPolicy;
 import game.Pathfinder.FullPos;
 import game.Personnel.Directions;
 
@@ -88,25 +88,17 @@ public class Pos {
         (newX + 0.5) * Constants.tileSize,
         (newY + 0.5) * Constants.tileSize);
     if (respectSoftBarriers) {
-      for (WallLine wallLine : Constants.wallLines) {
-        if (wallLine.blocksMovement(thisCenterPos,
-            nextCenterPos,
-            true,
-            isDiagonal(dir))) {
-          return false;
-        }
+      if (Constants.blocksMovement(Constants.wallLines, thisCenterPos, nextCenterPos, true,
+          EndpointTouchPolicy.ALLOW_NORMAL_CORNER_CROSSING)) {
+        return false;
       }
     }
     if (game != null) {
       for (Interactable<? extends Personnel> interactable : game.getInteractables()) {
         if (interactable.blocking()) {
-          for (WallLine wallLine : interactable.getWallLines()) {
-            if (wallLine.blocksMovement(thisCenterPos,
-                nextCenterPos,
-                true,
-                isDiagonal(dir))) {
-              return false;
-            }
+          if (Constants.blocksMovement(interactable.getWallLines(), thisCenterPos, nextCenterPos, true,
+              EndpointTouchPolicy.ALLOW_NORMAL_CORNER_CROSSING)) {
+            return false;
           }
         }
       }
@@ -203,10 +195,5 @@ public class Pos {
 
   public FullPos getCenterPos() {
     return new FullPos(getFullX() + Constants.tileSize / 2, getFullY() + Constants.tileSize / 2);
-  }
-
-  private static boolean isDiagonal(Directions dir) {
-    return dir == Directions.UPLEFT || dir == Directions.UPRIGHT || dir == Directions.DOWNLEFT
-        || dir == Directions.DOWNRIGHT;
   }
 }

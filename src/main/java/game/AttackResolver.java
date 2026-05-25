@@ -34,6 +34,7 @@ public final class AttackResolver {
     if (game != null) {
       game.repaint();
     }
+    attacker.applyAttackAbilities(defender, totalResults);
     spendSurges(attacker, defender, game, Math.max(0, surges), totalResults);
     totalResults.addDamage(rawDamage);
     if (attackHasRange(attacker, defender, totalResults, game) && totalResults.getDamage() > 0) {

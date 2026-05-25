@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.Objects;
 
 import game.Constants;
+import game.Constants.EndpointTouchPolicy;
 import game.Constants.WallLine;
 import game.Die.*;
 import game.FullDeployment.PersonnelStatus;
@@ -256,6 +257,15 @@ public abstract class Personnel {
     }
   }
 
+  public void onActivationStart() {
+  }
+
+  public void onActivationEnd() {
+  }
+
+  public void applyAttackAbilities(Personnel defender, TotalAttackResult totalResults) {
+  }
+
   public int getRange() {
     return Integer.MAX_VALUE;
   }
@@ -277,6 +287,20 @@ public abstract class Personnel {
         if (range != Integer.MAX_VALUE && !Pathfinder.canReachPoint(attackSpace, targetSpace, range, false, game)) {
           continue;
         }
+        if (hasLineOfSightToSpace(attackSpace, targetSpace) && hasLineOfSightTo(other)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  public boolean hasLineOfSightTo(Personnel other) {
+    if (other instanceof MakEshray mak && mak.isCovertAgainst(this)) {
+      return false;
+    }
+    for (Pos attackSpace : getOccupiedSpaces()) {
+      for (Pos targetSpace : other.getOccupiedSpaces()) {
         if (hasLineOfSightToSpace(attackSpace, targetSpace)) {
           return true;
         }
@@ -286,18 +310,16 @@ public abstract class Personnel {
   }
 
   private boolean hasLineOfSightToSpace(Pos attackSpace, Pos targetSpace) {
+    if (isPointBlankWithClearCenterLine(attackSpace, targetSpace)) {
+      return true;
+    }
+
     for (Pos corner : getCornersForSpace(attackSpace)) {
       Pos[] cornersUsed = new Pos[2];
       int sightCount = 0;
       for (Pos enemyCorner : getCornersForSpace(targetSpace)) {
-        for (WallLine wallLine : Constants.wallLines) {
-          if (!wallLine.softBarrier()) {
-            for (Pos hardEnd : wallLine.getHardEnds()) {
-              if (hardEnd.equalTo(enemyCorner)) {
-                return false;
-              }
-            }
-          }
+        if (isHardWallEnd(enemyCorner)) {
+          continue;
         }
         if (Pathfinder.straightlineToPos(corner, enemyCorner, game)) {
           cornersUsed[sightCount >= 2 ? 0 : sightCount] = enemyCorner;
@@ -306,6 +328,44 @@ public abstract class Personnel {
             if (!Pos.onOneLine(attackSpace, cornersUsed[0], cornersUsed[1])) {
               return true;
             }
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  private boolean isPointBlankWithClearCenterLine(Pos attackSpace, Pos targetSpace) {
+    if (Math.abs(attackSpace.getX() - targetSpace.getX()) > 1
+        || Math.abs(attackSpace.getY() - targetSpace.getY()) > 1) {
+      return false;
+    }
+    if (attackSpace.isEqualTo(targetSpace)) {
+      return false;
+    }
+    if (Constants.blocksMovement(Constants.wallLines, attackSpace.getCenterPos(), targetSpace.getCenterPos(), false,
+        EndpointTouchPolicy.ALLOW)) {
+      return false;
+    }
+    if (game != null) {
+      for (Interactable<? extends Personnel> interactable : game.getInteractables()) {
+        if (interactable.blocking()) {
+          if (Constants.blocksMovement(interactable.getWallLines(), attackSpace.getCenterPos(),
+              targetSpace.getCenterPos(), false, EndpointTouchPolicy.ALLOW)) {
+            return false;
+          }
+        }
+      }
+    }
+    return true;
+  }
+
+  private boolean isHardWallEnd(Pos corner) {
+    for (WallLine wallLine : Constants.wallLines) {
+      if (!wallLine.softBarrier()) {
+        for (Pos hardEnd : wallLine.getHardEnds()) {
+          if (hardEnd.equalTo(corner)) {
+            return true;
           }
         }
       }

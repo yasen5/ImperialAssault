@@ -12,4 +12,34 @@ public class MakEshray extends Hero {
                 false, false, "MakEshray"),
                 pos, false, new DefenseDieType[] { DefenseDieType.WHITE }, false);
     }
+
+    @Override
+    public void applyAttackAbilities(Personnel defender, TotalAttackResult totalResults) {
+        if (defender.hasLineOfSightTo(this)) {
+            return;
+        }
+        boolean useAmbush = game != null
+                ? game.promptYesNo(getOwnerSeat(), "Ambush", "Use Ambush to gain Pierce 2?")
+                : InputUtils.getYesNo("Ambush", "Use Ambush to gain Pierce 2?");
+        if (!useAmbush) {
+            return;
+        }
+        for (int i = 0; i < 2 && totalResults.getDamage() < 0; i++) {
+            totalResults.addDamage(1);
+        }
+    }
+
+    public boolean isCovertAgainst(Personnel other) {
+        if (other == null) {
+            return false;
+        }
+        for (Pos ownSpace : getOccupiedSpaces()) {
+            for (Pos otherSpace : other.getOccupiedSpaces()) {
+                if (Pathfinder.canReachPoint(ownSpace, otherSpace, 3, false, game)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
 }

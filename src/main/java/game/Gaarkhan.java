@@ -5,7 +5,7 @@ import game.Die.OffenseDieType;
 
 public class Gaarkhan extends Hero {
     public Gaarkhan(Pos pos) {
-        super("Gaarkhan", 12, 4, 4, new Equipment.Weapon("Vibro-Ax",
+        super("Gaarkhan", 14, 4, 4, new Equipment.Weapon("Vibro-Ax",
                 new OffenseDieType[] { OffenseDieType.RED, OffenseDieType.YELLOW }, new Equipment.SurgeOptions[] {
                         Equipment.SurgeOptions.PIERCE1,
                         Equipment.SurgeOptions.DAMAGE1 },
@@ -16,6 +16,7 @@ public class Gaarkhan extends Hero {
     // Gaarkhan special: move and then attack
     @Override
     public void performSpecial() {
+        ApplyStrain(2);
         game.handleMoves(this, getSpeed());
         game.handleAttack(this);
     }

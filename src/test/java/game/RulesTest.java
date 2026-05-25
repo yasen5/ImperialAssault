@@ -116,6 +116,78 @@ class RulesTest {
     }
 
     @Test
+    void diagonalMovementCannotPassThroughBlockedCornerAngle() {
+        int[][] previousTileMatrix = Constants.tileMatrix;
+        Constants.WallLine[] previousWallLines = Constants.wallLines;
+        Constants.tileMatrix = new int[][] {
+                new int[] { 1, 1 },
+                new int[] { 1, 1 },
+        };
+        Constants.wallLines = new Constants.WallLine[] {
+                new Constants.WallLine(new Pos(1, 1), true, false, false, false),
+                new Constants.WallLine(new Pos(1, 1), false, false, false, false),
+        };
+        try {
+            Hero blockedHero = new DialaPassil(new Pos(0, 0));
+            Hero reverseBlockedHero = new DialaPassil(new Pos(1, 1));
+            Hero crossingHero = new DialaPassil(new Pos(0, 1));
+
+            assertFalse(blockedHero.getPos().canMove(Directions.DOWNRIGHT, false, true, null));
+            assertFalse(reverseBlockedHero.getPos().canMove(Directions.UPLEFT, false, true, null));
+            assertTrue(crossingHero.getPos().canMove(Directions.UPRIGHT, false, true, null));
+        } finally {
+            Constants.tileMatrix = previousTileMatrix;
+            Constants.wallLines = previousWallLines;
+        }
+    }
+
+    @Test
+    void pointBlankAttackCanSeeDefenderBackedAgainstWall() {
+        int[][] previousTileMatrix = Constants.tileMatrix;
+        Constants.WallLine[] previousWallLines = Constants.wallLines;
+        Constants.tileMatrix = new int[][] {
+                new int[] { 1, 1, 1 },
+                new int[] { 1, 1, 1 },
+                new int[] { 1, 1, 1 },
+        };
+        Constants.wallLines = new Constants.WallLine[] {
+                new Constants.WallLine(new Pos(2, 0), true, false, false, false),
+        };
+        try {
+            Gaarkhan attacker = new Gaarkhan(new Pos(0, 0));
+            StormTrooper defender = new StormTrooper(new Pos(1, 0));
+
+            assertTrue(attacker.canAttack(defender));
+        } finally {
+            Constants.tileMatrix = previousTileMatrix;
+            Constants.wallLines = previousWallLines;
+        }
+    }
+
+    @Test
+    void pointBlankAttackStillCannotSeeThroughWallBetweenFigures() {
+        int[][] previousTileMatrix = Constants.tileMatrix;
+        Constants.WallLine[] previousWallLines = Constants.wallLines;
+        Constants.tileMatrix = new int[][] {
+                new int[] { 1, 1, 1 },
+                new int[] { 1, 1, 1 },
+                new int[] { 1, 1, 1 },
+        };
+        Constants.wallLines = new Constants.WallLine[] {
+                new Constants.WallLine(new Pos(1, 0), true, false, false, false),
+        };
+        try {
+            Gaarkhan attacker = new Gaarkhan(new Pos(0, 0));
+            StormTrooper defender = new StormTrooper(new Pos(1, 0));
+
+            assertFalse(attacker.canAttack(defender));
+        } finally {
+            Constants.tileMatrix = previousTileMatrix;
+            Constants.wallLines = previousWallLines;
+        }
+    }
+
+    @Test
     void horizontalDoorExtendsRightFromSpecPosition() {
         Door<Personnel> door = new Door<>(new Pos(4, 3), Personnel.class, false);
         Constants.WallLine[] wallLines = door.getWallLines();
@@ -313,6 +385,40 @@ class RulesTest {
 
         assertEquals(1, game.recordedBlastValue);
         assertEquals(0, fenn.getBlastValue());
+    }
+
+    @Test
+    void makAmbushPromptsAndAppliesPierceWhenTargetCannotSeeHim() {
+        YesDecisionProvider decisionProvider = new YesDecisionProvider();
+        Game game = new Game(null, new GameSessionConfig(1), MissionDefinition.forOption(MissionOption.MISSION_ONE),
+                decisionProvider, false);
+        MakEshray mak = new MakEshray(new Pos(1, 1));
+        StormTrooper defender = new StormTrooper(new Pos(5, 1));
+        mak.setGame(game);
+        TotalAttackResult result = new TotalAttackResult();
+        result.addDamage(-2);
+
+        mak.applyAttackAbilities(defender, result);
+
+        assertEquals(0, result.getDamage());
+        assertEquals(1, decisionProvider.yesNoPrompts);
+        assertEquals("Ambush", decisionProvider.lastYesNoName);
+    }
+
+    @Test
+    void handleAttackRefreshesTargetsAfterChargeMovement() {
+        CountingDecisionProvider decisionProvider = new CountingDecisionProvider();
+        Game game = new Game(null, new GameSessionConfig(4), MissionDefinition.forOption(MissionOption.MISSION_ONE),
+                decisionProvider, true);
+        Gaarkhan gaarkhan = (Gaarkhan) game.getHeroes().get(1);
+        StormTrooper defender = findStormTrooper(game);
+        gaarkhan.setPos(new Pos(4, 4));
+        defender.setPos(new Pos(4, 5));
+        game.setAvailableTargets(new util.MyArrayList<>());
+
+        game.handleAttack(gaarkhan);
+
+        assertEquals(1, decisionProvider.targetPrompts);
     }
 
     @Test
@@ -645,8 +751,9 @@ class RulesTest {
         }
     }
 
-    private static final class CountingDecisionProvider implements GameDecisionProvider {
+    private static class CountingDecisionProvider implements GameDecisionProvider {
         private int directionPrompts;
+        private int targetPrompts;
 
         @Override
         public int chooseMultipleChoice(PlayerSeat seat, String name, String explanation, Object[] options) {
@@ -671,7 +778,20 @@ class RulesTest {
 
         @Override
         public Personnel chooseTarget(PlayerSeat seat, SelectionType selectionType, util.MyArrayList<Personnel> availableTargets) {
+            targetPrompts++;
             return availableTargets.get(0);
+        }
+    }
+
+    private static final class YesDecisionProvider extends CountingDecisionProvider {
+        private int yesNoPrompts;
+        private String lastYesNoName;
+
+        @Override
+        public boolean chooseYesNo(PlayerSeat seat, String name, String explanation) {
+            yesNoPrompts++;
+            lastYesNoName = name;
+            return true;
         }
     }
 

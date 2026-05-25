@@ -450,6 +450,7 @@ public class Game {
     specialUsedThisActivation.clear();
     actionsUsedThisActivation.clear();
     activeFigure.setExhausted(true);
+    activeFigure.onActivationStart();
     repaint();
     int leftoverMoves = 0;
     int numActions = 2;
@@ -461,6 +462,7 @@ public class Game {
       }
     }
     handlePendingMoves(activeFigure, rebelSeat, leftoverMoves);
+    activeFigure.onActivationEnd();
     activeFigure.setActive(false);
     specialUsedThisActivation.clear();
     actionsUsedThisActivation.clear();
@@ -479,6 +481,7 @@ public class Game {
       imperial.setActive(true);
       specialUsedThisActivation.clear();
       actionsUsedThisActivation.clear();
+      imperial.onActivationStart();
       repaint();
       int leftoverMoves = 0;
       if (!imperial.stunned() && imperial.gainsMoveBeforeImperialAction()) {
@@ -492,6 +495,7 @@ public class Game {
         return;
       }
       handlePendingMoves(imperial, PlayerSeat.IMPERIAL, leftoverMoves);
+      imperial.onActivationEnd();
       imperial.setActive(false);
       specialUsedThisActivation.clear();
       actionsUsedThisActivation.clear();
@@ -1265,6 +1269,11 @@ public class Game {
 
   private void handleAttackInternal(Personnel activeFigure) {
     currentSelected = new CompletableFuture<>();
+    availableTargets = availableDefenders(activeFigure, activeFigure.getOwnerSeat().isRebel());
+    if (availableTargets.isEmpty()) {
+      triggerBanner(activeFigure.getName() + " has no available target");
+      return;
+    }
     for (Personnel person : availableTargets) {
       person.setPossibleTarget(true);
     }

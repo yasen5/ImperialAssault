@@ -12,6 +12,12 @@ public class Constants {
   public static record WalledTile(Pos pos, Directions[] wallDirections) {
   }
 
+  public static enum EndpointTouchPolicy {
+    BLOCK,
+    ALLOW,
+    ALLOW_NORMAL_CORNER_CROSSING
+  }
+
   // Can be put anywhere, be vertical horizontal, have the tips count (block line
   // of sight)
   public static record WallLine(Pos pos, boolean vertical, boolean shortenFirstTip, boolean shortenSecondTip,
@@ -21,13 +27,6 @@ public class Constants {
         return false;
       }
       return Pathfinder.intersection(p1, p2, startPoint(), endPoint());
-    }
-
-    public boolean blocksMovement(FullPos p1, FullPos p2, boolean includeSoft, boolean allowEndpointTouch) {
-      if (!intersects(p1, p2, includeSoft)) {
-        return false;
-      }
-      return !allowEndpointTouch || !touchesEndpoint(p1, p2);
     }
 
     private boolean touchesEndpoint(FullPos p1, FullPos p2) {
@@ -140,6 +139,100 @@ public class Constants {
 
   public static int[][] tileMatrix = TUTORIAL_TILE_MATRIX;
   public static WallLine[] wallLines = TUTORIAL_WALL_LINES;
+
+  public static boolean blocksMovement(WallLine[] lines, FullPos p1, FullPos p2, boolean includeSoft,
+      EndpointTouchPolicy endpointPolicy) {
+    for (WallLine wallLine : lines) {
+      if (!wallLine.intersects(p1, p2, includeSoft)) {
+        continue;
+      }
+      if (endpointPolicy == EndpointTouchPolicy.ALLOW && wallLine.touchesEndpoint(p1, p2)) {
+        continue;
+      }
+      if (endpointPolicy == EndpointTouchPolicy.ALLOW_NORMAL_CORNER_CROSSING
+          && endpointTouchCanBeCrossedNormally(lines, wallLine, p1, p2, includeSoft)) {
+        continue;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  private static boolean endpointTouchCanBeCrossedNormally(WallLine[] lines, WallLine touchedLine, FullPos p1,
+      FullPos p2, boolean includeSoft) {
+    FullPos endpoint = touchedEndpoint(touchedLine, p1, p2);
+    if (endpoint == null) {
+      return false;
+    }
+
+    MyArrayList<DirectionVector> incidentDirections = new MyArrayList<>();
+    for (WallLine wallLine : lines) {
+      if (!includeSoft && wallLine.softBarrier()) {
+        continue;
+      }
+      DirectionVector incidentDirection = incidentDirectionFromEndpoint(wallLine, endpoint);
+      if (incidentDirection != null) {
+        incidentDirections.add(incidentDirection);
+      }
+    }
+    if (incidentDirections.size() != 2) {
+      return false;
+    }
+
+    DirectionVector first = incidentDirections.get(0);
+    DirectionVector second = incidentDirections.get(1);
+    if (first.x() == second.x() || first.y() == second.y()) {
+      return false;
+    }
+
+    int movementX = sign(p2.x() - p1.x());
+    int movementY = sign(p2.y() - p1.y());
+    int blockedX = first.x() + second.x();
+    int blockedY = first.y() + second.y();
+    return (movementX != blockedX || movementY != blockedY)
+        && (movementX != -blockedX || movementY != -blockedY);
+  }
+
+  private static FullPos touchedEndpoint(WallLine wallLine, FullPos p1, FullPos p2) {
+    if (wallLine.pointOnMovementSegment(p1, wallLine.startPoint(), p2)) {
+      return wallLine.startPoint();
+    }
+    if (wallLine.pointOnMovementSegment(p1, wallLine.endPoint(), p2)) {
+      return wallLine.endPoint();
+    }
+    return null;
+  }
+
+  private static DirectionVector incidentDirectionFromEndpoint(WallLine wallLine, FullPos endpoint) {
+    if (samePoint(endpoint, wallLine.startPoint())) {
+      return directionBetween(wallLine.startPoint(), wallLine.endPoint());
+    }
+    if (samePoint(endpoint, wallLine.endPoint())) {
+      return directionBetween(wallLine.endPoint(), wallLine.startPoint());
+    }
+    return null;
+  }
+
+  private static DirectionVector directionBetween(FullPos from, FullPos to) {
+    return new DirectionVector(sign(to.x() - from.x()), sign(to.y() - from.y()));
+  }
+
+  private static boolean samePoint(FullPos first, FullPos second) {
+    return first.x() == second.x() && first.y() == second.y();
+  }
+
+  private static int sign(double value) {
+    if (value > 0) {
+      return 1;
+    }
+    if (value < 0) {
+      return -1;
+    }
+    return 0;
+  }
+
+  private static record DirectionVector(int x, int y) {
+  }
 
   public static void useMissionDefinition(MissionDefinition missionDefinition) {
     tileMatrix = missionDefinition.tileMatrix();

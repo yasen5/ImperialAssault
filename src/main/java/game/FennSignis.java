@@ -17,6 +17,7 @@ public class FennSignis extends Hero {
 
     @Override
     public void performSpecial() {
+        ApplyStrain(1);
         havocShotActive = true;
         try {
             game.handleAttack(this);
@@ -33,5 +34,33 @@ public class FennSignis extends Hero {
     @Override
     public boolean specialNeedsAttackTarget() {
         return true;
+    }
+
+    @Override
+    public void onActivationEnd() {
+        if (!hasFriendlyFigureAdjacent()) {
+            ApplyStrain(-1);
+        }
+    }
+
+    private boolean hasFriendlyFigureAdjacent() {
+        if (game == null) {
+            return false;
+        }
+        for (Hero hero : game.getHeroes()) {
+            if (hero == this || hero.isDefeated()) {
+                continue;
+            }
+            for (Pos ownSpace : getOccupiedSpaces()) {
+                for (Pos friendlySpace : hero.getOccupiedSpaces()) {
+                    int xDistance = Math.abs(ownSpace.getX() - friendlySpace.getX());
+                    int yDistance = Math.abs(ownSpace.getY() - friendlySpace.getY());
+                    if (xDistance <= 1 && yDistance <= 1 && (xDistance + yDistance) > 0) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 }
