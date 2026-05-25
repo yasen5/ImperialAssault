@@ -3,6 +3,7 @@ package game;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import util.MyArrayList;
@@ -68,7 +69,32 @@ public class Game {
   private boolean missionDoorOpenedThisRound;
   private Door<?> atriumDoor;
 
-  public static record MapTile(BufferedImage img, int[][] tileArray) {
+  public static record MapTile(BufferedImage img, int[][] tileArray, Rectangle sourceBounds) {
+    public MapTile(BufferedImage img, int[][] tileArray) {
+      this(img, tileArray, getOpaqueBounds(img));
+    }
+
+    private static Rectangle getOpaqueBounds(BufferedImage img) {
+      int minX = img.getWidth();
+      int minY = img.getHeight();
+      int maxX = -1;
+      int maxY = -1;
+      for (int y = 0; y < img.getHeight(); y++) {
+        for (int x = 0; x < img.getWidth(); x++) {
+          if (((img.getRGB(x, y) >>> 24) & 0xff) == 0) {
+            continue;
+          }
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+        }
+      }
+      if (maxX < minX || maxY < minY) {
+        return new Rectangle(0, 0, img.getWidth(), img.getHeight());
+      }
+      return new Rectangle(minX, minY, maxX - minX + 1, maxY - minY + 1);
+    }
   }
 
   public Game(GameUi ui) {
@@ -153,9 +179,11 @@ public class Game {
   }
 
   public void drawGame(Graphics g) {
+    Rectangle sourceBounds = mapTile.sourceBounds();
     g.drawImage(mapTile.img(), 0, 0, Constants.tileSize * mapTile.tileArray()[0].length,
         Constants.tileSize * mapTile.tileArray().length,
-        0, 0, mapTile.img().getWidth(null), mapTile.img().getHeight(null), null);
+        sourceBounds.x, sourceBounds.y, sourceBounds.x + sourceBounds.width,
+        sourceBounds.y + sourceBounds.height, null);
     for (Hero hero : heroes) {
       hero.draw(g);
     }
