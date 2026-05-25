@@ -918,7 +918,7 @@ public class Game {
       return 0;
     }
     Actions chosenAction = availableActions.get(promptMultipleChoice(activeFigure.getOwnerSeat(), "Action Selection",
-        "Choose an action to take", availableActions.toArray()));
+        actionSelectionPrompt(availableActions), availableActions.toArray()));
     if (chosenAction == Actions.USE_EQUIPMENT) {
       takeAction(activeFigure, chosenAction);
       return takeAction(activeFigure, rebel);
@@ -968,6 +968,28 @@ public class Game {
     actionsUsedThisActivation.add(action);
     checkEndGame();
     return leftoverMoves;
+  }
+
+  private String actionSelectionPrompt(MyArrayList<Actions> availableActions) {
+    StringBuilder prompt = new StringBuilder("Choose an action to take");
+    boolean hasDescriptions = false;
+    for (Actions action : availableActions) {
+      if (missionDefinition.actionDescription(action) != null) {
+        hasDescriptions = true;
+        break;
+      }
+    }
+    if (!hasDescriptions) {
+      return prompt.toString();
+    }
+    prompt.append("\n\n");
+    for (Actions action : availableActions) {
+      String description = missionDefinition.actionDescription(action);
+      if (description != null) {
+        prompt.append(action).append(": ").append(description).append("\n\n");
+      }
+    }
+    return prompt.toString().trim();
   }
 
   MyArrayList<Actions> getAvailableActions(Personnel activeFigure, boolean rebel) {

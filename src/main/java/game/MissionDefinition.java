@@ -1,6 +1,7 @@
 package game;
 
 import net.structs.MissionOption;
+import game.Personnel.Actions;
 
 public record MissionDefinition(
     MissionOption option,
@@ -16,7 +17,31 @@ public record MissionDefinition(
     Pos[] terminalPositions,
     DoorSpec[] doors,
     Pos[] cratePositions,
-    DeploymentSpec[] deployments) {
+    DeploymentSpec[] deployments,
+    ActionDescription[] actionDescriptions) {
+  public record ActionDescription(Actions action, String description) {
+  }
+
+  public MissionDefinition(
+      MissionOption option,
+      String displayName,
+      String mapImageName,
+      int[][] tileMatrix,
+      Constants.WallLine[] wallLines,
+      int threatLevel,
+      int roundLimit,
+      boolean usesThreat,
+      boolean attackableTerminals,
+      HeroPlacement heroPlacement,
+      Pos[] terminalPositions,
+      DoorSpec[] doors,
+      Pos[] cratePositions,
+      DeploymentSpec[] deployments) {
+    this(option, displayName, mapImageName, tileMatrix, wallLines, threatLevel, roundLimit, usesThreat,
+        attackableTerminals, heroPlacement, terminalPositions, doors, cratePositions, deployments,
+        new ActionDescription[] {});
+  }
+
   public record HeroPlacement(Pos[] positions) {
     public Pos position(int index) {
       if (index < 0 || index >= positions.length) {
@@ -41,6 +66,18 @@ public record MissionDefinition(
     }
   }
 
+  public String actionDescription(Actions action) {
+    if (actionDescriptions == null) {
+      return null;
+    }
+    for (ActionDescription actionDescription : actionDescriptions) {
+      if (actionDescription.action() == action) {
+        return actionDescription.description();
+      }
+    }
+    return null;
+  }
+
   public static MissionDefinition forOption(MissionOption option) {
     return switch (option) {
       case MISSION_ONE -> new MissionDefinition(option, option.displayName(), "TutorialTile",
@@ -59,6 +96,22 @@ public record MissionDefinition(
                   new Pos[] { new Pos(7, 11) }, 5, true, 3),
               new DeploymentSpec("imperial-e-web-engineer", "EWebEngineer",
                   new Pos[] { new Pos(6, 10) }, 6, true, 4)
+          },
+          new ActionDescription[] {
+              new ActionDescription(Actions.MOVE,
+                  "Gain movement points equal to your figure's speed, then use the arrow buttons around the figure to spend them one space at a time. Large figures may also get Rotate buttons when rotation is legal."),
+              new ActionDescription(Actions.ATTACK,
+                  "Choose a highlighted enemy target, roll attack dice, then spend any surges before damage is applied."),
+              new ActionDescription(Actions.RECOVER,
+                  "Rest to remove all strain from your hero, then recover health equal to any strain you could not remove."),
+              new ActionDescription(Actions.USE_EQUIPMENT,
+                  "Use one of your hero's ready equipment cards that can be used during an activation."),
+              new ActionDescription(Actions.DISCARD_CONDITION,
+                  "Spend this action to remove Stunned so the figure can attack and use special abilities again."),
+              new ActionDescription(Actions.SPECIAL,
+                  "Your hero has this special ability. You can read more about it by clicking on your hero."),
+              new ActionDescription(Actions.INTERACT,
+                  "Use this when your hero is next to a crate, door, or terminal. The mission will resolve the object you clicked or selected.")
           });
       case MISSION_TWO -> new MissionDefinition(option, option.displayName(), "Mission2Map",
           Constants.MISSION_TWO_TILE_MATRIX, Constants.MISSION_TWO_WALL_LINES,

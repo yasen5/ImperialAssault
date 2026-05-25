@@ -31,7 +31,6 @@ import java.util.function.Consumer;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -39,6 +38,7 @@ import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.Timer;
@@ -298,11 +298,12 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     promptMessageArea.setForeground(Color.WHITE);
     promptMessageArea.setFont(promptMessageArea.getFont().deriveFont(15f));
 
-    JPanel promptTextPanel = new JPanel();
-    promptTextPanel.setOpaque(false);
-    promptTextPanel.setLayout(new BoxLayout(promptTextPanel, BoxLayout.Y_AXIS));
-    promptTextPanel.add(promptTitleLabel);
-    promptTextPanel.add(promptMessageArea);
+    JScrollPane promptMessageScrollPane = new JScrollPane(promptMessageArea);
+    promptMessageScrollPane.setOpaque(false);
+    promptMessageScrollPane.getViewport().setOpaque(false);
+    promptMessageScrollPane.setBorder(BorderFactory.createEmptyBorder());
+    promptMessageScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+    promptMessageScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
 
     promptActionsPanel.setOpaque(false);
 
@@ -314,9 +315,14 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     numericPromptField.addActionListener(e -> submitNumericPrompt());
     numericPanel.add(numericSubmitButton);
 
-    promptPanel.add(promptTextPanel, BorderLayout.NORTH);
-    promptPanel.add(promptActionsPanel, BorderLayout.CENTER);
-    promptPanel.add(numericPanel, BorderLayout.SOUTH);
+    JPanel promptControlsPanel = new JPanel(new BorderLayout(0, 4));
+    promptControlsPanel.setOpaque(false);
+    promptControlsPanel.add(promptActionsPanel, BorderLayout.CENTER);
+    promptControlsPanel.add(numericPanel, BorderLayout.SOUTH);
+
+    promptPanel.add(promptTitleLabel, BorderLayout.NORTH);
+    promptPanel.add(promptMessageScrollPane, BorderLayout.CENTER);
+    promptPanel.add(promptControlsPanel, BorderLayout.SOUTH);
     add(promptPanel);
   }
 

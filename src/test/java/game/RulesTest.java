@@ -16,6 +16,7 @@ import game.Die.DefenseDieResult;
 import game.Die.DefenseRoll;
 import game.Die.OffenseDieResult;
 import game.Die.OffenseRoll;
+import game.Personnel.Actions;
 import game.Personnel.Directions;
 import net.GameDecisionProvider;
 import net.structs.GameSessionConfig;
@@ -34,6 +35,25 @@ class RulesTest {
         AttackResolver.resolve(attacker, defender, null);
 
         assertEquals(8, defender.getHealth());
+    }
+
+    @Test
+    void tutorialMissionDefinesActionDescriptions() {
+        MissionDefinition tutorialMission = MissionDefinition.forOption(MissionOption.MISSION_ONE);
+
+        for (Actions action : Actions.values()) {
+            String description = tutorialMission.actionDescription(action);
+            assertTrue(description != null && !description.isBlank(), "Missing description for " + action);
+        }
+    }
+
+    @Test
+    void realMissionDoesNotIncludeTutorialActionDescriptions() {
+        MissionDefinition realMission = MissionDefinition.forOption(MissionOption.MISSION_TWO);
+
+        for (Actions action : Actions.values()) {
+            assertEquals(null, realMission.actionDescription(action));
+        }
     }
 
     @Test
