@@ -89,9 +89,10 @@ public class Pos {
         (newY + 0.5) * Constants.tileSize);
     if (respectSoftBarriers) {
       for (WallLine wallLine : Constants.wallLines) {
-        if (wallLine.intersects(thisCenterPos,
+        if (wallLine.blocksMovement(thisCenterPos,
             nextCenterPos,
-            true)) {
+            true,
+            isDiagonal(dir))) {
           return false;
         }
       }
@@ -100,9 +101,10 @@ public class Pos {
       for (Interactable<? extends Personnel> interactable : game.getInteractables()) {
         if (interactable.blocking()) {
           for (WallLine wallLine : interactable.getWallLines()) {
-            if (wallLine.intersects(thisCenterPos,
+            if (wallLine.blocksMovement(thisCenterPos,
                 nextCenterPos,
-                true)) {
+                true,
+                isDiagonal(dir))) {
               return false;
             }
           }
@@ -201,5 +203,10 @@ public class Pos {
 
   public FullPos getCenterPos() {
     return new FullPos(getFullX() + Constants.tileSize / 2, getFullY() + Constants.tileSize / 2);
+  }
+
+  private static boolean isDiagonal(Directions dir) {
+    return dir == Directions.UPLEFT || dir == Directions.UPRIGHT || dir == Directions.DOWNLEFT
+        || dir == Directions.DOWNRIGHT;
   }
 }

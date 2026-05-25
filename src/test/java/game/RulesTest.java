@@ -98,6 +98,24 @@ class RulesTest {
     }
 
     @Test
+    void diagonalMovementCanFollowStaircaseWallCorners() {
+        Game game = new Game(null, new GameSessionConfig(1), MissionDefinition.forOption(MissionOption.MISSION_TWO),
+                null, true);
+        Hero hero = game.getHeroes().get(0);
+        hero.setPos(new Pos(2, 3));
+
+        assertFalse(MovementRules.canMoveOneSpace(hero, Directions.RIGHT, game));
+        assertTrue(MovementRules.canMoveOneSpace(hero, Directions.DOWNRIGHT, game));
+
+        hero.setPos(new Pos(3, 4));
+
+        assertFalse(MovementRules.canMoveOneSpace(hero, Directions.LEFT, game));
+        assertTrue(MovementRules.canMoveOneSpace(hero, Directions.UPLEFT, game));
+        assertFalse(MovementRules.canMoveOneSpace(hero, Directions.RIGHT, game));
+        assertTrue(MovementRules.canMoveOneSpace(hero, Directions.DOWNRIGHT, game));
+    }
+
+    @Test
     void horizontalDoorExtendsRightFromSpecPosition() {
         Door<Personnel> door = new Door<>(new Pos(4, 3), Personnel.class, false);
         Constants.WallLine[] wallLines = door.getWallLines();

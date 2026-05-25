@@ -23,6 +23,22 @@ public class Constants {
       return Pathfinder.intersection(p1, p2, startPoint(), endPoint());
     }
 
+    public boolean blocksMovement(FullPos p1, FullPos p2, boolean includeSoft, boolean allowEndpointTouch) {
+      if (!intersects(p1, p2, includeSoft)) {
+        return false;
+      }
+      return !allowEndpointTouch || !touchesEndpoint(p1, p2);
+    }
+
+    private boolean touchesEndpoint(FullPos p1, FullPos p2) {
+      return pointOnMovementSegment(p1, startPoint(), p2) || pointOnMovementSegment(p1, endPoint(), p2);
+    }
+
+    private boolean pointOnMovementSegment(FullPos movementStart, FullPos point, FullPos movementEnd) {
+      return Pathfinder.orientation(movementStart, point, movementEnd) == 0
+          && Pathfinder.pointOnSegment(movementStart, point, movementEnd);
+    }
+
     public FullPos startPoint() {
       int adjustedStartX = pos.getFullX();
       int adjustedStartY = pos.getFullY();
