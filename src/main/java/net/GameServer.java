@@ -101,7 +101,8 @@ public class GameServer {
         Socket socket = serverSocket.accept();
         connection = new ClientConnection(socket);
         JoinRequest request = (JoinRequest) connection.in.readObject();
-        if (!config.requiredSeats().contains(request.requestedSeat()) || hasClient(request.requestedSeat())) {
+        PlayerSeat assignedSeat = assignSeat(request.requestedSeat());
+        if (assignedSeat == null) {
           JoinResponse response = new JoinResponse(false, "Seat unavailable", request.requestedSeat(), config,
               createLobbySnapshot());
           connection.out.writeObject(
@@ -111,16 +112,16 @@ public class GameServer {
           continue;
         }
         synchronized (lobbyLock) {
-          clients.put(request.requestedSeat(), connection);
-          connection.seat = request.requestedSeat();
+          clients.put(assignedSeat, connection);
+          connection.seat = assignedSeat;
           connection.mission = null;
-          if (request.requestedSeat().isRebel()) {
-            rebelJoinOrder.add(request.requestedSeat());
+          if (assignedSeat.isRebel()) {
+            rebelJoinOrder.add(assignedSeat);
           }
         }
         LobbySnapshot lobbySnapshot = config.rebelPlayerCount() == 0 ? null : createLobbySnapshot();
         connection.out.writeObject(
-            new JoinResponse(true, "Joined", request.requestedSeat(), config, lobbySnapshot));
+            new JoinResponse(true, "Joined", assignedSeat, config, lobbySnapshot));
         connection.out.flush();
         connection.startReader();
         if (config.rebelPlayerCount() > 0) {
@@ -163,6 +164,22 @@ public class GameServer {
   private boolean hasClient(PlayerSeat seat) {
     synchronized (lobbyLock) {
       return clients.containsKey(seat);
+    }
+  }
+
+  private PlayerSeat assignSeat(PlayerSeat requestedSeat) {
+    synchronized (lobbyLock) {
+      if (requestedSeat != null) {
+        return config.requiredSeats().contains(requestedSeat) && !clients.containsKey(requestedSeat)
+            ? requestedSeat
+            : null;
+      }
+      for (PlayerSeat seat : config.requiredSeats()) {
+        if (!clients.containsKey(seat)) {
+          return seat;
+        }
+      }
+      return null;
     }
   }
 

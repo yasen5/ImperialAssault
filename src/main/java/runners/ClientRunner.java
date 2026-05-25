@@ -8,7 +8,7 @@ public class ClientRunner {
     public static void main(String[] args) throws Exception {
         String host = NetworkConfig.SERVER_HOST;
         int port = NetworkConfig.PORT;
-        PlayerSeat seat = PlayerSeat.REBEL_1;
+        PlayerSeat seat = null;
         boolean debugWallLines = false;
         for (String arg : args) {
             String mode = arg.trim();
