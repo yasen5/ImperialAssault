@@ -1447,11 +1447,11 @@ public class Game {
         new HeroSetupOption("Gaarkhan", "hero-gaarkhan", Gaarkhan::new),
         new HeroSetupOption("Fenn Signis", "hero-fenn", FennSignis::new),
         new HeroSetupOption("Mak Eshka'rey", "hero-mak", MakEshray::new));
-    Pos[] heroPositions = missionDefinition.heroPositions();
+    MissionDefinition.HeroPlacement heroPlacement = missionDefinition.heroPlacement();
     MyArrayList<PlayerSeat> owners = heroSelectionOwners();
     for (int i = 0; i < owners.size(); i++) {
       HeroSetupOption option = chooseHeroSetupOption(owners.get(i), availableHeroes);
-      Hero hero = option.constructor().apply(heroPositions[i]);
+      Hero hero = option.constructor().apply(heroPlacement.position(i));
       configureHero(hero, option.id(), owners.get(i));
       heroes.add(hero);
       availableHeroes.remove(option);

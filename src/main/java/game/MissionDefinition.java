@@ -12,11 +12,20 @@ public record MissionDefinition(
     int roundLimit,
     boolean usesThreat,
     boolean attackableTerminals,
-    Pos[] heroPositions,
+    HeroPlacement heroPlacement,
     Pos[] terminalPositions,
     DoorSpec[] doors,
     Pos[] cratePositions,
     DeploymentSpec[] deployments) {
+  public record HeroPlacement(Pos[] positions) {
+    public Pos position(int index) {
+      if (index < 0 || index >= positions.length) {
+        throw new IllegalArgumentException("No hero placement position for index " + index);
+      }
+      return positions[index];
+    }
+  }
+
   public record DoorSpec(Pos pos, boolean vertical) {
   }
 
@@ -37,7 +46,7 @@ public record MissionDefinition(
       case MISSION_ONE -> new MissionDefinition(option, "Tutorial", "TutorialTile",
           Constants.TUTORIAL_TILE_MATRIX, Constants.TUTORIAL_WALL_LINES,
           0, 0, false, false,
-          new Pos[] { new Pos(0, 4), new Pos(0, 5), new Pos(7, 4), new Pos(7, 5) },
+          new HeroPlacement(new Pos[] { new Pos(0, 4), new Pos(0, 5), new Pos(7, 4), new Pos(7, 5) }),
           new Pos[] { new Pos(7, 0), new Pos(0, 3) },
           new DoorSpec[] { new DoorSpec(new Pos(0, 6), false), new DoorSpec(new Pos(6, 8), false) },
           new Pos[] { new Pos(3, 3) },
@@ -54,7 +63,7 @@ public record MissionDefinition(
       case MISSION_TWO -> new MissionDefinition(option, "Aftermath", "Mission2Map",
           Constants.MISSION_TWO_TILE_MATRIX, Constants.MISSION_TWO_WALL_LINES,
           3, 6, true, true,
-          new Pos[] { new Pos(1, 6), new Pos(2, 6), new Pos(2, 7), new Pos(3, 7) },
+          new HeroPlacement(new Pos[] { new Pos(2, 0), new Pos(1, 0), new Pos(2, 1), new Pos(3, 0) }),
           new Pos[] { new Pos(2, 6), new Pos(6, 1), new Pos(5, 3), new Pos(9, 7) },
           new DoorSpec[] { new DoorSpec(new Pos(6, 5), true) },
           new Pos[] {},
