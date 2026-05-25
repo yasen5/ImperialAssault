@@ -370,6 +370,7 @@ class RulesTest {
 
         assertFalse(fenn.getActions().contains(Personnel.Actions.SPECIAL));
         assertTrue(hasSurge(fenn.getSurgeOptions(), Equipment.SurgeOptions.ACCURACY2));
+        assertTrue(hasSurge(fenn.getSurgeOptions(), Equipment.SurgeOptions.DAMAGE1));
         assertTrue(hasSurge(eWeb.getSurgeOptions(), Equipment.SurgeOptions.ACCURACY3));
         assertTrue(hasSurge(stormTrooper.getSurgeOptions(), Equipment.SurgeOptions.ACCURACY2));
         assertTrue(hasSurge(officer.getSurgeOptions(), Equipment.SurgeOptions.ACCURACY2));
@@ -404,6 +405,7 @@ class RulesTest {
         mak.applyAttackAbilities(defender, result);
 
         assertEquals(0, result.getDamage());
+        assertEquals(1, mak.getStrain());
         assertEquals(1, decisionProvider.yesNoPrompts);
         assertEquals("Ambush", decisionProvider.lastYesNoName);
     }

@@ -6,10 +6,10 @@ import game.Die.OffenseDieType;
 public class MakEshray extends Hero {
     public MakEshray(Pos pos) {
         super("MakEshray", 10, 4, 5, new Equipment.Weapon("Longblaster",
-                new OffenseDieType[] { OffenseDieType.BLUE, OffenseDieType.YELLOW }, new Equipment.SurgeOptions[] {
-                        Equipment.SurgeOptions.PIERCE2,
-                        Equipment.SurgeOptions.ACCURACY2 },
-                false, false, "MakEshray"),
+                new OffenseDieType[] { OffenseDieType.BLUE, OffenseDieType.BLUE }, new Equipment.SurgeOptions[] {
+                        Equipment.SurgeOptions.DAMAGE1,
+                        Equipment.SurgeOptions.PIERCE1 },
+                false, false, "makeshray_default"),
                 pos, false, new DefenseDieType[] { DefenseDieType.WHITE }, false);
     }
 
@@ -24,6 +24,7 @@ public class MakEshray extends Hero {
         if (!useAmbush) {
             return;
         }
+        ApplyStrain(1);
         for (int i = 0; i < 2 && totalResults.getDamage() < 0; i++) {
             totalResults.addDamage(1);
         }

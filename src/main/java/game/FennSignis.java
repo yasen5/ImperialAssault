@@ -11,7 +11,7 @@ public class FennSignis extends Hero {
                 new OffenseDieType[] { OffenseDieType.BLUE, OffenseDieType.GREEN }, new Equipment.SurgeOptions[] {
                         Equipment.SurgeOptions.DAMAGE1,
                         Equipment.SurgeOptions.ACCURACY2 },
-                false, false, "FennSignis"),
+                false, false, "fennsignis_default"),
                 pos, false, new DefenseDieType[] { DefenseDieType.BLACK }, false);
     }
 
