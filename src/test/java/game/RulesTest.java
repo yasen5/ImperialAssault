@@ -368,7 +368,7 @@ class RulesTest {
         StormTrooper stormTrooper = new StormTrooper(new Pos(1, 1));
         Officer officer = new Officer(new Pos(1, 1));
 
-        assertTrue(fenn.getActions().contains(Personnel.Actions.SPECIAL));
+        assertFalse(fenn.getActions().contains(Personnel.Actions.SPECIAL));
         assertTrue(hasSurge(fenn.getSurgeOptions(), Equipment.SurgeOptions.ACCURACY2));
         assertTrue(hasSurge(eWeb.getSurgeOptions(), Equipment.SurgeOptions.ACCURACY3));
         assertTrue(hasSurge(stormTrooper.getSurgeOptions(), Equipment.SurgeOptions.ACCURACY2));
@@ -376,14 +376,17 @@ class RulesTest {
     }
 
     @Test
-    void fennHavocShotAddsBlastOnlyDuringSpecialAttack() {
+    void fennHavocShotPromptsForStrainAndAddsBlastDuringAttack() {
         FennSignis fenn = new FennSignis(new Pos(1, 1));
         BlastRecordingGame game = new BlastRecordingGame();
         fenn.setGame(game);
+        FixedPersonnel defender = new FixedPersonnel(new Pos(1, 2), new OffenseRoll[0],
+                new DefenseRoll[] { new DefenseRoll(0, new DefenseDieResult(0, 0, true)) });
 
-        fenn.performSpecial();
+        fenn.performAttack(defender);
 
         assertEquals(1, game.recordedBlastValue);
+        assertEquals(1, fenn.getStrain());
         assertEquals(0, fenn.getBlastValue());
     }
 
@@ -439,6 +442,40 @@ class RulesTest {
         assertEquals(target.getStartingHealth(), target.getHealth());
         assertEquals(adjacentHero.getStartingHealth() - 1, adjacentHero.getHealth());
         assertEquals(farHero.getStartingHealth(), farHero.getHealth());
+        assertEquals(adjacentImperial.getStartingHealth() - 1, adjacentImperial.getHealth());
+    }
+
+    @Test
+    void attackBlastDamagesOnlyEnemiesAdjacentToTarget() {
+        Game game = new Game(null, new GameSessionConfig(4), MissionDefinition.forOption(MissionOption.MISSION_ONE),
+                null, true);
+        FennSignis attacker = (FennSignis) game.getHeroes().get(2);
+        Hero adjacentHero = game.getHeroes().get(1);
+        StormTrooper target = null;
+        StormTrooper adjacentImperial = null;
+        for (DeploymentGroup<? extends Imperial> group : game.getDeploymentGroups()) {
+            for (Imperial member : group.getMembers()) {
+                if (member instanceof StormTrooper stormTrooper) {
+                    if (target == null) {
+                        target = stormTrooper;
+                    } else {
+                        adjacentImperial = stormTrooper;
+                        break;
+                    }
+                }
+            }
+            if (adjacentImperial != null) {
+                break;
+            }
+        }
+        target.setPos(new Pos(5, 5));
+        adjacentHero.setPos(new Pos(6, 6));
+        adjacentImperial.setPos(new Pos(4, 5));
+
+        game.applyBlast(attacker, target, 1);
+
+        assertEquals(target.getStartingHealth(), target.getHealth());
+        assertEquals(adjacentHero.getStartingHealth(), adjacentHero.getHealth());
         assertEquals(adjacentImperial.getStartingHealth() - 1, adjacentImperial.getHealth());
     }
 
@@ -849,8 +886,18 @@ class RulesTest {
         }
 
         @Override
-        public void handleAttack(Personnel activeFigure) {
-            recordedBlastValue = activeFigure.getBlastValue();
+        public boolean promptYesNo(PlayerSeat seat, String name, String explanation) {
+            return true;
+        }
+
+        @Override
+        public int promptMultipleChoice(PlayerSeat seat, String name, String explanation, Object[] options) {
+            return 0;
+        }
+
+        @Override
+        public void applyBlast(Personnel attacker, Personnel target, int blastValue) {
+            recordedBlastValue = blastValue;
         }
     }
 

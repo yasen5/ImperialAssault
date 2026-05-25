@@ -20,6 +20,7 @@ public final class AttackResolver {
     for (DefenseRoll roll : attacker.getDefense(defender)) {
       DefenseDieResult result = roll.result();
       if (result.dodge()) {
+        applyBlast(attacker, defender, game);
         return totalResults;
       }
       totalResults.addDamage(-result.shields());
@@ -40,15 +41,19 @@ public final class AttackResolver {
     if (attackHasRange(attacker, defender, totalResults, game) && totalResults.getDamage() > 0) {
       int damage = totalResults.getDamage();
       defender.dealDamage(damage);
-      if (game != null && attacker.getBlastValue() > 0) {
-        game.applyBlast(defender, attacker.getBlastValue());
-      }
     }
+    applyBlast(attacker, defender, game);
     if (totalResults.getRecovery() > 0) {
       LoaderUtils.playSound("blaster");
       attacker.dealDamage(-totalResults.getRecovery());
     }
     return totalResults;
+  }
+
+  private static void applyBlast(Personnel attacker, Personnel defender, Game game) {
+    if (game != null && attacker.getBlastValue() > 0) {
+      game.applyBlast(attacker, defender, attacker.getBlastValue());
+    }
   }
 
   private static void spendSurges(Personnel attacker, Personnel defender, Game game, int surges,

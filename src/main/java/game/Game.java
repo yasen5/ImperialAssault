@@ -1306,12 +1306,19 @@ public class Game {
   }
 
   public void applyBlast(Personnel target, int blastValue) {
+    applyBlast(null, target, blastValue);
+  }
+
+  public void applyBlast(Personnel attacker, Personnel target, int blastValue) {
     if (target == null || blastValue <= 0) {
       return;
     }
     Set<Personnel> affected = new HashSet<>();
     for (Personnel targetSpaceOwner : allPersonnel()) {
       if (targetSpaceOwner == target) {
+        continue;
+      }
+      if (attacker != null && !areEnemies(attacker, targetSpaceOwner)) {
         continue;
       }
       for (Pos targetSpace : target.getOccupiedSpaces()) {
@@ -1324,6 +1331,13 @@ public class Game {
     for (Personnel personnel : affected) {
       personnel.dealDamage(blastValue);
     }
+  }
+
+  private boolean areEnemies(Personnel first, Personnel second) {
+    if (first == null || second == null) {
+      return false;
+    }
+    return first.getOwnerSeat().isRebel() != second.getOwnerSeat().isRebel();
   }
 
   private MyArrayList<Personnel> allPersonnel() {

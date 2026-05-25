@@ -12,15 +12,20 @@ public class FennSignis extends Hero {
                         Equipment.SurgeOptions.DAMAGE1,
                         Equipment.SurgeOptions.ACCURACY2 },
                 false, false, "FennSignis"),
-                pos, true, new DefenseDieType[] { DefenseDieType.BLACK }, false);
+                pos, false, new DefenseDieType[] { DefenseDieType.BLACK }, false);
     }
 
     @Override
-    public void performSpecial() {
-        ApplyStrain(1);
-        havocShotActive = true;
+    public void performAttack(Personnel other) {
+        boolean useHavocShot = game != null
+                ? game.promptYesNo(getOwnerSeat(), "Havoc Shot", "Gain 1 strain to apply Blast 1 to this attack?")
+                : InputUtils.getYesNo("Havoc Shot", "Gain 1 strain to apply Blast 1 to this attack?");
+        if (useHavocShot) {
+            ApplyStrain(1);
+            havocShotActive = true;
+        }
         try {
-            game.handleAttack(this);
+            super.performAttack(other);
         } finally {
             havocShotActive = false;
         }
@@ -29,11 +34,6 @@ public class FennSignis extends Hero {
     @Override
     public int getBlastValue() {
         return havocShotActive ? 1 : 0;
-    }
-
-    @Override
-    public boolean specialNeedsAttackTarget() {
-        return true;
     }
 
     @Override
