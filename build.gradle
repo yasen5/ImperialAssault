@@ -65,3 +65,14 @@ tasks.register('smokeTutorialNetwork', JavaExec) {
         args projectArgs.split('\\s+')
     }
 }
+
+tasks.register('deploymentCardVisualTest', JavaExec) {
+    group = 'verification'
+    description = 'Opens the mission 2 GUI in a JFrame and captures deployment-card alignment screenshots for all Rebel and Imperial figures.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'runners.DeploymentCardVisualTest'
+    def projectArgs = project.findProperty('args')?.toString()?.trim()
+    if (projectArgs) {
+        args projectArgs.split('\\s+')
+    }
+}

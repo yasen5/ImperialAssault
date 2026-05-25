@@ -106,11 +106,11 @@ public class LayoutHandler {
   public Rectangle getDeploymentCardBounds(int baseWidth, int baseHeight) {
     int cardWidth = Math.max(0, Math.min(baseWidth, getSidebarCardWidth()));
     if (cardWidth <= 0 || baseWidth <= 0) {
-      return new Rectangle(getSidebarLeft(), getSidebarContentTop(), 0, 0);
+      return new Rectangle(getSidebarContentLeft(), getSidebarContentTop(), 0, 0);
     }
     float scale = cardWidth / (float) baseWidth;
     int cardHeight = Math.round(baseHeight * scale);
-    return new Rectangle(getSidebarLeft(), getSidebarContentTop(), cardWidth, cardHeight);
+    return new Rectangle(getSidebarContentLeft(), getSidebarContentTop(), cardWidth, cardHeight);
   }
 
   public Rectangle getSidebarDetailBounds(Rectangle cardBounds) {
@@ -213,16 +213,16 @@ public class LayoutHandler {
   public int getSidebarCardWidth() {
     return Math.max(0,
         Math.min(getMapScaleWidth(MAX_CARD_WIDTH_NUMERATOR, MAX_CARD_WIDTH_DENOMINATOR),
-            getSidebarWidth() / CARD_WIDTH_DIVISOR));
+            getSidebarContentWidth() / CARD_WIDTH_DIVISOR));
   }
 
   public int getSidebarDetailX() {
-    return getSidebarLeft() + getSidebarCardWidth() + getSidebarGap();
+    return getSidebarContentLeft() + getSidebarCardWidth() + getSidebarGap();
   }
 
   public int getSidebarDetailWidth() {
-    return Math.max(getMapScaleWidth(MIN_DETAIL_WIDTH_DIVISOR), getSidebarWidth() - getSidebarCardWidth()
-        - getSidebarGap());
+    int remainingWidth = getSidebarContentRight() - getSidebarDetailX();
+    return Math.max(0, remainingWidth);
   }
 
   public int getSidebarDiceX() {
@@ -260,6 +260,18 @@ public class LayoutHandler {
 
   private int getSidebarGap() {
     return getMapScaleWidth(SIDEBAR_GAP_DIVISOR);
+  }
+
+  private int getSidebarContentLeft() {
+    return getSidebarLeft() + getSidebarGap();
+  }
+
+  private int getSidebarContentRight() {
+    return screenWidth - getSidebarGap();
+  }
+
+  private int getSidebarContentWidth() {
+    return Math.max(0, getSidebarContentRight() - getSidebarContentLeft());
   }
 
   private int getMapScaleWidth(int divisor) {
