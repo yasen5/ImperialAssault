@@ -100,6 +100,7 @@ public abstract class Personnel {
     if (defeated) {
       return;
     }
+    LoaderUtils.playSound("short-blaster");
     health -= damage;
     if (health > startingHealth) {
       health = startingHealth;
