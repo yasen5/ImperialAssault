@@ -31,14 +31,20 @@ public class GameClient {
   private final String host;
   private final int port;
   private final PlayerSeat requestedSeat;
+  private final boolean debugWallLines;
   private ObjectOutputStream out;
   private Screen screen;
   private Game game;
 
   public GameClient(String host, int port, PlayerSeat requestedSeat) {
+    this(host, port, requestedSeat, false);
+  }
+
+  public GameClient(String host, int port, PlayerSeat requestedSeat, boolean debugWallLines) {
     this.host = host;
     this.port = port;
     this.requestedSeat = requestedSeat;
+    this.debugWallLines = debugWallLines;
   }
 
   public void run() throws Exception {
@@ -52,6 +58,7 @@ public class GameClient {
       throw new IllegalStateException(response.message());
     }
     game = new Game(null, response.config(), null, false);
+    game.setDebugWallLines(debugWallLines);
     SwingUtilities.invokeAndWait(() -> {
       screen = new Screen(game, true);
       game.setUi(screen);

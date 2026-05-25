@@ -57,6 +57,7 @@ Server options:
 - `1`, `2`, `3`, or `4`: require that many Rebel clients.
 - `--fresh`, `--no-load`, or `--new-game`: start without loading the previous saved game.
 - `--no-ui` or `--headless`: run without the spectator UI.
+- `--debug`: draw wall lines in red from their start point to their end point.
 
 Run a client:
 
@@ -77,3 +78,5 @@ Client seats:
 - `REBEL_3`
 - `REBEL_4`
 - `IMPERIAL`
+
+Add `--debug` to draw wall lines in red from their start point to their end point.

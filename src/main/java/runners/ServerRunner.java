@@ -9,6 +9,7 @@ public class ServerRunner {
         int rebelPlayers = 1;
         boolean loadPreviousGame = true;
         boolean showSpectator = true;
+        boolean debugWallLines = false;
         for (String arg : args) {
             String mode = arg.trim().toLowerCase();
             if ("single-client".equals(mode) || "--single-client".equals(mode) || "wait-one".equals(mode)) {
@@ -19,11 +20,13 @@ public class ServerRunner {
                 loadPreviousGame = false;
             } else if ("--no-ui".equals(mode) || "--headless".equals(mode)) {
                 showSpectator = false;
+            } else if ("--debug".equals(mode)) {
+                debugWallLines = true;
             } else {
                 throw new IllegalArgumentException(
-                        "Usage: ServerRunner [--single-client|1|2|3|4] [--fresh|--no-load] [--no-ui]");
+                        "Usage: ServerRunner [--single-client|1|2|3|4] [--fresh|--no-load] [--no-ui] [--debug]");
             }
         }
-        new GameServer(port, rebelPlayers, loadPreviousGame, showSpectator).run();
+        new GameServer(port, rebelPlayers, loadPreviousGame, showSpectator, debugWallLines).run();
     }
 }

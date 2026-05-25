@@ -1,10 +1,12 @@
 package game;
 
 import java.awt.Color;
+import java.awt.BasicStroke;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.Stroke;
 import java.awt.image.BufferedImage;
 import util.MyArrayList;
 
@@ -68,6 +70,7 @@ public class Game {
   private boolean lockdownResolved;
   private boolean missionDoorOpenedThisRound;
   private Door<?> atriumDoor;
+  private boolean debugWallLines;
 
   public static record MapTile(BufferedImage img, int[][] tileArray, Rectangle sourceBounds) {
     public MapTile(BufferedImage img, int[][] tileArray) {
@@ -178,12 +181,19 @@ public class Game {
     this.snapshotListener = snapshotListener;
   }
 
+  public void setDebugWallLines(boolean debugWallLines) {
+    this.debugWallLines = debugWallLines;
+  }
+
   public void drawGame(Graphics g) {
     Rectangle sourceBounds = mapTile.sourceBounds();
     g.drawImage(mapTile.img(), 0, 0, Constants.tileSize * mapTile.tileArray()[0].length,
         Constants.tileSize * mapTile.tileArray().length,
         sourceBounds.x, sourceBounds.y, sourceBounds.x + sourceBounds.width,
         sourceBounds.y + sourceBounds.height, null);
+    if (debugWallLines) {
+      drawDebugWallLines(g);
+    }
     for (Hero hero : heroes) {
       hero.draw(g);
     }
@@ -199,6 +209,33 @@ public class Game {
     for (Interactable<? extends Personnel> interactable : interactables) {
       interactable.draw(g);
     }
+  }
+
+  private void drawDebugWallLines(Graphics g) {
+    Graphics2D g2 = (Graphics2D) g.create();
+    Stroke oldStroke = g2.getStroke();
+    g2.setColor(Color.RED);
+    g2.setStroke(new BasicStroke(3));
+    for (WallLine wallLine : Constants.wallLines) {
+      drawDebugWallLine(g2, wallLine);
+    }
+    for (Interactable<? extends Personnel> interactable : interactables) {
+      if (!interactable.blocking()) {
+        continue;
+      }
+      for (WallLine wallLine : interactable.getWallLines()) {
+        drawDebugWallLine(g2, wallLine);
+      }
+    }
+    g2.setStroke(oldStroke);
+    g2.dispose();
+  }
+
+  private void drawDebugWallLine(Graphics2D g2, WallLine wallLine) {
+    Pathfinder.FullPos start = wallLine.startPoint();
+    Pathfinder.FullPos end = wallLine.endPoint();
+    g2.drawLine((int) Math.round(start.x()), (int) Math.round(start.y()),
+        (int) Math.round(end.x()), (int) Math.round(end.y()));
   }
 
   public int getMapDrawWidth() {

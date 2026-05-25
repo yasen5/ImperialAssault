@@ -20,29 +20,39 @@ public class Constants {
       if (!includeSoft && softBarrier) {
         return false;
       }
+      return Pathfinder.intersection(p1, p2, startPoint(), endPoint());
+    }
+
+    public FullPos startPoint() {
       int adjustedStartX = pos.getFullX();
       int adjustedStartY = pos.getFullY();
+      if (vertical) {
+        if (shortenFirstTip) {
+          adjustedStartY += 5;
+        }
+      } else {
+        if (shortenFirstTip) {
+          adjustedStartX += 5;
+        }
+      }
+      return new FullPos(adjustedStartX, adjustedStartY);
+    }
+
+    public FullPos endPoint() {
       int adjustedEndX = pos.getFullX();
       int adjustedEndY = pos.getFullY();
       if (vertical) {
         adjustedEndY += Constants.tileSize;
-        if (shortenFirstTip) {
-          adjustedStartY += 5;
-        }
         if (shortenSecondTip) {
           adjustedEndY -= 5;
         }
       } else {
         adjustedEndX += Constants.tileSize;
-        if (shortenFirstTip) {
-          adjustedStartX += 5;
-        }
         if (shortenSecondTip) {
           adjustedEndY -= 5;
         }
       }
-      return Pathfinder.intersection(p1, p2, new FullPos(adjustedStartX, adjustedStartY),
-          new FullPos(adjustedEndX, adjustedEndY));
+      return new FullPos(adjustedEndX, adjustedEndY);
     }
 
     public MyArrayList<Pos> getHardEnds() {
@@ -100,15 +110,16 @@ public class Constants {
   public static final WallLine[] MISSION_TWO_WALL_LINES = new WallLine[] {
       new WallLine(new Pos(2, 3), false, true, false, false),
       new WallLine(new Pos(4, 1), true, false, false, false),
+      new WallLine(new Pos(3, 2), true, false, false, false),
       new WallLine(new Pos(3, 2), false, false, false, false),
       new WallLine(new Pos(3, 3), true, false, false, false),
       new WallLine(new Pos(3, 4), false, false, false, false),
-      new WallLine(new Pos(4, 5), true, false, false, false),
-      new WallLine(new Pos(4, 6), false, false, false, false),
-      new WallLine(new Pos(5, 6), false, false, false, false),
-      new WallLine(new Pos(6, 6), false, false, false, false),
-      new WallLine(new Pos(7, 6), false, false, false, false),
-      new WallLine(new Pos(8, 5), false, false, false, false),
+      new WallLine(new Pos(4, 4), true, false, false, false),
+      new WallLine(new Pos(4, 5), false, false, false, false),
+      new WallLine(new Pos(5, 5), false, false, false, false),
+      new WallLine(new Pos(6, 5), false, false, false, false),
+      new WallLine(new Pos(7, 5), false, false, false, false),
+      new WallLine(new Pos(8, 4), true, false, false, false),
   };
 
   public static int[][] tileMatrix = TUTORIAL_TILE_MATRIX;

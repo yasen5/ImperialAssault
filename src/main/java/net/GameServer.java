@@ -65,6 +65,7 @@ public class GameServer {
   private volatile Screen spectatorScreen;
   private volatile String hostAddress;
   private final boolean showSpectator;
+  private final boolean debugWallLines;
 
   public GameServer(int port, int rebelPlayers) {
     this(port, rebelPlayers, true);
@@ -75,10 +76,16 @@ public class GameServer {
   }
 
   public GameServer(int port, int rebelPlayers, boolean loadPreviousGame, boolean showSpectator) {
+    this(port, rebelPlayers, loadPreviousGame, showSpectator, false);
+  }
+
+  public GameServer(int port, int rebelPlayers, boolean loadPreviousGame, boolean showSpectator,
+      boolean debugWallLines) {
     this.port = port;
     this.config = new GameSessionConfig(rebelPlayers);
     this.loadPreviousGame = loadPreviousGame;
     this.showSpectator = showSpectator;
+    this.debugWallLines = debugWallLines;
     this.savePath = Path.of("server-game-state.ser");
   }
 
@@ -253,6 +260,7 @@ public class GameServer {
     Game game = switch (mission) {
       case MISSION_ONE, MISSION_TWO -> new Game(null, config, MissionDefinition.forOption(mission), null, false);
     };
+    game.setDebugWallLines(debugWallLines);
     game.setDecisionProvider(new RemoteDecisionProvider(game));
     synchronized (lobbyLock) {
       game.setRebelHeroSelectionOrder(new MyArrayList<>(rebelJoinOrder));
@@ -290,6 +298,7 @@ public class GameServer {
 
   private void startSpectatorDisplay() throws Exception {
     spectatorGame = new Game(null, config, null, false);
+    spectatorGame.setDebugWallLines(debugWallLines);
     SwingUtilities.invokeAndWait(() -> {
       spectatorScreen = new Screen(spectatorGame, true, true);
       spectatorGame.setUi(spectatorScreen);
