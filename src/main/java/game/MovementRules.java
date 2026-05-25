@@ -3,6 +3,7 @@ package game;
 import game.Constants.WallLine;
 import game.Pathfinder.FullPos;
 import game.Personnel.Directions;
+import java.util.Objects;
 import util.MyArrayList;
 
 public final class MovementRules {
@@ -10,6 +11,7 @@ public final class MovementRules {
   }
 
   public static boolean canMoveOneSpace(Personnel figure, Directions direction, Game game) {
+    Objects.requireNonNull(game, "game");
     if (figure.isLargeFigure() && isDiagonal(direction)) {
       return false;
     }
@@ -20,7 +22,7 @@ public final class MovementRules {
     }
     Pos nextAnchor = figure.getPos().getNextPos(direction);
     for (Pos destinationSpace : occupiedSpacesAt(figure, nextAnchor)) {
-      if (game != null && !game.isSpaceAvailable(destinationSpace, figure)) {
+      if (!game.isSpaceAvailable(destinationSpace, figure)) {
         return false;
       }
     }
@@ -32,6 +34,7 @@ public final class MovementRules {
   }
 
   public static MyArrayList<RotationMove> getLegalRotations(Personnel figure, Game game) {
+    Objects.requireNonNull(game, "game");
     MyArrayList<RotationMove> legalRotations = new MyArrayList<>();
     if (!figure.isNonSquareLargeFigure()) {
       return legalRotations;
@@ -60,7 +63,7 @@ public final class MovementRules {
       if (contains(currentSpaces, rotatedSpace)) {
         overlapCount++;
       }
-      if (game != null && !game.isSpaceAvailable(rotatedSpace, figure)) {
+      if (!game.isSpaceAvailable(rotatedSpace, figure)) {
         return false;
       }
     }

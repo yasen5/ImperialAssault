@@ -4,6 +4,7 @@ import game.Die.DefenseDieResult;
 import game.Die.DefenseRoll;
 import game.Die.OffenseDieResult;
 import game.Die.OffenseRoll;
+import java.util.Objects;
 import util.MyArrayList;
 
 public final class AttackResolver {
@@ -11,9 +12,8 @@ public final class AttackResolver {
   }
 
   public static TotalAttackResult resolve(Personnel attacker, Personnel defender, Game game) {
-    if (game != null) {
-      game.clearDiceInternal();
-    }
+    Objects.requireNonNull(game, "game");
+    game.clearDiceInternal();
     int surges = 0;
     int rawDamage = 0;
     TotalAttackResult totalResults = new TotalAttackResult();
@@ -32,9 +32,7 @@ public final class AttackResolver {
       surges += result.surge();
       totalResults.addAccuracy(result.accuracy());
     }
-    if (game != null) {
-      game.repaint();
-    }
+    game.repaint();
     attacker.applyAttackAbilities(defender, totalResults);
     spendSurges(attacker, defender, game, Math.max(0, surges), totalResults);
     totalResults.addDamage(rawDamage);
@@ -51,7 +49,7 @@ public final class AttackResolver {
   }
 
   private static void applyBlast(Personnel attacker, Personnel defender, Game game) {
-    if (game != null && attacker.getBlastValue() > 0) {
+    if (attacker.getBlastValue() > 0) {
       game.applyBlast(attacker, defender, attacker.getBlastValue());
     }
   }
@@ -63,11 +61,8 @@ public final class AttackResolver {
       surgeOptions.add(option);
     }
     while (surges > 0 && !surgeOptions.isEmpty()) {
-      int selectedIndex = game != null
-          ? game.promptMultipleChoice(attacker.getOwnerSeat(), "Surge Selection", "Spend Surges: " + surges,
-              surgeOptions.toArray())
-          : InputUtils.getMultipleChoice("Surge Selection", "Spend Surges: " + surges,
-              surgeOptions.toArray());
+      int selectedIndex = game.promptMultipleChoice(attacker.getOwnerSeat(), "Surge Selection",
+          "Spend Surges: " + surges, surgeOptions.toArray());
       if (selectedIndex < 0 || selectedIndex >= surgeOptions.size()) {
         break;
       }

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Field;
@@ -31,10 +32,23 @@ class RulesTest {
                 new DefenseRoll[0]);
         FixedPersonnel defender = new FixedPersonnel(new Pos(3, 4), new OffenseRoll[0],
                 new DefenseRoll[] { new DefenseRoll(0, new DefenseDieResult(1, 0, false)) });
+        Game game = new Game(null, new GameSessionConfig(1), MissionDefinition.forOption(MissionOption.MISSION_ONE),
+                new CountingDecisionProvider(), true);
 
-        AttackResolver.resolve(attacker, defender, null);
+        AttackResolver.resolve(attacker, defender, game);
 
         assertEquals(8, defender.getHealth());
+    }
+
+    @Test
+    void attackResolverRequiresGameContext() {
+        FixedPersonnel attacker = new FixedPersonnel(new Pos(3, 3),
+                new OffenseRoll[] { new OffenseRoll(0, new OffenseDieResult(3, 0, 3)) },
+                new DefenseRoll[0]);
+        FixedPersonnel defender = new FixedPersonnel(new Pos(3, 4), new OffenseRoll[0],
+                new DefenseRoll[0]);
+
+        assertThrows(NullPointerException.class, () -> AttackResolver.resolve(attacker, defender, null));
     }
 
     @Test
@@ -63,8 +77,10 @@ class RulesTest {
                 new DefenseRoll[0]);
         FixedPersonnel defender = new FixedPersonnel(new Pos(3, 4), new OffenseRoll[0],
                 new DefenseRoll[] { new DefenseRoll(0, new DefenseDieResult(0, 0, true)) });
+        Game game = new Game(null, new GameSessionConfig(1), MissionDefinition.forOption(MissionOption.MISSION_ONE),
+                new CountingDecisionProvider(), true);
 
-        AttackResolver.resolve(attacker, defender, null);
+        AttackResolver.resolve(attacker, defender, game);
 
         assertEquals(10, defender.getHealth());
     }
@@ -149,13 +165,17 @@ class RulesTest {
                 new Constants.WallLine(new Pos(1, 1), false, false, false, false),
         };
         try {
+            Game game = gameWithCurrentBoard();
             Hero blockedHero = new DialaPassil(new Pos(0, 0));
             Hero reverseBlockedHero = new DialaPassil(new Pos(1, 1));
             Hero crossingHero = new DialaPassil(new Pos(0, 1));
+            blockedHero.setGame(game);
+            reverseBlockedHero.setGame(game);
+            crossingHero.setGame(game);
 
-            assertFalse(blockedHero.getPos().canMove(Directions.DOWNRIGHT, false, true, null));
-            assertFalse(reverseBlockedHero.getPos().canMove(Directions.UPLEFT, false, true, null));
-            assertTrue(crossingHero.getPos().canMove(Directions.UPRIGHT, false, true, null));
+            assertFalse(blockedHero.getPos().canMove(Directions.DOWNRIGHT, false, true, game));
+            assertFalse(reverseBlockedHero.getPos().canMove(Directions.UPLEFT, false, true, game));
+            assertTrue(crossingHero.getPos().canMove(Directions.UPRIGHT, false, true, game));
         } finally {
             Constants.tileMatrix = previousTileMatrix;
             Constants.wallLines = previousWallLines;
@@ -175,8 +195,11 @@ class RulesTest {
                 new Constants.WallLine(new Pos(2, 0), true, false, false, false),
         };
         try {
+            Game game = gameWithCurrentBoard();
             Gaarkhan attacker = new Gaarkhan(new Pos(0, 0));
             StormTrooper defender = new StormTrooper(new Pos(1, 0));
+            attacker.setGame(game);
+            defender.setGame(game);
 
             assertTrue(attacker.canAttack(defender));
         } finally {
@@ -198,8 +221,11 @@ class RulesTest {
                 new Constants.WallLine(new Pos(1, 0), true, false, false, false),
         };
         try {
+            Game game = gameWithCurrentBoard();
             Gaarkhan attacker = new Gaarkhan(new Pos(0, 0));
             StormTrooper defender = new StormTrooper(new Pos(1, 0));
+            attacker.setGame(game);
+            defender.setGame(game);
 
             assertFalse(attacker.canAttack(defender));
         } finally {
@@ -233,6 +259,15 @@ class RulesTest {
     }
 
     @Test
+    void personnelAndInteractablesRequireGameContext() {
+        Hero hero = new Gaarkhan(new Pos(1, 4));
+        Door<Personnel> door = new Door<>(new Pos(4, 3), Personnel.class, false);
+
+        assertThrows(NullPointerException.class, () -> hero.setGame(null));
+        assertThrows(NullPointerException.class, () -> door.setGame(null));
+    }
+
+    @Test
     void eWebEngineerOccupiesTwoSpaces() {
         Game game = new Game(null, new GameSessionConfig(4), MissionDefinition.forOption(MissionOption.MISSION_ONE),
                 null, true);
@@ -260,10 +295,13 @@ class RulesTest {
     @Test
     void nonSquareLargeFiguresCanRotateWhenFootprintOverlapsAndIsOpen() {
         EWebEngineer eWeb = new EWebEngineer(new Pos(4, 4));
+        Game game = new Game(null, new GameSessionConfig(1), MissionDefinition.forOption(MissionOption.MISSION_ONE),
+                null, true);
+        eWeb.setGame(game);
 
-        assertTrue(MovementRules.canRotate(eWeb, null));
-        assertEquals(3, MovementRules.getLegalRotations(eWeb, null).size());
-        assertFalse(hasRotation(MovementRules.getLegalRotations(eWeb, null), 3, 4, 2, 1));
+        assertTrue(MovementRules.canRotate(eWeb, game));
+        assertEquals(3, MovementRules.getLegalRotations(eWeb, game).size());
+        assertFalse(hasRotation(MovementRules.getLegalRotations(eWeb, game), 3, 4, 2, 1));
 
         eWeb.rotate();
 
@@ -722,6 +760,16 @@ class RulesTest {
             }
         }
         return false;
+    }
+
+    private Game gameWithCurrentBoard() {
+        int[][] tileMatrix = Constants.tileMatrix;
+        Constants.WallLine[] wallLines = Constants.wallLines;
+        Game game = new Game(null, new GameSessionConfig(1), MissionDefinition.forOption(MissionOption.MISSION_ONE),
+                new CountingDecisionProvider(), false);
+        Constants.tileMatrix = tileMatrix;
+        Constants.wallLines = wallLines;
+        return game;
     }
 
     private EWebEngineer findEWeb(Game game) {

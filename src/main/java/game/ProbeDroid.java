@@ -21,7 +21,7 @@ public class ProbeDroid extends Imperial {
     @Override
     public OffenseRoll[] getOffense() {
         OffenseRoll[] results = super.getOffense();
-        if (game != null && game.promptYesNo(getOwnerSeat(), "Ability", "Reroll an attack die?")) {
+        if (game.promptYesNo(getOwnerSeat(), "Ability", "Reroll an attack die?")) {
             int chosenDie = game.promptMultipleChoice(getOwnerSeat(), "Reroll", "Choose which die to reroll",
                     offenseDice);
             game.removeOffenseDie(chosenDie);

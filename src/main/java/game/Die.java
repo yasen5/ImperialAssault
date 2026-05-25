@@ -1,6 +1,7 @@
 package game;
 
 import java.awt.image.BufferedImage;
+import java.util.Objects;
 import util.MyHashMap;
 
 
@@ -59,14 +60,15 @@ public class Die {
 
         // Roll, play the sound, show the die in the game
         public OffenseRoll roll() {
-            return roll(null);
+            int face = (int) (Math.random() * 6);
+            LoaderUtils.playSound("DieRoll");
+            return new OffenseRoll(face, results[face]);
         }
 
         public OffenseRoll roll(Game game) {
+            Objects.requireNonNull(game, "game");
             int face = (int) (Math.random() * 6);
-            if (game != null) {
-                game.addOffenseResult(new GraphicOffenseDieResult(face, this));
-            }
+            game.addOffenseResult(new GraphicOffenseDieResult(face, this));
             LoaderUtils.playSound("DieRoll");
             return new OffenseRoll(face, results[face]);
         }
@@ -96,14 +98,15 @@ public class Die {
         }
 
         public DefenseRoll roll() {
-            return roll(null);
+            int face = (int) (Math.random() * 6);
+            LoaderUtils.playSound("DieRoll");
+            return new DefenseRoll(face, results[face]);
         }
 
         public DefenseRoll roll(Game game) {
+            Objects.requireNonNull(game, "game");
             int face = (int) (Math.random() * 6);
-            if (game != null) {
-                game.addDefenseResult(new GraphicDefenseDieResult(face, this));
-            }
+            game.addDefenseResult(new GraphicDefenseDieResult(face, this));
             LoaderUtils.playSound("DieRoll");
             return new DefenseRoll(face, results[face]);
         }

@@ -17,9 +17,8 @@ public class FennSignis extends Hero {
 
     @Override
     public void performAttack(Personnel other) {
-        boolean useHavocShot = game != null
-                ? game.promptYesNo(getOwnerSeat(), "Havoc Shot", "Gain 1 strain to apply Blast 1 to this attack?")
-                : InputUtils.getYesNo("Havoc Shot", "Gain 1 strain to apply Blast 1 to this attack?");
+        boolean useHavocShot = game.promptYesNo(getOwnerSeat(), "Havoc Shot",
+                "Gain 1 strain to apply Blast 1 to this attack?");
         if (useHavocShot) {
             ApplyStrain(1);
             havocShotActive = true;
@@ -44,9 +43,6 @@ public class FennSignis extends Hero {
     }
 
     private boolean hasFriendlyFigureAdjacent() {
-        if (game == null) {
-            return false;
-        }
         for (Hero hero : game.getHeroes()) {
             if (hero == this || hero.isDefeated()) {
                 continue;

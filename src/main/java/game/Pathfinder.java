@@ -1,5 +1,7 @@
 package game;
 
+import java.util.Objects;
+
 import util.MyArrayList;
 import util.MyDLList;
 
@@ -95,10 +97,16 @@ public class Pathfinder {
     // Determines whether you can draw a straightl line from A to B without
     // intersecting any walls
     public static boolean straightlineToPos(Pos startingLocation, Pos endingLocation) {
-        return straightlineToPos(startingLocation, endingLocation, null);
+        return straightlineToPos(startingLocation, endingLocation, null, false);
     }
 
     public static boolean straightlineToPos(Pos startingLocation, Pos endingLocation, Game game) {
+        Objects.requireNonNull(game, "game");
+        return straightlineToPos(startingLocation, endingLocation, game, true);
+    }
+
+    private static boolean straightlineToPos(Pos startingLocation, Pos endingLocation, Game game,
+            boolean includeInteractables) {
         if (startingLocation.isEqualTo(endingLocation)) {
             return true;
         }
@@ -135,7 +143,7 @@ public class Pathfinder {
                 }
             }
         }
-        if (game != null) {
+        if (includeInteractables) {
             for (Interactable<? extends Personnel> interactable : game.getInteractables()) {
                 if (interactable.blocking()) {
                     for (WallLine line : interactable.getWallLines()) {

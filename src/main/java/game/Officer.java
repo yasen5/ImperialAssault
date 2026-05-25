@@ -53,11 +53,8 @@ public class Officer extends Imperial {
         for (int i = 0; i < defenseDice.length; i++) {
             results[i] = defenseDice[i].roll(game);
         }
-        if (game != null) {
-            game.repaint();
-        }
-        if (game != null ? game.promptYesNo(getOwnerSeat(), "Ability", "Reroll defense?")
-                : InputUtils.getYesNo("Ability", "Reroll defense?")) {
+        game.repaint();
+        if (game.promptYesNo(getOwnerSeat(), "Ability", "Reroll defense?")) {
             results = super.getDefense();
         }
         return results;

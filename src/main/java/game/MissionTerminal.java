@@ -28,7 +28,7 @@ public class MissionTerminal extends Personnel {
     @Override
     public DefenseRoll[] getDefense() {
         DefenseRoll[] baseDefense = super.getDefense();
-        if (game == null || !game.isAdjacentToImperial(getPos())) {
+        if (!game.isAdjacentToImperial(getPos())) {
             return baseDefense;
         }
         DefenseRoll[] boostedDefense = new DefenseRoll[baseDefense.length + 1];

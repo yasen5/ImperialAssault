@@ -18,9 +18,7 @@ public class MakEshray extends Hero {
         if (defender.hasLineOfSightTo(this)) {
             return;
         }
-        boolean useAmbush = game != null
-                ? game.promptYesNo(getOwnerSeat(), "Ambush", "Use Ambush to gain Pierce 2?")
-                : InputUtils.getYesNo("Ambush", "Use Ambush to gain Pierce 2?");
+        boolean useAmbush = game.promptYesNo(getOwnerSeat(), "Ambush", "Use Ambush to gain Pierce 2?");
         if (!useAmbush) {
             return;
         }

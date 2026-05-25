@@ -4,6 +4,7 @@ import game.Constants;
 import game.Constants.EndpointTouchPolicy;
 import game.Pathfinder.FullPos;
 import game.Personnel.Directions;
+import java.util.Objects;
 
 public class Pos {
   private int x, y;
@@ -46,6 +47,7 @@ public class Pos {
   // RespectSoftBarriers: check if you are moving through dotted red lines
   public boolean canMove(Directions dir, boolean respectFigures, boolean respectSoftBarriers, Game game,
       Personnel movingPerson) {
+    Objects.requireNonNull(game, "game");
     int newX = getX();
     int newY = getY();
     switch (dir) {
@@ -93,18 +95,16 @@ public class Pos {
         return false;
       }
     }
-    if (game != null) {
-      for (Interactable<? extends Personnel> interactable : game.getInteractables()) {
-        if (interactable.blocking()) {
-          if (Constants.blocksMovement(interactable.getWallLines(), thisCenterPos, nextCenterPos, true,
-              EndpointTouchPolicy.ALLOW_NORMAL_CORNER_CROSSING)) {
-            return false;
-          }
+    for (Interactable<? extends Personnel> interactable : game.getInteractables()) {
+      if (interactable.blocking()) {
+        if (Constants.blocksMovement(interactable.getWallLines(), thisCenterPos, nextCenterPos, true,
+            EndpointTouchPolicy.ALLOW_NORMAL_CORNER_CROSSING)) {
+          return false;
         }
       }
     }
     return Constants.tileMatrix[newY][newX] == 1
-        && (!respectFigures || game == null || game.isSpaceAvailable(new Pos(newX, newY), movingPerson));
+        && (!respectFigures || game.isSpaceAvailable(new Pos(newX, newY), movingPerson));
   }
 
   public boolean canMove(Directions dir, boolean respectFigures, boolean respectSoftBarriers, Game game) {

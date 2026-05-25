@@ -97,10 +97,10 @@ public abstract class Hero extends Personnel implements FullDeployment {
         OffenseDieType[] attackDice = weapon.attackDice();
         OffenseRoll[] result = new OffenseRoll[attackDice.length + (focused ? 1 : 0)];
         for (int i = 0; i < attackDice.length; i++) {
-            result[i] = attackDice[i].roll(game);
+            result[i] = attackDice[i].roll(requireGame());
         }
         if (focused) {
-            result[result.length - 1] = OffenseDieType.GREEN.roll(game);
+            result[result.length - 1] = OffenseDieType.GREEN.roll(requireGame());
             focused = false;
         }
         return result;

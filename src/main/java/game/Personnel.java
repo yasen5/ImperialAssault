@@ -79,14 +79,14 @@ public abstract class Personnel {
   // your results, and then doing surge effects, then figuring out if you had
   // enough range
   public void performAttack(Personnel other) {
-    AttackResolver.resolve(this, other, game);
+    AttackResolver.resolve(this, other, requireGame());
   }
 
   // Roll all the defense dice
   public DefenseRoll[] getDefense() {
     DefenseRoll[] results = new DefenseRoll[defenseDice.length];
     for (int i = 0; i < defenseDice.length; i++) {
-      results[i] = defenseDice[i].roll(game);
+      results[i] = defenseDice[i].roll(requireGame());
     }
     return results;
   }
@@ -238,7 +238,7 @@ public abstract class Personnel {
   }
 
   public boolean canMove(Directions dir) {
-    return MovementRules.canMoveOneSpace(this, dir, game);
+    return MovementRules.canMoveOneSpace(this, dir, requireGame());
   }
 
   public Pos getPos() {
@@ -285,7 +285,8 @@ public abstract class Personnel {
     int range = getRange();
     for (Pos attackSpace : getOccupiedSpaces()) {
       for (Pos targetSpace : other.getOccupiedSpaces()) {
-        if (range != Integer.MAX_VALUE && !Pathfinder.canReachPoint(attackSpace, targetSpace, range, false, game)) {
+        if (range != Integer.MAX_VALUE
+            && !Pathfinder.canReachPoint(attackSpace, targetSpace, range, false, requireGame())) {
           continue;
         }
         if (hasLineOfSightToSpace(attackSpace, targetSpace) && hasLineOfSightTo(other)) {
@@ -322,7 +323,7 @@ public abstract class Personnel {
         if (isHardWallEnd(enemyCorner)) {
           continue;
         }
-        if (Pathfinder.straightlineToPos(corner, enemyCorner, game)) {
+        if (Pathfinder.straightlineToPos(corner, enemyCorner, requireGame())) {
           cornersUsed[sightCount >= 2 ? 0 : sightCount] = enemyCorner;
           sightCount++;
           if (sightCount >= 2) {
@@ -348,13 +349,11 @@ public abstract class Personnel {
         EndpointTouchPolicy.ALLOW)) {
       return false;
     }
-    if (game != null) {
-      for (Interactable<? extends Personnel> interactable : game.getInteractables()) {
-        if (interactable.blocking()) {
-          if (Constants.blocksMovement(interactable.getWallLines(), attackSpace.getCenterPos(),
-              targetSpace.getCenterPos(), false, EndpointTouchPolicy.ALLOW)) {
-            return false;
-          }
+    for (Interactable<? extends Personnel> interactable : requireGame().getInteractables()) {
+      if (interactable.blocking()) {
+        if (Constants.blocksMovement(interactable.getWallLines(), attackSpace.getCenterPos(),
+            targetSpace.getCenterPos(), false, EndpointTouchPolicy.ALLOW)) {
+          return false;
         }
       }
     }
@@ -582,7 +581,11 @@ public abstract class Personnel {
   }
 
   public void setGame(Game game) {
-    this.game = game;
+    this.game = Objects.requireNonNull(game, "game");
+  }
+
+  protected Game requireGame() {
+    return Objects.requireNonNull(game, "game");
   }
 
   public String getId() {

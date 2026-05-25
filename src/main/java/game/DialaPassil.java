@@ -18,15 +18,10 @@ public class DialaPassil extends Hero {
     @Override
     public DefenseRoll[] getDefense() {
         DefenseRoll[] result = super.getDefense();
-        if (game != null) {
-            game.repaint();
-        }
-        if (game != null ? game.promptYesNo(getOwnerSeat(), "Ability Selection", "Would you like to reroll? (1 strain)")
-                : InputUtils.getYesNo("Ability Selection", "Would you like to reroll? (1 strain)")) {
+        game.repaint();
+        if (game.promptYesNo(getOwnerSeat(), "Ability Selection", "Would you like to reroll? (1 strain)")) {
             ApplyStrain(1);
-            if (game != null) {
-                game.clearDice();
-            }
+            game.clearDice();
             result = super.getDefense();
         }
         return result;
@@ -39,8 +34,7 @@ public class DialaPassil extends Hero {
         if (preciseStrikeUsed) {
             return other.getDefense();
         }
-        if (game != null ? game.promptYesNo(getOwnerSeat(), "Ability", "Remove a die from defense pool? (2 Strain)")
-                : InputUtils.getYesNo("Ability", "Remove a die from defense pool? (2 Strain)")) {
+        if (game.promptYesNo(getOwnerSeat(), "Ability", "Remove a die from defense pool? (2 Strain)")) {
             preciseStrikeUsed = true;
             ApplyStrain(2);
             DefenseRoll[] defense = other.getDefense();

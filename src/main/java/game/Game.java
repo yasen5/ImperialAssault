@@ -1,13 +1,6 @@
 package game;
 
-import java.awt.Color;
-import java.awt.BasicStroke;
 import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.Rectangle;
-import java.awt.RenderingHints;
-import java.awt.Stroke;
-import java.awt.image.BufferedImage;
 import util.MyArrayList;
 
 import java.util.concurrent.CancellationException;
@@ -16,41 +9,37 @@ import java.util.function.Consumer;
 import java.util.HashSet;
 import java.util.Set;
 
-import game.Constants.WallLine;
 import game.Die.GraphicDefenseDieResult;
 import game.Die.GraphicOffenseDieResult;
 import game.Personnel.Actions;
-import game.Personnel.Directions;
-import net.structs.DeploymentGroupSnapshot;
-import net.structs.FigureSnapshot;
 import net.structs.MatchSnapshot;
 import net.structs.GameSessionConfig;
 import net.GameDecisionProvider;
 
 public class Game {
-  private MapTile mapTile;
-  private final MyArrayList<DeploymentGroup<? extends Imperial>> imperialDeployments = new MyArrayList<>();
-  private final MyArrayList<Hero> heroes = new MyArrayList<>();
-  private final MyArrayList<MissionTerminal> missionTerminals = new MyArrayList<>();
-  private final MyArrayList<GraphicOffenseDieResult> offenseResults = new MyArrayList<>();
-  private final MyArrayList<GraphicDefenseDieResult> defenseResults = new MyArrayList<>();
+  GameMapTile mapTile;
+  final MyArrayList<DeploymentGroup<? extends Imperial>> imperialDeployments = new MyArrayList<>();
+  final MyArrayList<Hero> heroes = new MyArrayList<>();
+  final MyArrayList<MissionTerminal> missionTerminals = new MyArrayList<>();
+  final MyArrayList<GraphicOffenseDieResult> offenseResults = new MyArrayList<>();
+  final MyArrayList<GraphicDefenseDieResult> defenseResults = new MyArrayList<>();
   public Interactable<? extends Personnel>[] interactables;
 
-  private GameUi ui;
-  private GameDecisionProvider decisionProvider;
+  GameUi ui;
+  GameDecisionProvider decisionProvider;
   private Consumer<MatchSnapshot> snapshotListener;
-  private CompletableFuture<Personnel> currentSelected = new CompletableFuture<>();
-  private MyArrayList<Personnel> availableTargets = new MyArrayList<>();
-  private final Set<Personnel> specialUsedThisActivation = new HashSet<>();
-  private final MyArrayList<Actions> actionsUsedThisActivation = new MyArrayList<>();
-  private int threatDial = 0;
-  private int threatLevel = 1;
-  private int roundDial = 1;
-  private int roundLimit = 0;
-  private boolean gameEnd;
-  private boolean rebelsWin = true;
-  private PlayerSeat actingSeat = PlayerSeat.REBEL_1;
-  private PlayerSeat currentTurnSeat = PlayerSeat.REBEL_1;
+  CompletableFuture<Personnel> currentSelected = new CompletableFuture<>();
+  MyArrayList<Personnel> availableTargets = new MyArrayList<>();
+  final Set<Personnel> specialUsedThisActivation = new HashSet<>();
+  final MyArrayList<Actions> actionsUsedThisActivation = new MyArrayList<>();
+  int threatDial = 0;
+  int threatLevel = 1;
+  int roundDial = 1;
+  int roundLimit = 0;
+  boolean gameEnd;
+  boolean rebelsWin = true;
+  PlayerSeat actingSeat = PlayerSeat.REBEL_1;
+  PlayerSeat currentTurnSeat = PlayerSeat.REBEL_1;
   private volatile boolean advanceStatusPhaseRequested;
   private volatile boolean statusPhaseInProgress;
   private volatile boolean abortStatusPhasePrompts;
@@ -58,47 +47,23 @@ public class Game {
   private volatile boolean playLoopActive;
   private volatile Runnable activePromptCancelAction = () -> {
   };
-  private long bannerId;
-  private String bannerText;
-  private long bannerExpiresAt;
-  private long lastAppliedBannerId;
-  private int nextSupplyEquipmentIndex;
-  private final GameSessionConfig sessionConfig;
-  private MissionDefinition missionDefinition;
-  private MyArrayList<PlayerSeat> rebelHeroSelectionOrder = new MyArrayList<>();
-  private boolean fortifiedResolved;
-  private boolean lockdownResolved;
-  private boolean missionDoorOpenedThisRound;
+  long bannerId;
+  String bannerText;
+  long bannerExpiresAt;
+  long lastAppliedBannerId;
+  int nextSupplyEquipmentIndex;
+  final GameSessionConfig sessionConfig;
+  MissionDefinition missionDefinition;
+  MyArrayList<PlayerSeat> rebelHeroSelectionOrder = new MyArrayList<>();
+  boolean fortifiedResolved;
+  boolean lockdownResolved;
+  boolean missionDoorOpenedThisRound;
   private Door<?> atriumDoor;
-  private boolean debugWallLines;
-
-  public static record MapTile(BufferedImage img, int[][] tileArray, Rectangle sourceBounds) {
-    public MapTile(BufferedImage img, int[][] tileArray) {
-      this(img, tileArray, getOpaqueBounds(img));
-    }
-
-    private static Rectangle getOpaqueBounds(BufferedImage img) {
-      int minX = img.getWidth();
-      int minY = img.getHeight();
-      int maxX = -1;
-      int maxY = -1;
-      for (int y = 0; y < img.getHeight(); y++) {
-        for (int x = 0; x < img.getWidth(); x++) {
-          if (((img.getRGB(x, y) >>> 24) & 0xff) == 0) {
-            continue;
-          }
-          minX = Math.min(minX, x);
-          minY = Math.min(minY, y);
-          maxX = Math.max(maxX, x);
-          maxY = Math.max(maxY, y);
-        }
-      }
-      if (maxX < minX || maxY < minY) {
-        return new Rectangle(0, 0, img.getWidth(), img.getHeight());
-      }
-      return new Rectangle(minX, minY, maxX - minX + 1, maxY - minY + 1);
-    }
-  }
+  boolean debugWallLines;
+  private final GameRenderer renderer = new GameRenderer(this);
+  final GameSetup setup = new GameSetup(this);
+  private final GameSnapshotMapper snapshots = new GameSnapshotMapper(this);
+  private final GameActionController actions = new GameActionController(this);
 
   public Game(GameUi ui) {
     this(ui, new GameSessionConfig(1), null, true);
@@ -121,7 +86,7 @@ public class Game {
         : missionDefinition;
     Constants.useMissionDefinition(this.missionDefinition);
     this.interactables = createInteractables(this.missionDefinition);
-    this.mapTile = new MapTile(LoaderUtils.getImage(this.missionDefinition.mapImageName()),
+    this.mapTile = new GameMapTile(LoaderUtils.getImage(this.missionDefinition.mapImageName()),
         this.missionDefinition.tileMatrix());
     if (authoritative) {
       setup();
@@ -129,7 +94,7 @@ public class Game {
   }
 
   @SuppressWarnings("unchecked")
-  private Interactable<? extends Personnel>[] createInteractables(MissionDefinition missionDefinition) {
+  Interactable<? extends Personnel>[] createInteractables(MissionDefinition missionDefinition) {
     atriumDoor = null;
     MyArrayList<Interactable<? extends Personnel>> missionInteractables = new MyArrayList<>();
     if (!missionDefinition.attackableTerminals()) {
@@ -186,97 +151,11 @@ public class Game {
   }
 
   public void drawGame(Graphics g) {
-    Rectangle sourceBounds = mapTile.sourceBounds();
-    g.drawImage(mapTile.img(), 0, 0, Constants.tileSize * mapTile.tileArray()[0].length,
-        Constants.tileSize * mapTile.tileArray().length,
-        sourceBounds.x, sourceBounds.y, sourceBounds.x + sourceBounds.width,
-        sourceBounds.y + sourceBounds.height, null);
-    if (debugWallLines) {
-      drawDebugWallLines(g);
-    }
-    for (Hero hero : heroes) {
-      hero.draw(g);
-    }
-    for (DeploymentGroup<? extends Imperial> deployment : imperialDeployments) {
-      deployment.draw(g);
-    }
-    for (MissionTerminal terminal : missionTerminals) {
-      terminal.draw(g);
-    }
-    drawThreatHud(g);
-    drawDiceSection(g, offenseResults, true);
-    drawDiceSection(g, defenseResults, false);
-    for (Interactable<? extends Personnel> interactable : interactables) {
-      interactable.draw(g);
-    }
-  }
-
-  private void drawDebugWallLines(Graphics g) {
-    Graphics2D g2 = (Graphics2D) g.create();
-    Stroke oldStroke = g2.getStroke();
-    g2.setColor(Color.RED);
-    g2.setStroke(new BasicStroke(3));
-    for (WallLine wallLine : Constants.wallLines) {
-      drawDebugWallLine(g2, wallLine);
-    }
-    for (Interactable<? extends Personnel> interactable : interactables) {
-      if (!interactable.blocking()) {
-        continue;
-      }
-      for (WallLine wallLine : interactable.getWallLines()) {
-        drawDebugWallLine(g2, wallLine);
-      }
-    }
-    g2.setStroke(oldStroke);
-    g2.dispose();
-  }
-
-  private void drawDebugWallLine(Graphics2D g2, WallLine wallLine) {
-    Pathfinder.FullPos start = wallLine.startPoint();
-    Pathfinder.FullPos end = wallLine.endPoint();
-    g2.drawLine((int) Math.round(start.x()), (int) Math.round(start.y()),
-        (int) Math.round(end.x()), (int) Math.round(end.y()));
+    renderer.drawGame(g);
   }
 
   public int getMapDrawWidth() {
-    return Constants.tileSize * mapTile.tileArray()[0].length;
-  }
-
-  private <T> void drawDiceSection(Graphics g, MyArrayList<T> dice, boolean offense) {
-    if (dice.isEmpty()) {
-      return;
-    }
-    int startX = 960;
-    int startY = offense ? 670 : 820;
-    int rowSpacing = Die.ySize + 14;
-    int columnSpacing = Die.xSize + 10;
-    if (ui != null) {
-      startX = ui.getSidebarDiceX();
-      startY = offense ? ui.getDiceStartY() : ui.getDiceStartY() + 150;
-    }
-    int availableWidth = ui != null ? ui.getSidebarDetailWidth() : 300;
-    int maxPerRow = Math.max(1, (availableWidth + 10) / columnSpacing);
-    Graphics2D g2 = (Graphics2D) g.create();
-    g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-    g2.setColor(new Color(0, 0, 0, 90));
-    int rows = (dice.size() + maxPerRow - 1) / maxPerRow;
-    int panelHeight = rows * rowSpacing + 22;
-    g2.fillRoundRect(startX - 12, startY - 18, Math.min(availableWidth + 24, maxPerRow * columnSpacing + 14),
-        panelHeight, 22, 22);
-    g2.setColor(new Color(255, 255, 255, 30));
-    g2.drawRoundRect(startX - 12, startY - 18, Math.min(availableWidth + 24, maxPerRow * columnSpacing + 14),
-        panelHeight, 22, 22);
-    for (int i = 0; i < dice.size(); i++) {
-      BufferedImage image = offense ? Die.offenseDieFaces.get(offenseResults.get(i))
-          : Die.defenseDieFaces.get(defenseResults.get(i));
-      int column = i % maxPerRow;
-      int row = i / maxPerRow;
-      int x = startX + column * columnSpacing;
-      int y = startY + row * rowSpacing;
-      g2.drawImage(image, x, y, x + Die.xSize, y + Die.ySize, 0, 0, image.getWidth(null),
-          image.getHeight(null), null);
-    }
-    g2.dispose();
+    return renderer.getMapDrawWidth();
   }
 
   public void playRound() {
@@ -787,7 +666,7 @@ public class Game {
       throw new IllegalStateException("Not enough threat to deploy " + group);
     }
     threatDial -= group.getDeploymentCost();
-    initializeDeploymentOrientations(group, true);
+    setup.initializeDeploymentOrientations(group, true);
     group.setDeployed(true);
     group.setExhausted(true);
     for (Imperial imperial : group.getMembers()) {
@@ -899,486 +778,91 @@ public class Game {
   }
 
   public void removeDeadFigures() {
-    for (int i = 0; i < heroes.size(); i++) {
-      if (heroes.get(i).getDead()) {
-        heroes.remove(i);
-        i--;
-      }
-    }
-    for (int i = 0; i < imperialDeployments.size(); i++) {
-      imperialDeployments.get(i).removeDeadFigures();
-    }
-    repaint();
+    actions.removeDeadFigures();
   }
 
   public int takeAction(Personnel activeFigure, boolean rebel) {
-    int leftoverMoves = 0;
-    MyArrayList<Actions> availableActions = getAvailableActions(activeFigure, rebel);
-    if (availableActions.isEmpty()) {
-      return 0;
-    }
-    Actions chosenAction = availableActions.get(promptMultipleChoice(activeFigure.getOwnerSeat(), "Action Selection",
-        actionSelectionPrompt(availableActions), availableActions.toArray()));
-    if (chosenAction == Actions.USE_EQUIPMENT) {
-      takeAction(activeFigure, chosenAction);
-      return takeAction(activeFigure, rebel);
-    }
-    leftoverMoves = takeAction(activeFigure, chosenAction);
-    return leftoverMoves;
+    return actions.takeAction(activeFigure, rebel);
   }
 
   public int takeAction(Personnel activeFigure, Actions action) {
-    int leftoverMoves = 0;
-    switch (action) {
-      case MOVE -> {
-        leftoverMoves += activeFigure.getSpeed();
-        int movesUsed = promptPendingMoves(activeFigure.getOwnerSeat(), leftoverMoves);
-        leftoverMoves -= movesUsed;
-        handleMovesInternal(activeFigure, movesUsed);
-      }
-      case ATTACK -> {
-        handleAttackInternal(activeFigure);
-        removeDeadFigures();
-        checkEndGame();
-      }
-      case RECOVER -> {
-        Hero hero = (Hero) activeFigure;
-        hero.recover();
-        offerAfterRecoverEquipment(hero);
-      }
-      case DISCARD_CONDITION -> activeFigure.setStunned(false);
-      case USE_EQUIPMENT -> {
-        if (activeFigure instanceof Hero hero) {
-          handleEquipmentUse(hero, Equipment.UseTiming.DURING_ACTIVATION);
-        }
-      }
-      case SPECIAL -> {
-        specialUsedThisActivation.add(activeFigure);
-        handleSpecial(activeFigure);
-      }
-      case INTERACT -> {
-        handleInteraction(activeFigure);
-        checkEndGame();
-      }
-    }
-    if (gameEnd) {
-      return leftoverMoves;
-    }
-    applyAfterActionConditions(activeFigure, action);
-    actionsUsedThisActivation.add(action);
-    checkEndGame();
-    return leftoverMoves;
-  }
-
-  private String actionSelectionPrompt(MyArrayList<Actions> availableActions) {
-    StringBuilder prompt = new StringBuilder("Choose an action to take");
-    boolean hasDescriptions = false;
-    for (Actions action : availableActions) {
-      if (missionDefinition.actionDescription(action) != null) {
-        hasDescriptions = true;
-        break;
-      }
-    }
-    if (!hasDescriptions) {
-      return prompt.toString();
-    }
-    prompt.append("\n\n");
-    for (Actions action : availableActions) {
-      String description = missionDefinition.actionDescription(action);
-      if (description != null) {
-        prompt.append(action).append(": ").append(description).append("\n\n");
-      }
-    }
-    return prompt.toString().trim();
+    return actions.takeAction(activeFigure, action);
   }
 
   MyArrayList<Actions> getAvailableActions(Personnel activeFigure, boolean rebel) {
-    MyArrayList<Actions> availableActions = new MyArrayList<>();
-    availableActions.addAll(activeFigure.getActions());
-    availableTargets = availableDefenders(activeFigure, rebel);
-    if (activeFigure.stunned()) {
-      availableActions.remove(Actions.ATTACK);
-      availableActions.remove(Actions.SPECIAL);
-      availableActions.add(Actions.DISCARD_CONDITION);
-    }
-    if (availableTargets.size() == 0) {
-      availableActions.remove(Actions.ATTACK);
-      if (activeFigure.specialNeedsAttackTarget()) {
-        availableActions.remove(Actions.SPECIAL);
-      }
-    }
-    if (canInteract(activeFigure)) {
-      availableActions.add(Actions.INTERACT);
-    }
-    if (specialUsedThisActivation.contains(activeFigure)) {
-      availableActions.remove(Actions.SPECIAL);
-    }
-    if (activeFigure instanceof Hero hero && hero.hasUsableEquipment(Equipment.UseTiming.DURING_ACTIVATION)) {
-      availableActions.add(Actions.USE_EQUIPMENT);
-    }
-    for (int i = 0; i < availableActions.size(); i++) {
-      if (!activeFigure.canTakeAction(availableActions.get(i), actionsUsedThisActivation)) {
-        availableActions.remove(i);
-        i--;
-      }
-    }
-    return availableActions;
-  }
-
-  private void applyAfterActionConditions(Personnel activeFigure, Actions action) {
-    if (activeFigure instanceof Hero hero && hero.bleeding() && action != Actions.RECOVER
-        && action != Actions.DISCARD_CONDITION) {
-      hero.ApplyStrain(1);
-    }
-  }
-
-  private void offerAfterRecoverEquipment(Hero hero) {
-    if (!hero.hasUsableEquipment(Equipment.UseTiming.AFTER_RECOVER)) {
-      return;
-    }
-    if (promptYesNo(hero.getOwnerSeat(), "Equipment", "Use equipment after resting?")) {
-      handleEquipmentUse(hero, Equipment.UseTiming.AFTER_RECOVER);
-    }
-  }
-
-  private void handleEquipmentUse(Hero owner, Equipment.UseTiming timing) {
-    MyArrayList<Equipment.Item> usableEquipment = owner.getUsableEquipment(timing);
-    if (usableEquipment.isEmpty()) {
-      return;
-    }
-    Equipment.Item item = usableEquipment.get(usableEquipment.size() == 1 ? 0
-        : promptMultipleChoice(owner.getOwnerSeat(), "Equipment", "Choose equipment to use",
-            usableEquipment.toArray()));
-    MyArrayList<Hero> targets = getFriendlyAdjacentHeroes(owner);
-    if (targets.isEmpty()) {
-      return;
-    }
-    Hero target = targets.get(targets.size() == 1 ? 0
-        : promptMultipleChoice(owner.getOwnerSeat(), item.name(), "Choose a target", targets.toArray()));
-    if (item.recoverAmount() > 0) {
-      target.dealDamage(-item.recoverAmount());
-    }
-    if (item.grantsFocus()) {
-      target.setFocused(true);
-    }
-    if (item.consumable()) {
-      owner.removeEquipment(item);
-    }
-    triggerBanner(owner.getDisplayName() + " used " + item.name());
-    repaint();
-  }
-
-  private MyArrayList<Hero> getFriendlyAdjacentHeroes(Hero owner) {
-    MyArrayList<Hero> targets = new MyArrayList<>();
-    for (Hero hero : heroes) {
-      if (hero == owner || isAdjacent(owner.getPos(), hero.getPos())) {
-        targets.add(hero);
-      }
-    }
-    return targets;
-  }
-
-  private boolean isAdjacent(Pos first, Pos second) {
-    int xDistance = Math.abs(first.getX() - second.getX());
-    int yDistance = Math.abs(first.getY() - second.getY());
-    return xDistance <= 1 && yDistance <= 1 && (xDistance + yDistance) > 0;
+    return actions.getAvailableActions(activeFigure, rebel);
   }
 
   public boolean isAdjacentToImperial(Pos pos) {
-    for (Imperial imperial : getImperials()) {
-      if (isAdjacent(pos, imperial.getPos())) {
-        return true;
-      }
-    }
-    return false;
+    return actions.isAdjacentToImperial(pos);
   }
 
   public void handleSpecial(Personnel activeFigure) {
-    if (activeFigure.specialRequiresSelection()) {
-      performSpecialInternal(activeFigure);
-    } else {
-      activeFigure.performSpecial();
-      repaint();
-    }
+    actions.handleSpecial(activeFigure);
   }
 
   public void handleInteraction(Personnel activeFigure) {
-    getAdjacentInteractable(activeFigure).interact(activeFigure);
-    repaint();
+    actions.handleInteraction(activeFigure);
   }
 
   public Interactable<? extends Personnel> getAdjacentInteractable(Personnel activeFigure) {
-    Pos activePos = activeFigure.getPos();
-    for (Directions dir : Directions.values()) {
-      Pos nextPos = activePos.getNextPos(dir);
-      for (Interactable<? extends Personnel> interactable : interactables) {
-        if (!interactable.canInteract(activeFigure)) {
-          continue;
-        }
-        if (interactable.blocking()) {
-          for (WallLine wallLine : interactable.getWallLines()) {
-            if (wallLine.intersects(activePos.getCenterPos(), nextPos.getCenterPos(), true)) {
-              return interactable;
-            }
-          }
-        } else if (nextPos.equalTo(interactable.getPos())) {
-          return interactable;
-        }
-      }
-    }
-    return null;
+    return actions.getAdjacentInteractable(activeFigure);
   }
 
   public boolean canInteract(Personnel activeFigure) {
-    return getAdjacentInteractable(activeFigure) != null;
+    return actions.canInteract(activeFigure);
   }
 
   public MyArrayList<Personnel> availableDefenders(Personnel attacker, boolean rebelAttacker) {
-    MyArrayList<Personnel> defenders = new MyArrayList<>();
-    if (rebelAttacker) {
-      for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
-        if (group.getDeployed()) {
-          for (Imperial member : group.getMembers()) {
-            if (attacker.canAttack(member)) {
-              defenders.add(member);
-            }
-          }
-        }
-      }
-      for (MissionTerminal terminal : missionTerminals) {
-        if (!terminal.isDefeated() && attacker.canAttack(terminal)) {
-          defenders.add(terminal);
-        }
-      }
-    } else {
-      for (Hero hero : heroes) {
-        if (attacker.canAttack(hero)) {
-          defenders.add(hero);
-        }
-      }
-    }
-    return defenders;
+    return actions.availableDefenders(attacker, rebelAttacker);
   }
 
   public MyArrayList<Hero> getHeroExhaustOptions() {
-    MyArrayList<Hero> readyDeployments = new MyArrayList<>();
-    for (Hero hero : heroes) {
-      if (!hero.getExhausted()) {
-        readyDeployments.add(hero);
-      }
-    }
-    return readyDeployments;
+    return actions.getHeroExhaustOptions();
   }
 
   public MyArrayList<Hero> getHeroExhaustOptions(PlayerSeat seat) {
-    MyArrayList<Hero> readyDeployments = new MyArrayList<>();
-    for (Hero hero : heroes) {
-      if (!hero.getExhausted() && hero.getOwnerSeat() == seat) {
-        readyDeployments.add(hero);
-      }
-    }
-    return readyDeployments;
+    return actions.getHeroExhaustOptions(seat);
   }
 
   public MyArrayList<DeploymentGroup<? extends Imperial>> getImperialExhaustOptions() {
-    MyArrayList<DeploymentGroup<? extends Imperial>> readyDeployments = new MyArrayList<>();
-    for (DeploymentGroup<? extends Imperial> deploymentGroup : imperialDeployments) {
-      if (deploymentGroup.getDeployed() && !deploymentGroup.getExhausted()) {
-        readyDeployments.add(deploymentGroup);
-      }
-    }
-    return readyDeployments;
+    return actions.getImperialExhaustOptions();
   }
 
   public boolean isSpaceAvailable(Pos pos) {
-    for (Hero hero : heroes) {
-      if (hero.occupiesSpace(pos)) {
-        return false;
-      }
-    }
-    for (DeploymentGroup<? extends Imperial> depGroup : imperialDeployments) {
-      if (!depGroup.getDeployed()) {
-        continue;
-      }
-      for (Imperial imperial : depGroup.getMembers()) {
-        if (imperial.occupiesSpace(pos)) {
-          return false;
-        }
-      }
-    }
-    return true;
+    return actions.isSpaceAvailable(pos);
   }
 
   public boolean isSpaceAvailable(Pos pos, Personnel ignore) {
-    for (Hero hero : heroes) {
-      if ((ignore == null || !ignore.equals(hero)) && hero.occupiesSpace(pos)) {
-        return false;
-      }
-    }
-    for (DeploymentGroup<? extends Imperial> depGroup : imperialDeployments) {
-      if (!depGroup.getDeployed()) {
-        continue;
-      }
-      for (Imperial imperial : depGroup.getMembers()) {
-        if ((ignore == null || !ignore.equals(imperial)) && imperial.occupiesSpace(pos)) {
-          return false;
-        }
-      }
-    }
-    return true;
+    return actions.isSpaceAvailable(pos, ignore);
   }
 
   private void handleMovesInternal(Personnel activeFigure, int numMoves) {
-    for (int j = 0; j < numMoves; j++) {
-      if (!handleMoveInternal(activeFigure)) {
-        break;
-      }
-    }
-    if (ui != null) {
-      ui.deactiveateMovementButtons();
-    }
-    repaint();
+    actions.handleMovesInternal(activeFigure, numMoves);
   }
 
   private void handlePendingMoves(Personnel activeFigure, PlayerSeat seat, int leftoverMoves) {
-    handleMovesInternal(activeFigure, promptPendingMoves(seat, leftoverMoves));
-  }
-
-  private int promptPendingMoves(PlayerSeat seat, int leftoverMoves) {
-    if (leftoverMoves == 0) {
-      return 0;
-    }
-    return promptNumericChoice(seat, "# of moves you'll use", 0, leftoverMoves);
-  }
-
-  private boolean handleMoveInternal(Personnel activeFigure) {
-    MyArrayList<Directions> availableDirections = new MyArrayList<>();
-    for (Directions direction : Directions.values()) {
-      if (activeFigure.canMove(direction)) {
-        availableDirections.add(direction);
-      }
-    }
-    MyArrayList<RotationMove> legalRotations = MovementRules.getLegalRotations(activeFigure, this);
-    if (availableDirections.isEmpty() && legalRotations.isEmpty()) {
-      triggerBanner(activeFigure.getName() + " cannot move farther");
-      return false;
-    }
-    MovementChoice choice = decisionProvider.chooseMovement(activeFigure.getOwnerSeat(), activeFigure,
-        availableDirections, legalRotations);
-    if (choice.rotateAction()) {
-      RotationMove rotationMove = choice.rotationMove() == null ? legalRotations.get(0) : choice.rotationMove();
-      if (!containsRotation(legalRotations, rotationMove)) {
-        triggerBanner(activeFigure.getName() + " cannot rotate there");
-        return false;
-      }
-      activeFigure.rotateTo(rotationMove);
-    } else {
-      activeFigure.move(choice.direction());
-    }
-    repaint();
-    return true;
-  }
-
-  private boolean containsRotation(MyArrayList<RotationMove> legalRotations, RotationMove target) {
-    for (RotationMove rotation : legalRotations) {
-      if (rotation.anchor().equalTo(target.anchor()) && rotation.xSize() == target.xSize()
-          && rotation.ySize() == target.ySize()) {
-        return true;
-      }
-    }
-    return false;
+    actions.handlePendingMoves(activeFigure, seat, leftoverMoves);
   }
 
   private void handleAttackInternal(Personnel activeFigure) {
-    currentSelected = new CompletableFuture<>();
-    availableTargets = availableDefenders(activeFigure, activeFigure.getOwnerSeat().isRebel());
-    if (availableTargets.isEmpty()) {
-      triggerBanner(activeFigure.getName() + " has no available target");
-      return;
-    }
-    for (Personnel person : availableTargets) {
-      person.setPossibleTarget(true);
-    }
-    repaint();
-    Personnel chosenDefender = decisionProvider.chooseTarget(activeFigure.getOwnerSeat(), SelectionType.COMBAT,
-        new MyArrayList<>(availableTargets));
-    for (Personnel person : availableTargets) {
-      person.setPossibleTarget(false);
-    }
-    activeFigure.performAttack(chosenDefender);
-    repaint();
+    actions.handleAttackInternal(activeFigure);
   }
 
   public boolean trySetTarget(Personnel defender) {
-    if (availableTargets.contains(defender)) {
-      currentSelected.complete(defender);
-      return true;
-    }
-    return false;
+    return actions.trySetTarget(defender);
   }
 
   public MyArrayList<Imperial> getImperials() {
-    MyArrayList<Imperial> imperials = new MyArrayList<>();
-    for (DeploymentGroup<? extends Imperial> depGroup : imperialDeployments) {
-      if (depGroup.getDeployed()) {
-        imperials.addAll(depGroup.getMembers());
-      }
-    }
-    return imperials;
+    return actions.getImperials();
   }
 
   public void applyBlast(Personnel target, int blastValue) {
-    applyBlast(null, target, blastValue);
+    actions.applyBlast(target, blastValue);
   }
 
   public void applyBlast(Personnel attacker, Personnel target, int blastValue) {
-    if (target == null || blastValue <= 0) {
-      return;
-    }
-    Set<Personnel> affected = new HashSet<>();
-    for (Personnel targetSpaceOwner : allPersonnel()) {
-      if (targetSpaceOwner == target) {
-        continue;
-      }
-      if (attacker != null && !areEnemies(attacker, targetSpaceOwner)) {
-        continue;
-      }
-      for (Pos targetSpace : target.getOccupiedSpaces()) {
-        if (isAdjacentToAnyOccupiedSpace(targetSpaceOwner, targetSpace)) {
-          affected.add(targetSpaceOwner);
-          break;
-        }
-      }
-    }
-    for (Personnel personnel : affected) {
-      personnel.dealDamage(blastValue);
-    }
-  }
-
-  private boolean areEnemies(Personnel first, Personnel second) {
-    if (first == null || second == null) {
-      return false;
-    }
-    return first.getOwnerSeat().isRebel() != second.getOwnerSeat().isRebel();
-  }
-
-  private MyArrayList<Personnel> allPersonnel() {
-    MyArrayList<Personnel> personnel = new MyArrayList<>();
-    personnel.addAll(heroes);
-    personnel.addAll(getImperials());
-    personnel.addAll(missionTerminals);
-    return personnel;
-  }
-
-  private boolean isAdjacentToAnyOccupiedSpace(Personnel personnel, Pos targetSpace) {
-    for (Pos occupiedSpace : personnel.getOccupiedSpaces()) {
-      int xDistance = Math.abs(occupiedSpace.getX() - targetSpace.getX());
-      int yDistance = Math.abs(occupiedSpace.getY() - targetSpace.getY());
-      if (xDistance <= 1 && yDistance <= 1 && (xDistance + yDistance) > 0) {
-        return true;
-      }
-    }
-    return false;
+    actions.applyBlast(attacker, target, blastValue);
   }
 
   public MyArrayList<Hero> getHeroes() {
@@ -1391,172 +875,11 @@ public class Game {
   }
 
   private void resetStateForNewGame() {
-    gameEnd = false;
-    rebelsWin = true;
-    fortifiedResolved = false;
-    lockdownResolved = false;
-    missionDoorOpenedThisRound = false;
-    offenseResults.clear();
-    defenseResults.clear();
-    for (Interactable<? extends Personnel> interactable : interactables) {
-      interactable.applySnapshotState(true);
-    }
-    setup();
+    setup.resetStateForNewGame();
   }
 
   public void setup() {
-    threatDial = 0;
-    threatLevel = missionDefinition.threatLevel();
-    roundLimit = missionDefinition.roundLimit();
-    roundDial = 1;
-    nextSupplyEquipmentIndex = 0;
-    currentTurnSeat = firstTurnSeat();
-    actingSeat = currentTurnSeat;
-    heroes.clear();
-    imperialDeployments.clear();
-    missionTerminals.clear();
-    addSelectedHeroes();
-    int heroCount = heroes.size();
-    setupMissionDeployments(heroCount);
-    if (missionDefinition.attackableTerminals()) {
-      setupMissionTerminals();
-    }
-    bindGameReferences();
-    repaint();
-  }
-
-  private void setupMissionDeployments(int heroCount) {
-    for (MissionDefinition.DeploymentSpec spec : missionDefinition.deployments()) {
-      if (heroCount < spec.minimumHeroCount()) {
-        continue;
-      }
-      DeploymentGroup<? extends Imperial> group = createDeploymentGroup(spec);
-      group.setDeploymentCost(spec.deploymentCost());
-      group.setDeployed(spec.deployed());
-      if (spec.horizontal() != null) {
-        initializeDeploymentOrientations(group, spec.horizontal());
-      }
-      configureDeploymentGroup(group, spec.id(), PlayerSeat.IMPERIAL);
-      imperialDeployments.add(group);
-    }
-  }
-
-  private DeploymentGroup<? extends Imperial> createDeploymentGroup(MissionDefinition.DeploymentSpec spec) {
-    return switch (spec.groupName()) {
-      case "StormTrooper" -> new DeploymentGroup<StormTrooper>(spec.positions(), StormTrooper::new, "StormTrooper");
-      case "ImperialOfficer" -> new DeploymentGroup<Officer>(spec.positions(), Officer::new, "ImperialOfficer");
-      case "ProbeDroid" -> new DeploymentGroup<ProbeDroid>(spec.positions(), ProbeDroid::new, "ProbeDroid");
-      case "EWebEngineer" -> new DeploymentGroup<EWebEngineer>(spec.positions(), EWebEngineer::new, "EWebEngineer");
-      default -> throw new IllegalArgumentException("Unknown deployment group: " + spec.groupName());
-    };
-  }
-
-  private void setupMissionTerminals() {
-    int index = 0;
-    for (Pos pos : missionDefinition.terminalPositions()) {
-      MissionTerminal terminal = new MissionTerminal(pos);
-      terminal.setId("mission-terminal-" + index);
-      terminal.setGame(this);
-      missionTerminals.add(terminal);
-      index++;
-    }
-  }
-
-  private void bindGameReferences() {
-    for (Hero hero : heroes) {
-      hero.setGame(this);
-    }
-    for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
-      if (group.getDeployed()) {
-        for (Imperial imperial : group.getMembers()) {
-          imperial.setGame(this);
-        }
-      }
-    }
-    for (Interactable<? extends Personnel> interactable : interactables) {
-      interactable.setGame(this);
-    }
-    for (MissionTerminal terminal : missionTerminals) {
-      terminal.setGame(this);
-    }
-  }
-
-  private void configureHero(Hero hero, String id, PlayerSeat seat) {
-    hero.setId(id);
-    hero.setOwnerSeat(seat);
-  }
-
-  private void addSelectedHeroes() {
-    MyArrayList<HeroSetupOption> availableHeroes = MyArrayList.of(
-        new HeroSetupOption("Diala Passil", "hero-diala", DialaPassil::new),
-        new HeroSetupOption("Gaarkhan", "hero-gaarkhan", Gaarkhan::new),
-        new HeroSetupOption("Fenn Signis", "hero-fenn", FennSignis::new),
-        new HeroSetupOption("Mak Eshka'rey", "hero-mak", MakEshray::new));
-    MissionDefinition.HeroPlacement heroPlacement = missionDefinition.heroPlacement();
-    MyArrayList<PlayerSeat> owners = heroSelectionOwners();
-    for (int i = 0; i < owners.size(); i++) {
-      HeroSetupOption option = chooseHeroSetupOption(owners.get(i), availableHeroes);
-      Hero hero = option.constructor().apply(heroPlacement.position(i));
-      configureHero(hero, option.id(), owners.get(i));
-      heroes.add(hero);
-      availableHeroes.remove(option);
-    }
-  }
-
-  private MyArrayList<PlayerSeat> heroSelectionOwners() {
-    int heroCount = Math.max(2, sessionConfig.rebelPlayerCount());
-    MyArrayList<PlayerSeat> owners = new MyArrayList<>();
-    MyArrayList<PlayerSeat> selectionOrder = rebelHeroSelectionOrder.isEmpty()
-        ? sessionConfig.rebelTurnOrder()
-        : new MyArrayList<>(rebelHeroSelectionOrder);
-    if (selectionOrder.isEmpty()) {
-      selectionOrder.add(PlayerSeat.REBEL_1);
-    }
-    for (PlayerSeat seat : selectionOrder) {
-      if (owners.size() < heroCount && seat.isRebel()) {
-        owners.add(seat);
-      }
-    }
-    while (owners.size() < heroCount) {
-      owners.add(selectionOrder.get(owners.size() % selectionOrder.size()));
-    }
-    return owners;
-  }
-
-  private HeroSetupOption chooseHeroSetupOption(PlayerSeat owner, MyArrayList<HeroSetupOption> availableHeroes) {
-    if (decisionProvider == null || sessionConfig.rebelPlayerCount() == 0 || availableHeroes.size() == 1) {
-      return availableHeroes.get(0);
-    }
-    int choice = promptMultipleChoice(owner, "Hero Selection", "Choose your hero", availableHeroes.toArray());
-    return availableHeroes.get(choice);
-  }
-
-  private record HeroSetupOption(String label, String id, java.util.function.Function<Pos, Hero> constructor) {
-    @Override
-    public String toString() {
-      return label;
-    }
-  }
-
-  private void configureDeploymentGroup(DeploymentGroup<? extends Imperial> group, String id, PlayerSeat seat) {
-    group.setId(id);
-    group.setOwnerSeat(seat);
-    int index = 0;
-    for (Imperial imperial : group.getMembers()) {
-      imperial.setId(id + "-member-" + index);
-      imperial.setOwnerSeat(seat);
-      index++;
-    }
-  }
-
-  private void initializeDeploymentOrientations(DeploymentGroup<? extends Imperial> group, boolean horizontal) {
-    for (Imperial imperial : group.getMembers()) {
-      if (!imperial.isNonSquareLargeFigure()) {
-        continue;
-      }
-      imperial.setHorizontalOrientation(horizontal);
-      imperial.setPos(imperial.getPos());
-    }
+    setup.setup();
   }
 
   private boolean canOccupyFootprint(Pos[] spaces, Personnel ignore) {
@@ -1733,138 +1056,11 @@ public class Game {
   }
 
   public MatchSnapshot createSnapshot() {
-    MyArrayList<FigureSnapshot> heroSnapshots = new MyArrayList<>();
-    for (Hero hero : heroes) {
-      heroSnapshots.add(new FigureSnapshot(hero.getId(), hero.getName(), hero.getPos().getX(), hero.getPos().getY(),
-          hero.getXSize(), hero.getYSize(),
-          hero.getHealth(), hero.getStrain(), hero.stunned(), hero.focused, hero.isActive(),
-          hero.isPossibleTarget(), hero.getExhausted(), hero.getOwnerSeat(), hero.getEquipmentIds(),
-          hero.getConditionNames(), hero.isWounded(), hero.isDefeated()));
-    }
-    MyArrayList<DeploymentGroupSnapshot> groupSnapshots = new MyArrayList<>();
-    for (DeploymentGroup<? extends Imperial> group : imperialDeployments) {
-      MyArrayList<FigureSnapshot> members = new MyArrayList<>();
-      for (Imperial imperial : group.getMembers()) {
-        members.add(new FigureSnapshot(imperial.getId(), imperial.getName(), imperial.getPos().getX(),
-            imperial.getPos().getY(), imperial.getXSize(), imperial.getYSize(),
-            imperial.getHealth(), imperial.getStrain(), imperial.stunned(),
-            imperial.focused, imperial.isActive(), imperial.isPossibleTarget(), false,
-            imperial.getOwnerSeat(), new MyArrayList<>(), imperial.getConditionNames(), false, imperial.isDefeated()));
-      }
-      groupSnapshots.add(new DeploymentGroupSnapshot(group.getId(), group.toString(), group.getExhausted(),
-          group.getDeployed(), group.getDeploymentCost(), group.getReinforcementCost(), group.getMaxMemberCount(),
-          group.getOwnerSeat(), members));
-    }
-    MyArrayList<FigureSnapshot> terminalSnapshots = new MyArrayList<>();
-    for (MissionTerminal terminal : missionTerminals) {
-      terminalSnapshots.add(new FigureSnapshot(terminal.getId(), terminal.getName(), terminal.getPos().getX(),
-          terminal.getPos().getY(), terminal.getXSize(), terminal.getYSize(),
-          terminal.getHealth(), terminal.getStrain(), terminal.stunned(), false,
-          terminal.isActive(), terminal.isPossibleTarget(), false, terminal.getOwnerSeat(), new MyArrayList<>(),
-          terminal.getConditionNames(), false, terminal.isDefeated()));
-    }
-    MyArrayList<Boolean> interactableStates = new MyArrayList<>();
-    for (Interactable<? extends Personnel> interactable : interactables) {
-      interactableStates.add(interactable.snapshotState());
-    }
-    MyArrayList<String> offense = new MyArrayList<>();
-    for (GraphicOffenseDieResult die : offenseResults) {
-      offense.add(die.die().name() + ":" + die.face());
-    }
-    MyArrayList<String> defense = new MyArrayList<>();
-    for (GraphicDefenseDieResult die : defenseResults) {
-      defense.add(die.die().name() + ":" + die.face());
-    }
-    return new MatchSnapshot(missionDefinition.option(), sessionConfig, actingSeat, currentTurnSeat, threatDial,
-        threatLevel, roundDial, roundLimit,
-        bannerId, bannerText,
-        bannerExpiresAt,
-        heroSnapshots,
-        groupSnapshots, terminalSnapshots, interactableStates, nextSupplyEquipmentIndex, offense, defense, gameEnd,
-        rebelsWin);
+    return snapshots.createSnapshot();
   }
 
   public void loadSnapshot(MatchSnapshot snapshot) {
-    applySnapshotMission(snapshot);
-    heroes.clear();
-    imperialDeployments.clear();
-    missionTerminals.clear();
-    clearDiceInternal();
-    for (FigureSnapshot heroSnapshot : snapshot.heroes()) {
-      Hero hero = createHero(heroSnapshot);
-      applyFigureSnapshot(hero, heroSnapshot);
-      heroes.add(hero);
-    }
-    for (DeploymentGroupSnapshot groupSnapshot : snapshot.imperialGroups()) {
-      DeploymentGroup<? extends Imperial> group = createGroup(groupSnapshot);
-      group.setId(groupSnapshot.id());
-      group.setOwnerSeat(groupSnapshot.ownerSeat());
-      group.setExhausted(groupSnapshot.exhausted());
-      group.setDeployed(groupSnapshot.deployed());
-      group.setDeploymentCost(groupSnapshot.deploymentCost());
-      group.setReinforcementCost(groupSnapshot.reinforcementCost());
-      group.setMaxMemberCount(groupSnapshot.maxMemberCount());
-      for (int i = 0; i < group.getMembers().size() && i < groupSnapshot.members().size(); i++) {
-        applyFigureSnapshot(group.getMembers().get(i), groupSnapshot.members().get(i));
-      }
-      imperialDeployments.add(group);
-    }
-    if (snapshot.missionTerminals() != null) {
-      for (FigureSnapshot terminalSnapshot : snapshot.missionTerminals()) {
-        MissionTerminal terminal = new MissionTerminal(new Pos(terminalSnapshot.x(), terminalSnapshot.y()));
-        applyFigureSnapshot(terminal, terminalSnapshot);
-        missionTerminals.add(terminal);
-      }
-    }
-    for (int i = 0; i < interactables.length && i < snapshot.interactableStates().size(); i++) {
-      interactables[i].applySnapshotState(snapshot.interactableStates().get(i));
-    }
-    for (String die : snapshot.offenseResults()) {
-      String[] parts = die.split(":");
-      offenseResults.add(new GraphicOffenseDieResult(Integer.parseInt(parts[1]),
-          Die.OffenseDieType.valueOf(parts[0])));
-    }
-    for (String die : snapshot.defenseResults()) {
-      String[] parts = die.split(":");
-      defenseResults.add(new GraphicDefenseDieResult(Integer.parseInt(parts[1]),
-          Die.DefenseDieType.valueOf(parts[0])));
-    }
-    this.gameEnd = snapshot.gameEnd();
-    this.rebelsWin = snapshot.rebelsWin();
-    this.actingSeat = snapshot.actingSeat();
-    this.currentTurnSeat = snapshot.currentTurnSeat() == null ? snapshot.actingSeat() : snapshot.currentTurnSeat();
-    this.threatDial = snapshot.threatDial();
-    this.threatLevel = snapshot.threatLevel();
-    this.roundDial = snapshot.roundDial();
-    this.roundLimit = snapshot.roundLimit();
-    this.nextSupplyEquipmentIndex = snapshot.nextSupplyEquipmentIndex();
-    if (snapshot.bannerId() > lastAppliedBannerId && ui != null) {
-      lastAppliedBannerId = snapshot.bannerId();
-      long remaining = snapshot.bannerExpiresAt() - System.currentTimeMillis();
-      ui.showBannerFromSnapshot(snapshot.bannerText(), remaining);
-    }
-    if (ui != null) {
-      ui.setTurnStatus(actingSeat);
-      if (gameEnd) {
-        ui.endGame(rebelsWin);
-      }
-    }
-    bindGameReferences();
-    repaint();
-  }
-
-  private void applySnapshotMission(MatchSnapshot snapshot) {
-    net.structs.MissionOption snapshotMission = snapshot.mission() == null
-        ? net.structs.MissionOption.MISSION_ONE
-        : snapshot.mission();
-    if (missionDefinition.option() == snapshotMission) {
-      Constants.useMissionDefinition(missionDefinition);
-      return;
-    }
-    missionDefinition = MissionDefinition.forOption(snapshotMission);
-    Constants.useMissionDefinition(missionDefinition);
-    interactables = createInteractables(missionDefinition);
-    mapTile = new MapTile(LoaderUtils.getImage(missionDefinition.mapImageName()), missionDefinition.tileMatrix());
+    snapshots.loadSnapshot(snapshot);
   }
 
   private void updateTurnStatus() {
@@ -1903,12 +1099,12 @@ public class Game {
     return seat == PlayerSeat.IMPERIAL ? firstTurnSeat() : PlayerSeat.IMPERIAL;
   }
 
-  private PlayerSeat firstTurnSeat() {
+  PlayerSeat firstTurnSeat() {
     MyArrayList<PlayerSeat> rebelTurnOrder = sessionConfig.rebelTurnOrder();
     return rebelTurnOrder.isEmpty() ? PlayerSeat.IMPERIAL : rebelTurnOrder.get(0);
   }
 
-  private void triggerBanner(String text) {
+  void triggerBanner(String text) {
     bannerId++;
     bannerText = text;
     bannerExpiresAt = System.currentTimeMillis() + 1400L;
@@ -1926,68 +1122,6 @@ public class Game {
       case REBEL_3 -> "Rebel 3";
       case REBEL_4 -> "Rebel 4";
     };
-  }
-
-  private Hero createHero(FigureSnapshot heroSnapshot) {
-    return switch (heroSnapshot.name()) {
-      case "DialaPassil" -> new DialaPassil(new Pos(heroSnapshot.x(), heroSnapshot.y()));
-      case "Gaarkhan" -> new Gaarkhan(new Pos(heroSnapshot.x(), heroSnapshot.y()));
-      case "FennSignis" -> new FennSignis(new Pos(heroSnapshot.x(), heroSnapshot.y()));
-      case "MakEshray" -> new MakEshray(new Pos(heroSnapshot.x(), heroSnapshot.y()));
-      default -> throw new IllegalArgumentException("Unknown hero " + heroSnapshot.name());
-    };
-  }
-
-  private DeploymentGroup<? extends Imperial> createGroup(DeploymentGroupSnapshot groupSnapshot) {
-    Pos[] poses = new Pos[groupSnapshot.members().size()];
-    for (int i = 0; i < poses.length; i++) {
-      FigureSnapshot member = groupSnapshot.members().get(i);
-      poses[i] = new Pos(member.x(), member.y());
-    }
-    return switch (groupSnapshot.name()) {
-      case "StormTrooper" -> new DeploymentGroup<StormTrooper>(poses, StormTrooper::new, "StormTrooper");
-      case "ImperialOfficer" -> new DeploymentGroup<Officer>(poses, Officer::new, "ImperialOfficer");
-      case "ProbeDroid" -> new DeploymentGroup<ProbeDroid>(poses, ProbeDroid::new, "ProbeDroid");
-      case "EWebEngineer" -> new DeploymentGroup<EWebEngineer>(poses, EWebEngineer::new, "EWebEngineer");
-      default -> throw new IllegalArgumentException("Unknown group " + groupSnapshot.name());
-    };
-  }
-
-  private void drawThreatHud(Graphics g) {
-    Graphics2D g2 = (Graphics2D) g.create();
-    g2.setColor(new Color(0, 0, 0, 180));
-    g2.fillRoundRect(20, 82, 300, 102, 18, 18);
-    g2.setColor(Color.WHITE);
-    g2.drawRoundRect(20, 82, 300, 102, 18, 18);
-    g2.setFont(g2.getFont().deriveFont(java.awt.Font.BOLD, 20f));
-    g2.drawString("Threat Dial: " + threatDial, 38, 113);
-    g2.setFont(g2.getFont().deriveFont(java.awt.Font.PLAIN, 14f));
-    g2.drawString("Threat Level: " + threatLevel, 38, 139);
-    String roundText = roundLimit > 0 ? ("Round: " + roundDial + "/" + roundLimit) : ("Round: " + roundDial);
-    g2.drawString(roundText, 38, 164);
-    g2.dispose();
-  }
-
-  private void applyFigureSnapshot(Personnel personnel, FigureSnapshot snapshot) {
-    personnel.setId(snapshot.id());
-    personnel.setOwnerSeat(snapshot.ownerSeat());
-    personnel.setPos(new Pos(snapshot.x(), snapshot.y()));
-    if (snapshot.xSize() > 0 && snapshot.ySize() > 0 && personnel.isNonSquareLargeFigure()) {
-      personnel.setHorizontalOrientation(snapshot.xSize() > snapshot.ySize());
-    }
-    personnel.setHealth(snapshot.health());
-    personnel.setStrain(snapshot.strain());
-    personnel.setStunned(snapshot.stunned());
-    personnel.setFocused(snapshot.focused());
-    personnel.applyConditionNames(snapshot.conditions());
-    personnel.setActive(snapshot.active());
-    personnel.setPossibleTarget(snapshot.possibleTarget());
-    personnel.setDefeated(snapshot.defeated());
-    if (personnel instanceof Hero hero) {
-      hero.setExhausted(snapshot.exhausted());
-      hero.setWounded(snapshot.wounded());
-      hero.applyEquipmentIds(snapshot.equipmentIds());
-    }
   }
 
   public boolean isGameEnd() {

@@ -11,13 +11,9 @@ public class SupplyBox extends Interactable<Hero> {
 
     @Override
     public void safeInteract(Hero interactor) {
-        if (game != null) {
-            game.awardSupplyEquipment(interactor);
-        }
+        game.awardSupplyEquipment(interactor);
         active = false;
-        if (game != null) {
-            game.repaint();
-        }
+        game.repaint();
     }
 
     @Override

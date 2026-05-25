@@ -2,6 +2,7 @@ package game;
 
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
+import java.util.Objects;
 
 import game.Constants;
 import game.Constants.WallLine;
@@ -74,7 +75,7 @@ public abstract class Interactable<ValidInteractors extends Personnel> {
     }
 
     public void setGame(Game game) {
-        this.game = game;
+        this.game = Objects.requireNonNull(game, "game");
     }
 
     // Return whether it interferes with movement/line of sight

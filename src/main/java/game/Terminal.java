@@ -12,12 +12,10 @@ public class Terminal<ValidInteractors extends Personnel> extends Interactable<V
     @Override
     public void safeInteract(ValidInteractors interactor) {
         active = false;
-        if (game != null) {
-            if (interactor instanceof Imperial) {
-                game.endGame(false);
-            } else {
-                game.repaintScreen();
-            }
+        if (interactor instanceof Imperial) {
+            game.endGame(false);
+        } else {
+            game.repaintScreen();
         }
     }
 

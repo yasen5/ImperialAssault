@@ -8,8 +8,6 @@ public class MissionDoor extends Door<Hero> {
     @Override
     public void safeInteract(Hero interactor) {
         super.safeInteract(interactor);
-        if (game != null) {
-            game.onMissionDoorOpened(this);
-        }
+        game.onMissionDoorOpened(this);
     }
 }

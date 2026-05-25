@@ -34,9 +34,7 @@ public class Door<ValidInteractors extends Personnel> extends Interactable<Valid
     @Override
     public void safeInteract(ValidInteractors interactor) {
         active = false;
-        if (game != null) {
-            game.repaint();
-        }
+        game.repaint();
     }
 
     @Override
@@ -58,8 +56,6 @@ public class Door<ValidInteractors extends Personnel> extends Interactable<Valid
 
     public void close() {
         active = true;
-        if (game != null) {
-            game.repaint();
-        }
+        game.repaint();
     }
 }
