@@ -3,6 +3,7 @@ package game;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Field;
@@ -543,6 +544,25 @@ class RulesTest {
         assertFalse(hasGroup(twoHeroGame, "EWebEngineer"));
         assertTrue(hasGroup(threeHeroGame, "ProbeDroid"));
         assertFalse(hasGroup(threeHeroGame, "EWebEngineer"));
+    }
+
+    @Test
+    void missionDefinitionsKeepTutorialAndRealMissionConfigSeparate() {
+        MissionDefinition tutorial = MissionDefinition.forOption(MissionOption.MISSION_ONE);
+        MissionDefinition real = MissionDefinition.forOption(MissionOption.MISSION_TWO);
+
+        assertEquals(MissionOption.MISSION_ONE, tutorial.option());
+        assertEquals(MissionOption.MISSION_TWO, real.option());
+        assertEquals("Tutorial Mission", tutorial.displayName());
+        assertEquals("Real Mission", real.displayName());
+        assertEquals("TutorialTile", tutorial.mapImageName());
+        assertEquals("Mission2Map", real.mapImageName());
+        assertNotEquals(tutorial.tileMatrix(), real.tileMatrix());
+        assertNotEquals(tutorial.wallLines(), real.wallLines());
+        assertFalse(tutorial.usesThreat());
+        assertTrue(real.usesThreat());
+        assertFalse(tutorial.attackableTerminals());
+        assertTrue(real.attackableTerminals());
     }
 
     @Test

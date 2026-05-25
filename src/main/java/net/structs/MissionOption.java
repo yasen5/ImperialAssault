@@ -3,8 +3,8 @@ package net.structs;
 import java.io.Serializable;
 
 public enum MissionOption implements Serializable {
-    MISSION_ONE("Tutorial"),
-    MISSION_TWO("A New Threat");
+    MISSION_ONE("Tutorial Mission"),
+    MISSION_TWO("Real Mission");
 
     private final String displayName;
 

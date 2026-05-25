@@ -43,7 +43,7 @@ public record MissionDefinition(
 
   public static MissionDefinition forOption(MissionOption option) {
     return switch (option) {
-      case MISSION_ONE -> new MissionDefinition(option, "Tutorial", "TutorialTile",
+      case MISSION_ONE -> new MissionDefinition(option, option.displayName(), "TutorialTile",
           Constants.TUTORIAL_TILE_MATRIX, Constants.TUTORIAL_WALL_LINES,
           0, 0, false, false,
           new HeroPlacement(new Pos[] { new Pos(0, 4), new Pos(0, 5), new Pos(7, 4), new Pos(7, 5) }),
@@ -60,7 +60,7 @@ public record MissionDefinition(
               new DeploymentSpec("imperial-e-web-engineer", "EWebEngineer",
                   new Pos[] { new Pos(6, 10) }, 6, true, 4)
           });
-      case MISSION_TWO -> new MissionDefinition(option, "Aftermath", "Mission2Map",
+      case MISSION_TWO -> new MissionDefinition(option, option.displayName(), "Mission2Map",
           Constants.MISSION_TWO_TILE_MATRIX, Constants.MISSION_TWO_WALL_LINES,
           3, 6, true, true,
           new HeroPlacement(new Pos[] { new Pos(2, 0), new Pos(1, 0), new Pos(2, 1), new Pos(3, 0) }),

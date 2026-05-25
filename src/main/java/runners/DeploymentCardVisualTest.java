@@ -64,7 +64,7 @@ public class DeploymentCardVisualTest {
       screen.markGameStarted();
       screen.setPreferredSize(new Dimension(WIDTH, HEIGHT));
 
-      JFrame frame = new JFrame("Deployment Card Visual Test - Mission 2");
+      JFrame frame = new JFrame("Deployment Card Visual Test - Real Mission");
       frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
       frame.setContentPane(screen);
       frame.pack();

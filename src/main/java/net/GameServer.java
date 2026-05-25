@@ -54,7 +54,7 @@ public class GameServer {
   private final int port;
   private final GameSessionConfig config;
   private final boolean loadPreviousGame;
-  private final Path savePath;
+  private Path savePath;
   private final Object saveLock = new Object();
   private final MyHashMap<PlayerSeat, ClientConnection> clients = new MyHashMap<>(PlayerSeat.class);
   private final MyArrayList<PlayerSeat> rebelJoinOrder = new MyArrayList<>();
@@ -136,9 +136,10 @@ public class GameServer {
       }
       MissionOption mission = config.rebelPlayerCount() == 0 ? MissionOption.MISSION_ONE
           : getSelectedMission();
+      savePath = savePathForMission(mission);
       Game game = createGameForMission(mission);
       activeGame = game;
-      MatchSnapshot loadedSnapshot = loadPreviousGame ? tryLoadSavedSnapshot() : null;
+      MatchSnapshot loadedSnapshot = loadPreviousGame ? tryLoadSavedSnapshot(mission) : null;
       game.setSnapshotListener(this::broadcastSnapshot);
       if (loadedSnapshot != null) {
         game.loadSnapshot(loadedSnapshot);
@@ -354,7 +355,7 @@ public class GameServer {
     });
   }
 
-  private MatchSnapshot tryLoadSavedSnapshot() {
+  private MatchSnapshot tryLoadSavedSnapshot(MissionOption mission) {
     if (!Files.exists(savePath)) {
       return null;
     }
@@ -369,11 +370,22 @@ public class GameServer {
             snapshot.config().rebelPlayerCount() + " rebel player(s), not " + config.rebelPlayerCount() + ".");
         return null;
       }
+      MissionOption snapshotMission = snapshot.mission() == null ? MissionOption.MISSION_ONE : snapshot.mission();
+      if (snapshotMission != mission) {
+        System.err.println("Ignoring saved game state because it was created for " +
+            snapshotMission.displayName() + ", not " + mission.displayName() + ".");
+        return null;
+      }
       return snapshot;
     } catch (Exception ex) {
       System.err.println("Unable to load saved game state from " + savePath + ": " + ex.getMessage());
       return null;
     }
+  }
+
+  private Path savePathForMission(MissionOption mission) {
+    String missionKey = mission.displayName().toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
+    return Path.of("server-game-state-" + missionKey + ".ser");
   }
 
   private void saveSnapshot(MatchSnapshot snapshot) {

@@ -35,6 +35,7 @@ public class GameClient {
   private ObjectOutputStream out;
   private Screen screen;
   private Game game;
+  private boolean tutorialInstructionsShown;
 
   public GameClient(String host, int port, PlayerSeat requestedSeat) {
     this(host, port, requestedSeat, false);
@@ -101,6 +102,10 @@ public class GameClient {
           screen.markGameStarted();
           game.loadSnapshot(snapshot);
           screen.repaint();
+          if (!tutorialInstructionsShown && snapshot.mission() == MissionOption.MISSION_ONE) {
+            tutorialInstructionsShown = true;
+            screen.showInstructionsChain();
+          }
         });
       } else if (message instanceof RemotePrompt prompt) {
         new Thread(() -> handlePrompt(prompt), "Remote Prompt").start();

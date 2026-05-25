@@ -99,8 +99,8 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   private final JButton increaseThreatButton = new JButton("+ Threat");
   private final JButton nextRoundButton = new JButton("Next Round");
   private final JButton restartGameButton = new JButton("Restart");
-  private final JButton missionOneButton = new JButton("Mission 1");
-  private final JButton missionTwoButton = new JButton("Mission 2");
+  private final JButton missionOneButton = new JButton(MissionOption.MISSION_ONE.displayName());
+  private final JButton missionTwoButton = new JButton(MissionOption.MISSION_TWO.displayName());
   private final LayoutHandler layoutHandler = new LayoutHandler();
   private final Object deploymentInfoArea = new Object();
   private int numericPromptMinValue;
@@ -128,26 +128,26 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 
   private static String[] dialogChain = new String[] {
       "<html><body style='width: 300px; padding: 10px;'>" +
-          "<h3>Welcome to Imperial Assault!</h3>" +
-          "<p>To get started, read through pages 4-8 of this guide (NOTE: Some aspects of the game have been changed):</p>"
+          "<h3>Welcome to the Tutorial Mission</h3>" +
+          "<p>This mission introduces the main controls and campaign rules. If you are new to Imperial Assault, read pages 4-8 of this guide for the tabletop basics:</p>"
           +
           "<p><a href='https://images-cdn.fantasyflightgames.com/filer_public/89/06/8906c720-5ed5-4b22-aa1b-b58b4528956c/swi01_learn_to_play_v17.pdf'>Complete Game Guide</a></p>"
           +
           "<p>Select any text above to copy it, or click the links to open them in your browser.</p>" +
           "</body></html>",
       "<html><body style='width: 300px; padding: 10px;'>" +
-          "<h3>Mission Rules:</h3>" +
-          "<p>This implementation uses campaign mission rules for activations, threat, status phase, wounded heroes, figure blocking, crates, and common conditions. Some campaign progression features are still outside the mission board.</p>"
+          "<h3>What You Can Do</h3>" +
+          "<p>On your turn, follow the prompts to activate a figure or group. The active figure is highlighted in green. Prompts will ask you to move, attack, interact, rest, or choose another available action.</p>"
           +
           "</body></html>",
       "<html><body style='width: 300px; padding: 10px;'>" +
-          "<h3>Instructions!</h3>" +
-          "<p>You will first choose the figure(s) to move. Once you do, the current figure will be lit in green. To move, you will use the arrow buttons after you specify the number of moves you want to make.\nActions will be represented by dialogues, which you can respond to. When you attack, valid targets will be lit up and others will be grayed out.</p>"
+          "<h3>Movement and Attacks</h3>" +
+          "<p>When you move, choose how many movement points to spend, then use the arrow buttons to step around the map. When you attack, valid targets are highlighted and unavailable targets are grayed out.</p>"
           +
           "</body></html>",
       "<html><body style='width: 300px; padding: 10px;'>" +
-          "<h3>Instructions!</h3>" +
-          "<p>To view the abilities of an individual character, click on them while there isn't an option pane or you are selecting a target for combat (sorry it doesn't work otherwise). You will see their health, strain, and some conditions (although these unfortunately get covered up by option panes periodically)</p>"
+          "<h3>Inspecting and Interacting</h3>" +
+          "<p>Click a figure when no prompt is blocking the board, or while selecting a combat target, to inspect health, strain, conditions, and abilities. Crates, doors, terminals, wounded heroes, threat, and the status phase use campaign mission rules.</p>"
           +
           "</body></html>"
   };
@@ -490,15 +490,19 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     missionOneButton.setEnabled(showControls);
     missionTwoButton.setEnabled(showControls);
     if (localMissionSelection == MissionOption.MISSION_ONE) {
-      missionOneButton.setText("Mission 1 selected");
-      missionTwoButton.setText("Mission 2");
+      missionOneButton.setText(selectedMissionLabel(MissionOption.MISSION_ONE));
+      missionTwoButton.setText(MissionOption.MISSION_TWO.displayName());
     } else if (localMissionSelection == MissionOption.MISSION_TWO) {
-      missionOneButton.setText("Mission 1");
-      missionTwoButton.setText("Mission 2 selected");
+      missionOneButton.setText(MissionOption.MISSION_ONE.displayName());
+      missionTwoButton.setText(selectedMissionLabel(MissionOption.MISSION_TWO));
     } else {
-      missionOneButton.setText("Mission 1");
-      missionTwoButton.setText("Mission 2");
+      missionOneButton.setText(MissionOption.MISSION_ONE.displayName());
+      missionTwoButton.setText(MissionOption.MISSION_TWO.displayName());
     }
+  }
+
+  private String selectedMissionLabel(MissionOption mission) {
+    return mission.displayName() + " selected";
   }
 
   @Override
