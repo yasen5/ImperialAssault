@@ -32,7 +32,7 @@ public class DeploymentCard {
     this.parent = parent;
   }
 
-  // Draw if currently visible, grey out if exhausted
+  // Draw if currently visible, gray out if exhausted
   public void draw(Graphics g) {
     if (!visible || imageBounds.width <= 0 || imageBounds.height <= 0) {
       return;

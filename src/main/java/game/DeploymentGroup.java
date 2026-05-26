@@ -196,6 +196,15 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
         return members.isEmpty();
     }
 
+    public boolean hasReadyMembers() {
+        for (T member : members) {
+            if (!member.isDefeated()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     public String toString() {
         return name;

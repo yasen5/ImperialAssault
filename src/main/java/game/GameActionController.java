@@ -208,7 +208,7 @@ final class GameActionController {
   MyArrayList<DeploymentGroup<? extends Imperial>> getImperialExhaustOptions() {
     MyArrayList<DeploymentGroup<? extends Imperial>> readyDeployments = new MyArrayList<>();
     for (DeploymentGroup<? extends Imperial> deploymentGroup : game.imperialDeployments) {
-      if (deploymentGroup.getDeployed() && !deploymentGroup.getExhausted()) {
+      if (deploymentGroup.getDeployed() && !deploymentGroup.getExhausted() && deploymentGroup.hasReadyMembers()) {
         readyDeployments.add(deploymentGroup);
       }
     }
