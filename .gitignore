@@ -58,6 +58,6 @@ tmp/
 !gradle/wrapper/gradle-wrapper.jar
 !gradlew
 !gradlew.bat
-server-game-state.ser
+*.ser
 .gradle*
 **/*.m4a
