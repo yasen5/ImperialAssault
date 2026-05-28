@@ -22,10 +22,8 @@ public class DeploymentCard {
 
   // Constructor
   public DeploymentCard(String name, boolean rebel, FullDeployment parent) {
-    // Try both .jpg and .png
-    try {
-      image = LoaderUtils.getImage(name + "Deployment");
-    } catch (RuntimeException ex) {
+    image = LoaderUtils.getImageIfPresent(name + "Deployment");
+    if (image == null) {
       image = LoaderUtils.getImage(name);
     }
     exhausted = false;
@@ -34,7 +32,7 @@ public class DeploymentCard {
 
   // Draw if currently visible, gray out if exhausted
   public void draw(Graphics g) {
-    if (!visible || imageBounds.width <= 0 || imageBounds.height <= 0) {
+    if (!visible || image == null || imageBounds.width <= 0 || imageBounds.height <= 0) {
       return;
     }
     Graphics2D g2 = (Graphics2D) g.create();
@@ -72,10 +70,16 @@ public class DeploymentCard {
   }
 
   public int getBaseImageWidth() {
+    if (image == null) {
+      return 0;
+    }
     return image.getWidth(null);
   }
 
   public int getBaseImageHeight() {
+    if (image == null) {
+      return 0;
+    }
     return image.getHeight(null);
   }
 

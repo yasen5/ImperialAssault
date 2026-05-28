@@ -1,30 +1,43 @@
 package game;
 
+import java.awt.Color;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.net.URL;
 
 import javax.imageio.ImageIO;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.UnsupportedAudioFileException;
 import javax.swing.ImageIcon;
 
 public class LoaderUtils {
+    private static final int PLACEHOLDER_SIZE = 96;
+
     public static BufferedImage getImage(String name) {
+        BufferedImage image = getImageIfPresent(name);
+        return image == null ? createPlaceholderImage(name) : image;
+    }
+
+    public static BufferedImage getImageIfPresent(String name) {
         URL resource = findImageResource(name);
         if (resource == null) {
-            throw new RuntimeException("Couldn't find image resource for " + name);
+            return null;
         }
         try {
             return ImageIO.read(resource);
-        } catch (Exception ex) {
-            throw new RuntimeException("Couldn't read image resource for " + name, ex);
+        } catch (IOException ex) {
+            ex.printStackTrace(System.err);
+            return null;
         }
     }
 
     public static ImageIcon getImageIcon(String name) {
         URL resource = findImageResource(name);
         if (resource == null) {
-            throw new RuntimeException("Couldn't find image icon resource for " + name);
+            return new ImageIcon();
         }
         return new ImageIcon(resource);
     }
@@ -37,12 +50,26 @@ public class LoaderUtils {
         return LoaderUtils.class.getResource("/images/" + name + ".png");
     }
 
+    private static BufferedImage createPlaceholderImage(String name) {
+        BufferedImage image = new BufferedImage(PLACEHOLDER_SIZE, PLACEHOLDER_SIZE, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = image.createGraphics();
+        g.setColor(new Color(40, 40, 40));
+        g.fillRect(0, 0, PLACEHOLDER_SIZE, PLACEHOLDER_SIZE);
+        g.setColor(new Color(180, 40, 40));
+        g.drawLine(0, 0, PLACEHOLDER_SIZE, PLACEHOLDER_SIZE);
+        g.drawLine(PLACEHOLDER_SIZE, 0, 0, PLACEHOLDER_SIZE);
+        g.setColor(Color.WHITE);
+        g.drawString(name == null ? "missing" : name, 8, PLACEHOLDER_SIZE / 2);
+        g.dispose();
+        return image;
+    }
+
     public static void playSound(String name) {
         try {
             Clip clip = AudioSystem.getClip();
             clip.open(AudioSystem.getAudioInputStream(LoaderUtils.class.getResource("/sounds/" + name + ".wav")));
             clip.start();
-        } catch (Exception exc) {
+        } catch (IOException | LineUnavailableException | UnsupportedAudioFileException exc) {
             exc.printStackTrace(System.out);
         }
     }

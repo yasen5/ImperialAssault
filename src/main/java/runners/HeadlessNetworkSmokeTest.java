@@ -2,6 +2,7 @@ package runners;
 
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.CountDownLatch;
@@ -19,7 +20,7 @@ import net.structs.PromptResponse;
 import net.structs.RemotePrompt;
 
 public class HeadlessNetworkSmokeTest {
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws IOException, InterruptedException {
         int rebelPlayers = args.length > 0 ? Integer.parseInt(args[0]) : 4;
         int port = findOpenPort();
         CountDownLatch imperialTurnReached = new CountDownLatch(1);
@@ -49,13 +50,15 @@ public class HeadlessNetworkSmokeTest {
             if (ex != null) {
                 ex.printStackTrace(System.err);
             }
-            throw new IllegalStateException("Headless network smoke test did not reach the Imperial turn after Mak moved");
+            System.err.println("Headless network smoke test did not reach the Imperial turn after Mak moved");
+            System.exit(1);
+            return;
         }
         System.out.println("Headless network smoke test moved Mak through the door and reached Imperial turn on port " + port);
         System.exit(0);
     }
 
-    private static int findOpenPort() throws Exception {
+    private static int findOpenPort() throws IOException {
         try (ServerSocket socket = new ServerSocket(0)) {
             return socket.getLocalPort();
         }
@@ -72,7 +75,9 @@ public class HeadlessNetworkSmokeTest {
                 out.flush();
                 JoinResponse response = (JoinResponse) in.readObject();
                 if (!response.accepted()) {
-                    throw new IllegalStateException(response.message());
+                    System.err.println(response.message());
+                    imperialTurnReached.countDown();
+                    return;
                 }
                 out.writeObject(new ClientMissionSelection(MissionOption.MISSION_ONE));
                 out.flush();

@@ -19,6 +19,8 @@ import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.net.URISyntaxException;
 import util.MyArrayList;
 
 import java.util.concurrent.CompletableFuture;
@@ -383,7 +385,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
           if (e.getEventType() == javax.swing.event.HyperlinkEvent.EventType.ACTIVATED) {
             try {
               Desktop.getDesktop().browse(e.getURL().toURI());
-            } catch (Exception ex) {
+            } catch (IOException | URISyntaxException ex) {
               JOptionPane.showMessageDialog(null, "Could not open link: " + e.getURL(), "Error",
                   JOptionPane.ERROR_MESSAGE);
             }

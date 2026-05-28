@@ -1,5 +1,7 @@
 package net;
 
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -32,7 +34,7 @@ public final class NetworkConfig {
             if (localHost != null) {
                 return localHost.getHostAddress();
             }
-        } catch (Exception ex) {
+        } catch (SocketException | UnknownHostException ex) {
             // Fall back to localhost below.
         }
         return "127.0.0.1";

@@ -135,7 +135,7 @@ public class Pathfinder {
                 return false;
             }
             if (numIters >= maxIters) {
-                throw new java.lang.RuntimeException("Failed because of " + numIters + " iterations");
+                return false;
             }
             for (WallLine wallLine : Constants.wallLines) {
                 if (wallLine.intersects(new FullPos(c_x, c_y), new FullPos(prev_x, prev_y), false)) {

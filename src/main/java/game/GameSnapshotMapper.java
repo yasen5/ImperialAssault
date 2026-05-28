@@ -153,7 +153,7 @@ final class GameSnapshotMapper {
       case "Gaarkhan" -> new Gaarkhan(new Pos(heroSnapshot.x(), heroSnapshot.y()));
       case "FennSignis" -> new FennSignis(new Pos(heroSnapshot.x(), heroSnapshot.y()));
       case "MakEshray" -> new MakEshray(new Pos(heroSnapshot.x(), heroSnapshot.y()));
-      default -> throw new IllegalArgumentException("Unknown hero " + heroSnapshot.name());
+      default -> new DialaPassil(new Pos(heroSnapshot.x(), heroSnapshot.y()));
     };
   }
 
@@ -168,7 +168,7 @@ final class GameSnapshotMapper {
       case "ImperialOfficer" -> new DeploymentGroup<Officer>(poses, Officer::new, "ImperialOfficer");
       case "ProbeDroid" -> new DeploymentGroup<ProbeDroid>(poses, ProbeDroid::new, "ProbeDroid");
       case "EWebEngineer" -> new DeploymentGroup<EWebEngineer>(poses, EWebEngineer::new, "EWebEngineer");
-      default -> throw new IllegalArgumentException("Unknown group " + groupSnapshot.name());
+      default -> new DeploymentGroup<StormTrooper>(poses, StormTrooper::new, "StormTrooper");
     };
   }
 

@@ -1,10 +1,14 @@
 package runners;
 
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+
 import net.GameServer;
 import net.NetworkConfig;
 
 public class ServerRunner {
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args)
+            throws IOException, ClassNotFoundException, InterruptedException, InvocationTargetException {
         int port = NetworkConfig.PORT;
         int rebelPlayers = 1;
         boolean loadPreviousGame = true;
@@ -23,8 +27,9 @@ public class ServerRunner {
             } else if ("--debug".equals(mode)) {
                 debugWallLines = true;
             } else {
-                throw new IllegalArgumentException(
+                System.err.println(
                         "Usage: ServerRunner [--single-client|1|2|3|4] [--fresh|--no-load] [--no-ui] [--debug]");
+                return;
             }
         }
         new GameServer(port, rebelPlayers, loadPreviousGame, showSpectator, debugWallLines).run();

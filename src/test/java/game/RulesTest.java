@@ -735,6 +735,32 @@ class RulesTest {
     }
 
     @Test
+    void restartResetsStateAndCanRenderWithMissingImageFallback() throws Exception {
+        MissionDefinition mission = new MissionDefinition(MissionOption.MISSION_ONE, "Restart Test",
+                "MissingRestartMap", new int[][] { new int[] { 1, 1 }, new int[] { 1, 1 } },
+                new Constants.WallLine[0], 2, 6, true, false,
+                new MissionDefinition.HeroPlacement(new Pos[] { new Pos(0, 0) }),
+                new Pos[0], new MissionDefinition.DoorSpec[0], new Pos[0],
+                new MissionDefinition.DeploymentSpec[0]);
+        Game game = new Game(null, new GameSessionConfig(1), mission, null, true);
+        Hero hero = game.getHeroes().get(0);
+        hero.dealDamage(3);
+        game.increaseThreat();
+
+        invokeRestartFromBeginning(game);
+
+        assertEquals(0, game.getThreatDial());
+        assertEquals(1, game.getRoundDial());
+        assertEquals(hero.getStartingHealth(), game.getHeroes().get(0).getHealth());
+
+        java.awt.image.BufferedImage frame = new java.awt.image.BufferedImage(240, 240,
+                java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D graphics = frame.createGraphics();
+        game.drawGame(graphics);
+        graphics.dispose();
+    }
+
+    @Test
     void deploymentGroupTracksReinforcementCapacityAndCost() {
         DeploymentGroup<StormTrooper> group = new DeploymentGroup<>(
                 new Pos[] { new Pos(4, 11), new Pos(4, 12), new Pos(5, 11) },
@@ -833,6 +859,12 @@ class RulesTest {
         Field field = Game.class.getDeclaredField("currentTurnSeat");
         field.setAccessible(true);
         field.set(game, seat);
+    }
+
+    private void invokeRestartFromBeginning(Game game) throws Exception {
+        Method method = Game.class.getDeclaredMethod("restartFromBeginningInternal");
+        method.setAccessible(true);
+        method.invoke(game);
     }
 
     private static final class VotingDecisionProvider implements GameDecisionProvider {

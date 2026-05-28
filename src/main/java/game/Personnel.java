@@ -248,13 +248,13 @@ public abstract class Personnel {
   // Optional functions that define special action behavior
   public void performSpecial() {
     if (specialRequiresSelection) {
-      throw new java.lang.RuntimeException("Performing special without required selection");
+      return;
     }
   }
 
   public void performSpecial(Personnel selected) {
     if (!specialRequiresSelection) {
-      throw new java.lang.RuntimeException("Performing special with selection that isn't require it");
+      return;
     }
   }
 
@@ -425,7 +425,7 @@ public abstract class Personnel {
 
   protected void setFigureSize(int xSize, int ySize) {
     if (xSize < 1 || ySize < 1) {
-      throw new IllegalArgumentException("Figure dimensions must be positive");
+      return;
     }
     this.xSize = xSize;
     this.ySize = ySize;

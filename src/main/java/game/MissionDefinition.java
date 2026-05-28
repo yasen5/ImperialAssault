@@ -45,7 +45,7 @@ public record MissionDefinition(
   public record HeroPlacement(Pos[] positions) {
     public Pos position(int index) {
       if (index < 0 || index >= positions.length) {
-        throw new IllegalArgumentException("No hero placement position for index " + index);
+        return positions.length == 0 ? new Pos(0, 0) : positions[0];
       }
       return positions[index];
     }

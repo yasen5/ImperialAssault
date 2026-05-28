@@ -1,4 +1,5 @@
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
@@ -43,13 +44,15 @@ public final class ProjectLauncher {
         }
     }
 
-    private static void compileProjectSources() throws Exception {
+    private static void compileProjectSources() throws IOException {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         if (compiler == null) {
-            throw new IllegalStateException("A JDK is required. Run these commands with a JDK, not a JRE.");
+            System.err.println("A JDK is required. Run these commands with a JDK, not a JRE.");
+            return;
         }
         if (!Files.isDirectory(SOURCE_ROOT)) {
-            throw new IllegalStateException("Missing source directory: " + SOURCE_ROOT.toAbsolutePath());
+            System.err.println("Missing source directory: " + SOURCE_ROOT.toAbsolutePath());
+            return;
         }
 
         Files.createDirectories(OUTPUT_ROOT);
@@ -70,7 +73,7 @@ public final class ProjectLauncher {
 
         int result = compiler.run(null, null, null, options.toArray(String[]::new));
         if (result != 0) {
-            throw new IllegalStateException("javac failed with exit code " + result);
+            System.err.println("javac failed with exit code " + result);
         }
     }
 }

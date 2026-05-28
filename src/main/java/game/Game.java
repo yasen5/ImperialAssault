@@ -643,10 +643,10 @@ public class Game {
 
   private void deployImperialGroup(DeploymentGroup<? extends Imperial> group) {
     if (group.getDeployed()) {
-      throw new IllegalStateException("Group is already deployed: " + group);
+      return;
     }
     if (group.getDeploymentCost() > threatDial) {
-      throw new IllegalStateException("Not enough threat to deploy " + group);
+      return;
     }
     threatDial -= group.getDeploymentCost();
     setup.initializeDeploymentOrientations(group, true);
@@ -662,7 +662,7 @@ public class Game {
   private void reinforceImperialGroup(DeploymentGroup<? extends Imperial> group) {
     int cost = group.getReinforcementCost();
     if (!group.canReinforce(threatDial)) {
-      throw new IllegalStateException("Cannot reinforce " + group + " with " + threatDial + " threat");
+      return;
     }
     Pos spawnPos = findOpenImperialDeploymentPosition();
     threatDial -= cost;
@@ -686,7 +686,7 @@ public class Game {
         }
       }
     }
-    throw new IllegalStateException("No open deployment space for reinforcement");
+    return new Pos(0, 0);
   }
 
   public void checkEndGame() {

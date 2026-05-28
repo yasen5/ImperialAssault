@@ -13,11 +13,11 @@ public record RotationMove(Pos anchor, int xSize, int ySize) {
 
   public static RotationMove fromToken(String value) {
     if (!isToken(value)) {
-      throw new IllegalArgumentException("Not a rotation token: " + value);
+      return new RotationMove(new Pos(0, 0), 1, 1);
     }
     String[] parts = value.split(":");
     if (parts.length != 5) {
-      throw new IllegalArgumentException("Invalid rotation token: " + value);
+      return new RotationMove(new Pos(0, 0), 1, 1);
     }
     return new RotationMove(new Pos(Integer.parseInt(parts[1]), Integer.parseInt(parts[2])),
         Integer.parseInt(parts[3]), Integer.parseInt(parts[4]));

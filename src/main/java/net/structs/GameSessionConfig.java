@@ -10,7 +10,7 @@ import game.PlayerSeat;
 public record GameSessionConfig(int rebelPlayerCount) implements Serializable {
     public GameSessionConfig {
         if (rebelPlayerCount < 0 || rebelPlayerCount > 4) {
-            throw new IllegalArgumentException("Rebel player count must be between 0 and 4");
+            rebelPlayerCount = Math.max(0, Math.min(4, rebelPlayerCount));
         }
     }
 

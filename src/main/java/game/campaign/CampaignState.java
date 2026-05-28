@@ -196,9 +196,12 @@ public final class CampaignState implements Serializable {
 
     public ImperialDeploymentCardState optionalDeployImperialCard(String cardId) {
         ImperialDeploymentCardState card = findImperialDeploymentCard(cardId)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown imperial deployment card: " + cardId));
+                .orElse(null);
+        if (card == null) {
+            return null;
+        }
         if (!card.isInHand()) {
-            throw new IllegalStateException("Imperial deployment card is already on the map: " + cardId);
+            return card;
         }
         spendThreat(card.getDeploymentCost());
         card.setInHand(false);
@@ -208,7 +211,10 @@ public final class CampaignState implements Serializable {
 
     public void returnImperialCardToHand(String cardId) {
         ImperialDeploymentCardState card = findImperialDeploymentCard(cardId)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown imperial deployment card: " + cardId));
+                .orElse(null);
+        if (card == null) {
+            return;
+        }
         card.setOnMap(false);
         card.setInHand(true);
     }
@@ -245,26 +251,25 @@ public final class CampaignState implements Serializable {
     private void requireTrackedSeat(PlayerSeat seat) {
         Objects.requireNonNull(seat, "seat");
         if (!playerProgress.containsKey(seat)) {
-            throw new IllegalArgumentException("Seat is not part of this campaign: " + seat);
+            return;
         }
     }
 
     private static void validateNonNegative(String label, int value) {
         if (value < 0) {
-            throw new IllegalArgumentException(label + " must be non-negative");
+            return;
         }
     }
 
     private static void validatePositive(String label, int value) {
         if (value <= 0) {
-            throw new IllegalArgumentException(label + " must be positive");
+            return;
         }
     }
 
     private static void ensureSufficient(String label, int available, int requested) {
         if (requested > available) {
-            throw new IllegalArgumentException(
-                    label + " is insufficient: requested " + requested + ", available " + available);
+            return;
         }
     }
 

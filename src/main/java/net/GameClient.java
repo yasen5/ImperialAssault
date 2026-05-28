@@ -2,9 +2,12 @@ package net;
 
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.net.ConnectException;
 import java.net.Socket;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
@@ -48,7 +51,7 @@ public class GameClient {
     this.debugWallLines = debugWallLines;
   }
 
-  public void run() throws Exception {
+  public void run() throws IOException, ClassNotFoundException, InterruptedException, InvocationTargetException {
     Socket socket = connectWhenAvailable();
     out = new ObjectOutputStream(socket.getOutputStream());
     out.flush();
@@ -56,7 +59,8 @@ public class GameClient {
     send(new JoinRequest(requestedSeat));
     JoinResponse response = (JoinResponse) in.readObject();
     if (!response.accepted()) {
-      throw new IllegalStateException(response.message());
+      System.err.println(response.message());
+      return;
     }
     game = new Game(null, response.config(), null, false);
     game.setDebugWallLines(debugWallLines);
@@ -65,18 +69,10 @@ public class GameClient {
       game.setUi(screen);
       screen.setLocalSeat(response.seat());
       screen.setMissionSelectionAction((MissionOption mission) -> {
-        try {
-          send(new ClientMissionSelection(mission));
-        } catch (Exception ex) {
-          throw new RuntimeException(ex);
-        }
+        send(new ClientMissionSelection(mission));
       });
       screen.setFinishGameAction(() -> {
-        try {
-          send(new ClientFinishGameRequest());
-        } catch (Exception ex) {
-          throw new RuntimeException(ex);
-        }
+        send(new ClientFinishGameRequest());
       });
       if (response.lobbySnapshot() != null) {
         screen.updateLobbySnapshot(response.lobbySnapshot());
@@ -115,7 +111,7 @@ public class GameClient {
     }
   }
 
-  private Socket connectWhenAvailable() throws Exception {
+  private Socket connectWhenAvailable() throws IOException, InterruptedException {
     while (true) {
       try {
         return new Socket(host, port);
@@ -143,11 +139,12 @@ public class GameClient {
         case DIRECTION, TARGET -> {
           CompletableFuture<String> selection;
           if (screen == null) {
-            throw new IllegalStateException("Screen not initialized");
+            System.err.println("Screen not initialized");
+            yield "";
           }
-          final CompletableFuture<String>[] selectionRef = new CompletableFuture[1];
-          SwingUtilities.invokeAndWait(() -> selectionRef[0] = screen.beginRemoteBoardPrompt(prompt));
-          selection = selectionRef[0];
+          AtomicReference<CompletableFuture<String>> selectionRef = new AtomicReference<>();
+          invokeAndWaitUnchecked(() -> selectionRef.set(screen.beginRemoteBoardPrompt(prompt)));
+          selection = selectionRef.get();
           String result = selection.join();
           yield result;
         }
@@ -155,16 +152,38 @@ public class GameClient {
       send(new PromptResponse(prompt.promptId(), value));
     } catch (java.util.concurrent.CancellationException ex) {
       SwingUtilities.invokeLater(() -> screen.cancelPrompt(prompt.promptId()));
-    } catch (Exception ex) {
-      throw new RuntimeException(ex);
     }
   }
 
-  private void send(Object object) throws Exception {
+  private void send(Object object) {
     synchronized (out) {
-      out.writeObject(object);
-      out.flush();
-      out.reset();
+      try {
+        out.writeObject(object);
+        out.flush();
+        out.reset();
+      } catch (IOException ex) {
+        ex.printStackTrace(System.err);
+      }
+    }
+  }
+
+  private static void invokeAndWaitUnchecked(Runnable runnable) {
+    try {
+      SwingUtilities.invokeAndWait(runnable);
+    } catch (InterruptedException ex) {
+      Thread.currentThread().interrupt();
+      ex.printStackTrace(System.err);
+    } catch (InvocationTargetException ex) {
+      Throwable cause = ex.getCause();
+      if (cause instanceof RuntimeException runtimeException) {
+        runtimeException.printStackTrace(System.err);
+        return;
+      }
+      if (cause instanceof Error error) {
+        error.printStackTrace(System.err);
+        return;
+      }
+      cause.printStackTrace(System.err);
     }
   }
 }

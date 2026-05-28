@@ -1,8 +1,10 @@
 package net;
 
 import java.io.EOFException;
+import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -15,7 +17,6 @@ import util.MyArrayList;
 import util.MyHashMap;
 
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -86,7 +87,7 @@ public class GameServer {
     this.savePath = Path.of("server-game-state.ser");
   }
 
-  public void run() throws Exception {
+  public void run() throws IOException, ClassNotFoundException, InterruptedException, InvocationTargetException {
     hostAddress = NetworkConfig.resolveMachineHostAddress();
     if (showSpectator) {
       startSpectatorDisplay();
@@ -291,7 +292,7 @@ public class GameServer {
         }
       }
     }
-    throw new IllegalStateException("No mission selected");
+    return MissionOption.MISSION_ONE;
   }
 
   private void broadcastSnapshot(MatchSnapshot snapshot) {
@@ -310,7 +311,7 @@ public class GameServer {
     }
   }
 
-  private void startSpectatorDisplay() throws Exception {
+  private void startSpectatorDisplay() throws InterruptedException, InvocationTargetException {
     spectatorGame = new Game(null, config, null, false);
     spectatorGame.setDebugWallLines(debugWallLines);
     SwingUtilities.invokeAndWait(() -> {
@@ -373,7 +374,7 @@ public class GameServer {
         return null;
       }
       return snapshot;
-    } catch (Exception ex) {
+    } catch (IOException | ClassNotFoundException ex) {
       System.err.println("Unable to load saved game state from " + savePath + ": " + ex.getMessage());
       return null;
     }
@@ -400,7 +401,7 @@ public class GameServer {
         } catch (AtomicMoveNotSupportedException ex) {
           Files.move(tempPath, savePath, StandardCopyOption.REPLACE_EXISTING);
         }
-      } catch (Exception ex) {
+      } catch (IOException ex) {
         System.err.println("Unable to save game state to " + savePath + ": " + ex.getMessage());
       }
     }
@@ -499,7 +500,8 @@ public class GameServer {
       String response = requestResponse(prompt);
       Personnel target = game.getPersonnelById(response);
       if (target == null) {
-        throw new IllegalStateException("Unknown target id " + response);
+        System.err.println("Unknown target id " + response);
+        return null;
       }
       return target;
     }
@@ -516,7 +518,7 @@ public class GameServer {
         connection.send(prompt);
         PromptResponse response;
         do {
-          response = connection.takeResponse();
+          response = connection.takeResponse(prompt.promptId());
         } while (response.promptId() != prompt.promptId());
         return response.value();
       } finally {
@@ -533,7 +535,7 @@ public class GameServer {
     private PlayerSeat seat;
     private volatile MissionOption mission;
 
-    private ClientConnection(Socket socket) throws Exception {
+    private ClientConnection(Socket socket) throws IOException {
       this.socket = socket;
       this.out = new ObjectOutputStream(socket.getOutputStream());
       this.out.flush();
@@ -554,8 +556,8 @@ public class GameServer {
             }
           }
         } catch (EOFException | SocketException eof) {
-        } catch (Exception ex) {
-          throw new RuntimeException(ex);
+        } catch (IOException | ClassNotFoundException | InterruptedException ex) {
+          ex.printStackTrace(System.err);
         }
       });
       readerThread.setDaemon(true);
@@ -568,17 +570,18 @@ public class GameServer {
           out.writeObject(object);
           out.flush();
           out.reset();
-        } catch (Exception ex) {
-          throw new RuntimeException(ex);
+        } catch (IOException ex) {
+          ex.printStackTrace(System.err);
         }
       }
     }
 
-    private PromptResponse takeResponse() {
+    private PromptResponse takeResponse(long promptId) {
       try {
         return responses.take();
       } catch (InterruptedException ex) {
-        throw new CancellationException("Prompt cancelled");
+        Thread.currentThread().interrupt();
+        return new PromptResponse(promptId, "");
       }
     }
   }

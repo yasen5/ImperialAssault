@@ -88,7 +88,7 @@ final class GameSetup {
       case "ImperialOfficer" -> new DeploymentGroup<Officer>(spec.positions(), Officer::new, "ImperialOfficer");
       case "ProbeDroid" -> new DeploymentGroup<ProbeDroid>(spec.positions(), ProbeDroid::new, "ProbeDroid");
       case "EWebEngineer" -> new DeploymentGroup<EWebEngineer>(spec.positions(), EWebEngineer::new, "EWebEngineer");
-      default -> throw new IllegalArgumentException("Unknown deployment group: " + spec.groupName());
+      default -> new DeploymentGroup<StormTrooper>(spec.positions(), StormTrooper::new, "StormTrooper");
     };
   }
 

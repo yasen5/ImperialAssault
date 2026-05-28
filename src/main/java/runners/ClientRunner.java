@@ -1,11 +1,15 @@
 package runners;
 
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+
 import game.PlayerSeat;
 import net.GameClient;
 import net.NetworkConfig;
 
 public class ClientRunner {
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args)
+            throws IOException, ClassNotFoundException, InterruptedException, InvocationTargetException {
         String host = NetworkConfig.resolveMachineHostAddress();
         int port = NetworkConfig.PORT;
         PlayerSeat seat = null;

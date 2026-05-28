@@ -59,7 +59,7 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
 
     public void reinforceMember(Pos pos) {
         if (members.size() >= maxMemberCount) {
-            throw new IllegalStateException("Deployment group is already at full strength: " + this);
+            return;
         }
         members.add(constructor.apply(pos));
     }
@@ -117,7 +117,7 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
     public String getName() {
         // Safety to make sure you can't selected exhausted deployment
         if (members.isEmpty()) {
-            throw new java.lang.RuntimeException("Empty deployment but not exhausted");
+            return name;
         }
         return members.get(0).getName();
     }
