@@ -9,6 +9,11 @@ out/
 
 # VS Code
 .vscode/
+!.vscode/
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/settings.json
+!.vscode/tasks.json
 .DS_Store/
 
 # Eclipse
@@ -53,3 +58,6 @@ tmp/
 !gradle/wrapper/gradle-wrapper.jar
 !gradlew
 !gradlew.bat
+*.ser
+.gradle*
+**/*.m4a

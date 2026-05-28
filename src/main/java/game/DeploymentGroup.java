@@ -1,20 +1,25 @@
 package game;
 
 import java.awt.Graphics;
-import java.util.ArrayList;
+import util.MyArrayList;
+
 import java.util.function.Function;
 
 // Basically an arraylist of imperials with some added functionality
 public class DeploymentGroup<T extends Imperial> implements FullDeployment {
     // Instance variables
-    private ArrayList<T> members = new ArrayList<T>();
+    private MyArrayList<T> members = new MyArrayList<T>();
     private Function<Pos, T> constructor;
     private boolean exhausted = false;
+    private boolean deployed = true;
     private DeploymentCard deploymentCard;
     private boolean displayStats = false;
     private String name;
     private String id;
     private PlayerSeat ownerSeat = PlayerSeat.IMPERIAL;
+    private int deploymentCost = 0;
+    private int reinforcementCost = 0;
+    private int maxMemberCount = 0;
 
     // Constructor
     public DeploymentGroup(Pos[] poses, Function<Pos, T> constructor, String name) {
@@ -22,6 +27,13 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
         this.deploymentCard = new DeploymentCard(name, false, this);
         this.name = name;
         addMembers(poses);
+    }
+
+    public DeploymentGroup(Pos[] poses, Function<Pos, T> constructor, String name, int deploymentCost,
+            boolean deployed) {
+        this(poses, constructor, name);
+        this.deploymentCost = deploymentCost;
+        this.deployed = deployed;
     }
 
     // Alternate constructor for a single member
@@ -35,11 +47,20 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
     public void addMembers(Pos[] poses) {
         for (Pos pos : poses) {
             members.add(constructor.apply(pos));
+            maxMemberCount++;
         }
     }
 
     // Same as above but for single member
     public void addMember(Pos pos) {
+        members.add(constructor.apply(pos));
+        maxMemberCount++;
+    }
+
+    public void reinforceMember(Pos pos) {
+        if (members.size() >= maxMemberCount) {
+            throw new IllegalStateException("Deployment group is already at full strength: " + this);
+        }
         members.add(constructor.apply(pos));
     }
 
@@ -52,6 +73,45 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
         if (deploymentCard != null) {
             deploymentCard.setExhausted(exhausted);
         }
+    }
+
+    public boolean getDeployed() {
+        return deployed;
+    }
+
+    public void setDeployed(boolean deployed) {
+        this.deployed = deployed;
+    }
+
+    public int getDeploymentCost() {
+        return deploymentCost;
+    }
+
+    public void setDeploymentCost(int deploymentCost) {
+        this.deploymentCost = deploymentCost;
+        if (reinforcementCost == 0) {
+            this.reinforcementCost = Math.max(1, deploymentCost / Math.max(1, maxMemberCount));
+        }
+    }
+
+    public int getReinforcementCost() {
+        return reinforcementCost <= 0 ? Math.max(1, deploymentCost / Math.max(1, maxMemberCount)) : reinforcementCost;
+    }
+
+    public void setReinforcementCost(int reinforcementCost) {
+        this.reinforcementCost = reinforcementCost;
+    }
+
+    public boolean canReinforce(int availableThreat) {
+        return deployed && members.size() < maxMemberCount && getReinforcementCost() <= availableThreat;
+    }
+
+    public int getMaxMemberCount() {
+        return maxMemberCount;
+    }
+
+    public void setMaxMemberCount(int maxMemberCount) {
+        this.maxMemberCount = Math.max(members.size(), maxMemberCount);
     }
 
     public String getName() {
@@ -69,6 +129,9 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
 
     // Draw all members
     public void draw(Graphics g) {
+        if (!deployed) {
+            return;
+        }
         for (T member : members) {
             member.draw(g);
         }
@@ -78,7 +141,7 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
         }
     }
 
-    public ArrayList<T> getMembers() {
+    public MyArrayList<T> getMembers() {
         return members;
     }
 
@@ -131,6 +194,15 @@ public class DeploymentGroup<T extends Imperial> implements FullDeployment {
 
     public boolean isEmpty() {
         return members.isEmpty();
+    }
+
+    public boolean hasReadyMembers() {
+        for (T member : members) {
+            if (!member.isDefeated()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

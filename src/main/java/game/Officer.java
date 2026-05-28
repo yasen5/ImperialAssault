@@ -1,6 +1,7 @@
 package game;
 
-import java.util.ArrayList;
+import util.MyArrayList;
+
 
 import game.Die.DefenseDieType;
 import game.Die.DefenseRoll;
@@ -17,27 +18,27 @@ public class Officer extends Imperial {
 
     @Override
     public Equipment.SurgeOptions[] getSurgeOptions() {
-        return new Equipment.SurgeOptions[] { Equipment.SurgeOptions.FOCUS, Equipment.SurgeOptions.ACCURACY1,
+        return new Equipment.SurgeOptions[] { Equipment.SurgeOptions.FOCUS, Equipment.SurgeOptions.ACCURACY2,
                 Equipment.SurgeOptions.DAMAGE1 };
     }
 
     // Give another friendly figure two moves
     @Override
     public void performSpecial(Personnel selected) {
-        Game.handleMoves(selected, 2);
+        game.handleMoves(selected, 2);
     }
 
     // Find all imperial figures within two spaces
     @Override
-    public ArrayList<Personnel> getSpecialTargets() {
-        ArrayList<Personnel> targets = new ArrayList<>();
+    public MyArrayList<Personnel> getSpecialTargets() {
+        MyArrayList<Personnel> targets = new MyArrayList<>();
         Pos thisPos = getPos();
-        for (DeploymentGroup<? extends Imperial> group : Game.getDeploymentGroups()) {
+        for (DeploymentGroup<? extends Imperial> group : game.getDeploymentGroups()) {
             for (Imperial imperial : group.getMembers()) {
                 if (imperial.equals(this)) {
                     continue;
                 }
-                if (Pathfinder.canReachPoint(thisPos, imperial.getPos(), 2, false, false)) {
+                if (Pathfinder.canReachPoint(thisPos, imperial.getPos(), 2, false, false, game)) {
                     targets.add(imperial);
                 }
             }
@@ -50,10 +51,10 @@ public class Officer extends Imperial {
     public DefenseRoll[] getDefense() {
         DefenseRoll[] results = new DefenseRoll[defenseDice.length];
         for (int i = 0; i < defenseDice.length; i++) {
-            results[0] = defenseDice[i].roll();
+            results[i] = defenseDice[i].roll(game);
         }
-        Game.repaintScreen();
-        if (InputUtils.getYesNo("Ability", "Reroll defense?")) {
+        game.repaint();
+        if (game.promptYesNo(getOwnerSeat(), "Ability", "Reroll defense?")) {
             results = super.getDefense();
         }
         return results;

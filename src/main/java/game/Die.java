@@ -1,7 +1,9 @@
 package game;
 
 import java.awt.image.BufferedImage;
-import java.util.HashMap;
+import java.util.Objects;
+import util.MyHashMap;
+
 
 import game.Constants;
 
@@ -59,7 +61,14 @@ public class Die {
         // Roll, play the sound, show the die in the game
         public OffenseRoll roll() {
             int face = (int) (Math.random() * 6);
-            Game.addOffenseResult(new GraphicOffenseDieResult(face, this));
+            LoaderUtils.playSound("DieRoll");
+            return new OffenseRoll(face, results[face]);
+        }
+
+        public OffenseRoll roll(Game game) {
+            Objects.requireNonNull(game, "game");
+            int face = (int) (Math.random() * 6);
+            game.addOffenseResult(new GraphicOffenseDieResult(face, this));
             LoaderUtils.playSound("DieRoll");
             return new OffenseRoll(face, results[face]);
         }
@@ -90,7 +99,14 @@ public class Die {
 
         public DefenseRoll roll() {
             int face = (int) (Math.random() * 6);
-            Game.addDefenseResult(new GraphicDefenseDieResult(face, this));
+            LoaderUtils.playSound("DieRoll");
+            return new DefenseRoll(face, results[face]);
+        }
+
+        public DefenseRoll roll(Game game) {
+            Objects.requireNonNull(game, "game");
+            int face = (int) (Math.random() * 6);
+            game.addDefenseResult(new GraphicDefenseDieResult(face, this));
             LoaderUtils.playSound("DieRoll");
             return new DefenseRoll(face, results[face]);
         }
@@ -100,12 +116,12 @@ public class Die {
         }
     }
 
-    public static HashMap<GraphicOffenseDieResult, BufferedImage> offenseDieFaces;
-    public static HashMap<GraphicDefenseDieResult, BufferedImage> defenseDieFaces;
+    public static MyHashMap<GraphicOffenseDieResult, BufferedImage> offenseDieFaces;
+    public static MyHashMap<GraphicDefenseDieResult, BufferedImage> defenseDieFaces;
 
     static {
-        offenseDieFaces = new HashMap<GraphicOffenseDieResult, BufferedImage>();
-        defenseDieFaces = new HashMap<GraphicDefenseDieResult, BufferedImage>();
+        offenseDieFaces = new MyHashMap<GraphicOffenseDieResult, BufferedImage>();
+        defenseDieFaces = new MyHashMap<GraphicDefenseDieResult, BufferedImage>();
         for (OffenseDieType die : OffenseDieType.values()) {
             for (int i = 0; i < 6; i++) {
                 offenseDieFaces.put(new GraphicOffenseDieResult(i, die),

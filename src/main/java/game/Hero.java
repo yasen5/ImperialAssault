@@ -5,12 +5,15 @@ import java.awt.Graphics;
 import game.Die.DefenseDieType;
 import game.Die.OffenseDieType;
 import game.Die.OffenseRoll;
+import util.MyArrayList;
 
 public abstract class Hero extends Personnel implements FullDeployment {
     // Instance variables
     private int endurance;
     protected boolean wounded;
     private Equipment.Weapon weapon;
+    private Equipment.Item defaultEquipment;
+    private MyArrayList<Equipment.Item> equipment = new MyArrayList<>();
     private boolean exhausted = false;
     private DeploymentCard deploymentCard;
     private boolean displayStats = false;
@@ -21,6 +24,8 @@ public abstract class Hero extends Personnel implements FullDeployment {
         super(name, startingHealth, speed, pos, defenseDice, hasSpecial, specialRequiresSelection);
         this.endurance = endurance;
         this.weapon = weapon;
+        this.defaultEquipment = Equipment.asItem(weapon);
+        this.equipment.add(defaultEquipment);
         this.wounded = false;
         this.deploymentCard = new DeploymentCard(name, true, this);
         this.actions.add(Actions.RECOVER);
@@ -28,11 +33,24 @@ public abstract class Hero extends Personnel implements FullDeployment {
 
     // Add strain, if too much strain, turn it into damage instead
     public void ApplyStrain(int strain) {
-        this.strain += strain;
-        if (this.strain > endurance) {
-            dealDamage(strain - endurance);
-            strain = endurance;
+        int newStrain = this.strain + strain;
+        if (newStrain > endurance) {
+            dealDamage(newStrain - endurance);
+            this.strain = endurance;
+        } else {
+            this.strain = Math.max(0, newStrain);
         }
+    }
+
+    public void recover() {
+        int recoverAmount = endurance;
+        int strainRecovered = Math.min(this.strain, recoverAmount);
+        this.strain -= strainRecovered;
+        recoverAmount -= strainRecovered;
+        if (recoverAmount > 0) {
+            dealDamage(-recoverAmount);
+        }
+        removeCondition(Condition.BLEEDING);
     }
 
     public boolean getExhausted() {
@@ -79,10 +97,10 @@ public abstract class Hero extends Personnel implements FullDeployment {
         OffenseDieType[] attackDice = weapon.attackDice();
         OffenseRoll[] result = new OffenseRoll[attackDice.length + (focused ? 1 : 0)];
         for (int i = 0; i < attackDice.length; i++) {
-            result[i] = attackDice[i].roll();
+            result[i] = attackDice[i].roll(requireGame());
         }
         if (focused) {
-            result[result.length - 1] = OffenseDieType.GREEN.roll();
+            result[result.length - 1] = OffenseDieType.GREEN.roll(requireGame());
             focused = false;
         }
         return result;
@@ -90,6 +108,72 @@ public abstract class Hero extends Personnel implements FullDeployment {
 
     public Equipment.SurgeOptions[] getSurgeOptions() {
         return weapon.surgeOptions();
+    }
+
+    public void addEquipment(Equipment.Item item) {
+        if (item == null || hasEquipment(item.id())) {
+            return;
+        }
+        equipment.add(item);
+    }
+
+    public void removeEquipment(Equipment.Item item) {
+        if (item != null) {
+            equipment.remove(item);
+        }
+    }
+
+    public MyArrayList<Equipment.Item> getUsableEquipment(Equipment.UseTiming timing) {
+        MyArrayList<Equipment.Item> usableEquipment = new MyArrayList<>();
+        for (Equipment.Item item : equipment) {
+            if (item.useTiming() == timing) {
+                usableEquipment.add(item);
+            }
+        }
+        return usableEquipment;
+    }
+
+    public boolean hasUsableEquipment(Equipment.UseTiming timing) {
+        return !getUsableEquipment(timing).isEmpty();
+    }
+
+    @Override
+    public MyArrayList<Equipment.Item> getEquipment() {
+        return new MyArrayList<>(equipment);
+    }
+
+    public MyArrayList<String> getEquipmentIds() {
+        MyArrayList<String> ids = new MyArrayList<>();
+        for (Equipment.Item item : equipment) {
+            ids.add(item.id());
+        }
+        return ids;
+    }
+
+    public void applyEquipmentIds(MyArrayList<String> equipmentIds) {
+        equipment.clear();
+        equipment.add(defaultEquipment);
+        if (equipmentIds == null) {
+            return;
+        }
+        for (String equipmentId : equipmentIds) {
+            if (equipmentId == null || equipmentId.equals(defaultEquipment.id()) || hasEquipment(equipmentId)) {
+                continue;
+            }
+            Equipment.Item item = Equipment.findItem(equipmentId);
+            if (item != null) {
+                equipment.add(item);
+            }
+        }
+    }
+
+    private boolean hasEquipment(String equipmentId) {
+        for (Equipment.Item item : equipment) {
+            if (item.id().equals(equipmentId)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public DeploymentCard getDeploymentCard() {
@@ -118,6 +202,32 @@ public abstract class Hero extends Personnel implements FullDeployment {
     public PersonnelStatus[] getStatuses() {
         PersonnelStatus[] statuses = new PersonnelStatus[] { getStatus() };
         return statuses;
+    }
+
+    @Override
+    public PersonnelStatus getStatus() {
+        return new PersonnelStatus(getHealth(), getStrain(), stunned(), focused, bleeding(), wounded, isDefeated());
+    }
+
+    @Override
+    public void dealDamage(int damage) {
+        super.dealDamage(damage);
+        if (getHealth() <= 0 && !wounded) {
+            wounded = true;
+            setDefeated(false);
+            setHealth(getStartingHealth());
+            setStrain(0);
+            removeCondition(Condition.STUNNED);
+            removeCondition(Condition.BLEEDING);
+        }
+    }
+
+    public boolean isWounded() {
+        return wounded;
+    }
+
+    public void setWounded(boolean wounded) {
+        this.wounded = wounded;
     }
 
     @Override

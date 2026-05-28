@@ -15,7 +15,7 @@ public class StormTrooper extends Imperial {
 
     @Override
     public Equipment.SurgeOptions[] getSurgeOptions() {
-        return new Equipment.SurgeOptions[] { Equipment.SurgeOptions.DAMAGE1, Equipment.SurgeOptions.ACCURACY1 };
+        return new Equipment.SurgeOptions[] { Equipment.SurgeOptions.DAMAGE1, Equipment.SurgeOptions.ACCURACY2 };
     }
 
     // Same as the superclass's implementation, except you can reroll if a trooper
@@ -24,17 +24,18 @@ public class StormTrooper extends Imperial {
     public OffenseRoll[] getOffense() {
         OffenseRoll[] results = new OffenseRoll[offenseDice.length + (focused ? 1 : 0)];
         for (int i = 0; i < offenseDice.length; i++) {
-            results[i] = offenseDice[i].roll();
+            results[i] = offenseDice[i].roll(game);
         }
         if (focused) {
-            results[results.length - 1] = OffenseDieType.GREEN.roll();
+            results[results.length - 1] = OffenseDieType.GREEN.roll(game);
             focused = false;
         }
-        Game.repaintScreen();
-        if (trooperNear() && InputUtils.getYesNo("Ability", "Reroll an attack die?")) {
-            int chosenDie = InputUtils.getMultipleChoice("Reroll", "Choose which die to reroll", offenseDice);
-            Game.removeOffenseDie(chosenDie);
-            results[chosenDie] = offenseDice[chosenDie].roll();
+        game.repaint();
+        if (trooperNear() && game.promptYesNo(getOwnerSeat(), "Ability", "Reroll an attack die?")) {
+            int chosenDie = game.promptMultipleChoice(getOwnerSeat(), "Reroll", "Choose which die to reroll",
+                    offenseDice);
+            game.removeOffenseDie(chosenDie);
+            results[chosenDie] = offenseDice[chosenDie].roll(game);
         }
         return results;
     }
@@ -42,7 +43,7 @@ public class StormTrooper extends Imperial {
     // Checks if there are adjacent troopers
     public boolean trooperNear() {
         for (Directions dir : Directions.values()) {
-            Personnel adjacentPersonnel = Game.getPersonnelAtPos(getPos().getNextPos(dir));
+            Personnel adjacentPersonnel = game.getPersonnelAtPos(getPos().getNextPos(dir));
             if (adjacentPersonnel instanceof Imperial && ((Imperial) (adjacentPersonnel)).getType() == getType()) {
                 return true;
             }

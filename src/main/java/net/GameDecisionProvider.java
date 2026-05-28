@@ -1,11 +1,14 @@
 package net;
 
-import java.util.ArrayList;
+import util.MyArrayList;
 
-import game.Screen.SelectingType;
+
 import game.Personnel.Directions;
 import game.PlayerSeat;
 import game.Personnel;
+import game.MovementChoice;
+import game.RotationMove;
+import game.SelectionType;
 
 public interface GameDecisionProvider {
     int chooseMultipleChoice(PlayerSeat seat, String name, String explanation, Object[] options);
@@ -14,7 +17,15 @@ public interface GameDecisionProvider {
 
     int chooseNumericChoice(PlayerSeat seat, String name, int minValue, int maxValue);
 
-    Directions chooseDirection(PlayerSeat seat, Personnel activeFigure, ArrayList<Directions> allowedDirections);
+    Directions chooseDirection(PlayerSeat seat, Personnel activeFigure, MyArrayList<Directions> allowedDirections);
 
-    Personnel chooseTarget(PlayerSeat seat, SelectingType selectionType, ArrayList<Personnel> availableTargets);
+    default MovementChoice chooseMovement(PlayerSeat seat, Personnel activeFigure,
+            MyArrayList<Directions> allowedDirections, MyArrayList<RotationMove> legalRotations) {
+        if (!legalRotations.isEmpty() && allowedDirections.isEmpty()) {
+            return MovementChoice.rotate(legalRotations.get(0));
+        }
+        return MovementChoice.direction(chooseDirection(seat, activeFigure, allowedDirections));
+    }
+
+    Personnel chooseTarget(PlayerSeat seat, SelectionType selectionType, MyArrayList<Personnel> availableTargets);
 }

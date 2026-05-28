@@ -16,8 +16,17 @@ repositories {
     mavenCentral()
 }
 
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+}
+
+test {
+    useJUnitPlatform()
+}
+
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+    options.debug = true
 }
 
 jar {
@@ -29,6 +38,10 @@ tasks.register('runServer', JavaExec) {
     description = 'Runs the multiplayer server.'
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'runners.ServerRunner'
+    def projectArgs = project.findProperty('args')?.toString()?.trim()
+    if (projectArgs) {
+        args projectArgs.split('\\s+')
+    }
 }
 
 tasks.register('runClient', JavaExec) {
@@ -36,4 +49,30 @@ tasks.register('runClient', JavaExec) {
     description = 'Runs the multiplayer client.'
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'runners.ClientRunner'
+    def projectArgs = project.findProperty('args')?.toString()?.trim()
+    if (projectArgs) {
+        args projectArgs.split('\\s+')
+    }
+}
+
+tasks.register('smokeTutorialNetwork', JavaExec) {
+    group = 'verification'
+    description = 'Runs a headless socket-level smoke test through lobby, hero selection, and first Rebel action prompt.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'runners.HeadlessNetworkSmokeTest'
+    def projectArgs = project.findProperty('args')?.toString()?.trim()
+    if (projectArgs) {
+        args projectArgs.split('\\s+')
+    }
+}
+
+tasks.register('deploymentCardVisualTest', JavaExec) {
+    group = 'verification'
+    description = 'Opens the Real Mission GUI in a JFrame and captures deployment-card alignment screenshots for all Rebel and Imperial figures.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'runners.DeploymentCardVisualTest'
+    def projectArgs = project.findProperty('args')?.toString()?.trim()
+    if (projectArgs) {
+        args projectArgs.split('\\s+')
+    }
 }

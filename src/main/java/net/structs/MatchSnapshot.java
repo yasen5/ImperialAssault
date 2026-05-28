@@ -1,21 +1,30 @@
 package net.structs;
 
 import java.io.Serializable;
-import java.util.List;
+import util.MyArrayList;
+
 
 import game.PlayerSeat;
 
 public record MatchSnapshot(
+        MissionOption mission,
         GameSessionConfig config,
         PlayerSeat actingSeat,
+        PlayerSeat currentTurnSeat,
+        int threatDial,
+        int threatLevel,
+        int roundDial,
+        int roundLimit,
         long bannerId,
         String bannerText,
         long bannerExpiresAt,
-        List<FigureSnapshot> heroes,
-        List<DeploymentGroupSnapshot> imperialGroups,
-        List<Boolean> interactableStates,
-        List<String> offenseResults,
-        List<String> defenseResults,
+        MyArrayList<FigureSnapshot> heroes,
+        MyArrayList<DeploymentGroupSnapshot> imperialGroups,
+        MyArrayList<FigureSnapshot> missionTerminals,
+        MyArrayList<Boolean> interactableStates,
+        int nextSupplyEquipmentIndex,
+        MyArrayList<String> offenseResults,
+        MyArrayList<String> defenseResults,
         boolean gameEnd,
         boolean rebelsWin) implements Serializable {
 }

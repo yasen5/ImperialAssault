@@ -2,6 +2,7 @@ package game;
 
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
+import java.util.Objects;
 
 import game.Constants;
 import game.Constants.WallLine;
@@ -13,6 +14,7 @@ public abstract class Interactable<ValidInteractors extends Personnel> {
     private BufferedImage image;
     private final Class<ValidInteractors> validInteractorClass;
     private final WallLine[] wallLines;
+    protected Game game;
 
     // Constructor for if you want to specify the size
     public Interactable(Pos pos, Class<ValidInteractors> validInteractorClass, String imgName, int xSize, int ySize,
@@ -46,7 +48,7 @@ public abstract class Interactable<ValidInteractors extends Personnel> {
 
     // Check if the interactor is valid, then follow through with the interaction
     public void interact(Personnel interactor) {
-        if (validInteractorClass.isInstance(interactor)) {
+        if (canInteract(interactor)) {
             safeInteract(validInteractorClass.cast(interactor));
         }
     }
@@ -61,11 +63,19 @@ public abstract class Interactable<ValidInteractors extends Personnel> {
         return true;
     }
 
+    public boolean canInteract(Personnel interactor) {
+        return canInteract() && validInteractorClass.isInstance(interactor);
+    }
+
     public boolean snapshotState() {
         return canInteract();
     }
 
     public void applySnapshotState(boolean active) {
+    }
+
+    public void setGame(Game game) {
+        this.game = Objects.requireNonNull(game, "game");
     }
 
     // Return whether it interferes with movement/line of sight
