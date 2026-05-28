@@ -6,7 +6,7 @@ import net.NetworkConfig;
 
 public class ClientRunner {
     public static void main(String[] args) throws Exception {
-        String host = NetworkConfig.SERVER_HOST;
+        String host = NetworkConfig.resolveMachineHostAddress();
         int port = NetworkConfig.PORT;
         PlayerSeat seat = null;
         boolean debugWallLines = false;

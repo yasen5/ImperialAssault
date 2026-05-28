@@ -7,15 +7,12 @@ import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.net.Inet4Address;
 import java.net.InetAddress;
-import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import util.MyArrayList;
 import util.MyHashMap;
-import java.util.Enumeration;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CancellationException;
@@ -90,7 +87,7 @@ public class GameServer {
   }
 
   public void run() throws Exception {
-    hostAddress = resolveHostAddress();
+    hostAddress = NetworkConfig.resolveMachineHostAddress();
     if (showSpectator) {
       startSpectatorDisplay();
     }
@@ -408,32 +405,6 @@ public class GameServer {
         System.err.println("Unable to save game state to " + savePath + ": " + ex.getMessage());
       }
     }
-  }
-
-  private String resolveHostAddress() {
-    try {
-      Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
-      while (interfaces.hasMoreElements()) {
-        NetworkInterface networkInterface = interfaces.nextElement();
-        if (!networkInterface.isUp() || networkInterface.isLoopback() || networkInterface.isVirtual()) {
-          continue;
-        }
-        Enumeration<InetAddress> addresses = networkInterface.getInetAddresses();
-        while (addresses.hasMoreElements()) {
-          InetAddress address = addresses.nextElement();
-          if (address instanceof Inet4Address && !address.isLoopbackAddress() && !address.isAnyLocalAddress()) {
-            return address.getHostAddress();
-          }
-        }
-      }
-      InetAddress localHost = InetAddress.getLocalHost();
-      if (localHost != null) {
-        return localHost.getHostAddress();
-      }
-    } catch (Exception ex) {
-      // Fall back to localhost below.
-    }
-    return "127.0.0.1";
   }
 
   private class RemoteDecisionProvider implements GameDecisionProvider {
