@@ -17,6 +17,7 @@ import util.MyArrayList;
 import util.MyHashMap;
 
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -425,7 +426,7 @@ public class GameServer {
       }
       RemotePrompt prompt = new RemotePrompt(promptIds.getAndIncrement(), seat, RemotePrompt.PromptType.MULTIPLE_CHOICE,
           name, explanation, labels, 0, labels.size() - 1, labels, null, null);
-      return Integer.parseInt(requestResponse(prompt));
+      return parseBoundedIntResponse(requestResponse(prompt), 0, options.length - 1, prompt);
     }
 
     private boolean shouldPromptSingleChoice(String name) {
@@ -448,7 +449,7 @@ public class GameServer {
           name, name + " (" + minValue + " to " + maxValue + ")", MyArrayList.of(), minValue, maxValue,
           MyArrayList.of(),
           null, null);
-      return Integer.parseInt(requestResponse(prompt));
+      return parseBoundedIntResponse(requestResponse(prompt), minValue, maxValue, prompt);
     }
 
     @Override
@@ -479,8 +480,20 @@ public class GameServer {
       if ("ROTATE".equals(response)) {
         return MovementChoice.rotate(legalRotations.get(0));
       }
-      return RotationMove.isToken(response) ? MovementChoice.rotate(RotationMove.fromToken(response))
-          : MovementChoice.direction(Directions.valueOf(response));
+      if (response == null || response.isBlank()) {
+        System.err.println("Prompt " + prompt.promptId() + " returned no movement; using first available option.");
+        return firstMovementChoice(allowedDirections, legalRotations);
+      }
+      if (RotationMove.isToken(response)) {
+        return MovementChoice.rotate(RotationMove.fromToken(response));
+      }
+      try {
+        return MovementChoice.direction(Directions.valueOf(response));
+      } catch (IllegalArgumentException ex) {
+        System.err.println("Prompt " + prompt.promptId() + " returned invalid movement " + response
+            + "; using first available option.");
+        return firstMovementChoice(allowedDirections, legalRotations);
+      }
     }
 
     @Override
@@ -498,16 +511,50 @@ public class GameServer {
       RemotePrompt prompt = new RemotePrompt(promptIds.getAndIncrement(), seat, RemotePrompt.PromptType.TARGET,
           "Target Selection", "Choose a target", labels, 0, 0, values, null, selectionType);
       String response = requestResponse(prompt);
+      if (response == null || response.isBlank()) {
+        System.err.println("Prompt " + prompt.promptId() + " returned no target; using first available target.");
+        return availableTargets.get(0);
+      }
       Personnel target = game.getPersonnelById(response);
       if (target == null) {
-        System.err.println("Unknown target id " + response);
-        return null;
+        System.err.println("Unknown target id " + response + "; using first available target.");
+        return availableTargets.get(0);
       }
       return target;
     }
 
+    private MovementChoice firstMovementChoice(MyArrayList<Directions> allowedDirections,
+        MyArrayList<RotationMove> legalRotations) {
+      return !allowedDirections.isEmpty()
+          ? MovementChoice.direction(allowedDirections.get(0))
+          : MovementChoice.rotate(legalRotations.get(0));
+    }
+
+    private int parseBoundedIntResponse(String response, int minValue, int maxValue, RemotePrompt prompt) {
+      if (response == null || response.isBlank()) {
+        System.err.println("Prompt " + prompt.promptId() + " returned no value; using " + minValue + ".");
+        return minValue;
+      }
+      try {
+        int value = Integer.parseInt(response);
+        if (value < minValue || value > maxValue) {
+          System.err.println("Prompt " + prompt.promptId() + " returned out-of-range value " + value
+              + "; using " + minValue + ".");
+          return minValue;
+        }
+        return value;
+      } catch (NumberFormatException ex) {
+        System.err.println("Prompt " + prompt.promptId() + " returned non-numeric value " + response
+            + "; using " + minValue + ".");
+        return minValue;
+      }
+    }
+
     private String requestResponse(RemotePrompt prompt) {
       ClientConnection connection = clients.get(prompt.seat());
+      if (connection == null) {
+        throw new CancellationException("No client connected for " + prompt.seat());
+      }
       Thread waitingThread = Thread.currentThread();
       game.setActivePromptCancelAction(() -> {
         connection.send(new RemotePromptCancel(prompt.promptId()));
@@ -581,7 +628,7 @@ public class GameServer {
         return responses.take();
       } catch (InterruptedException ex) {
         Thread.currentThread().interrupt();
-        return new PromptResponse(promptId, "");
+        throw new CancellationException("Prompt " + promptId + " was interrupted");
       }
     }
   }

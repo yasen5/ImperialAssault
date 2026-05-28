@@ -66,10 +66,15 @@ public class LoaderUtils {
 
     public static void playSound(String name) {
         try {
+            URL resource = LoaderUtils.class.getResource("/sounds/" + name + ".wav");
+            if (resource == null) {
+                System.err.println("Missing sound resource: " + name);
+                return;
+            }
             Clip clip = AudioSystem.getClip();
-            clip.open(AudioSystem.getAudioInputStream(LoaderUtils.class.getResource("/sounds/" + name + ".wav")));
+            clip.open(AudioSystem.getAudioInputStream(resource));
             clip.start();
-        } catch (IOException | LineUnavailableException | UnsupportedAudioFileException exc) {
+        } catch (IOException | LineUnavailableException | UnsupportedAudioFileException | IllegalArgumentException exc) {
             exc.printStackTrace(System.out);
         }
     }

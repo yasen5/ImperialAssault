@@ -934,6 +934,12 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     LoaderUtils.playSound("Applause");
   }
 
+  @Override
+  public void resumeGame() {
+    gameEnd = false;
+    repaint();
+  }
+
   public CompletableFuture<String> beginRemoteBoardPrompt(RemotePrompt prompt) {
     if (readOnly) {
       return CompletableFuture.completedFuture(null);

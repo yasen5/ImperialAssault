@@ -126,6 +126,8 @@ final class GameSnapshotMapper {
       game.ui.setTurnStatus(game.actingSeat);
       if (game.gameEnd) {
         game.ui.endGame(game.rebelsWin);
+      } else {
+        game.ui.resumeGame();
       }
     }
     game.setup.bindGameReferences();

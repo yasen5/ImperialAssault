@@ -761,6 +761,21 @@ class RulesTest {
     }
 
     @Test
+    void loadingRunningSnapshotClearsFinishedUiState() {
+        RecordingUi ui = new RecordingUi();
+        Game game = new Game(ui, new GameSessionConfig(1), MissionDefinition.forOption(MissionOption.MISSION_ONE),
+                new CountingDecisionProvider(), true);
+        MatchSnapshot runningSnapshot = game.createSnapshot();
+
+        game.endGame(false);
+        assertTrue(ui.gameEnded);
+
+        game.loadSnapshot(runningSnapshot);
+
+        assertFalse(ui.gameEnded);
+    }
+
+    @Test
     void deploymentGroupTracksReinforcementCapacityAndCost() {
         DeploymentGroup<StormTrooper> group = new DeploymentGroup<>(
                 new Pos[] { new Pos(4, 11), new Pos(4, 12), new Pos(5, 11) },
@@ -907,6 +922,59 @@ class RulesTest {
         @Override
         public Personnel chooseTarget(PlayerSeat seat, SelectionType selectionType, util.MyArrayList<Personnel> availableTargets) {
             return availableTargets.get(0);
+        }
+    }
+
+    private static final class RecordingUi implements GameUi {
+        private boolean gameEnded;
+
+        @Override
+        public void repaint() {
+        }
+
+        @Override
+        public void setTurnStatus(PlayerSeat seat) {
+        }
+
+        @Override
+        public void deactiveateMovementButtons() {
+        }
+
+        @Override
+        public void resetTransientTurnState() {
+        }
+
+        @Override
+        public void endGame(boolean rebelsWin) {
+            gameEnded = true;
+        }
+
+        @Override
+        public void resumeGame() {
+            gameEnded = false;
+        }
+
+        @Override
+        public void showBanner(String text) {
+        }
+
+        @Override
+        public void showBannerFromSnapshot(String text, long remainingMs) {
+        }
+
+        @Override
+        public int getSidebarDiceX() {
+            return 0;
+        }
+
+        @Override
+        public int getDiceStartY() {
+            return 0;
+        }
+
+        @Override
+        public int getSidebarDetailWidth() {
+            return 0;
         }
     }
 

@@ -11,6 +11,8 @@ public interface GameUi {
 
   void endGame(boolean rebelsWin);
 
+  void resumeGame();
+
   void showBanner(String text);
 
   void showBannerFromSnapshot(String text, long remainingMs);

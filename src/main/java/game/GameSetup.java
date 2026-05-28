@@ -1,7 +1,5 @@
 package game;
 
-import java.util.function.Function;
-
 import net.structs.GameSessionConfig;
 import util.MyArrayList;
 
@@ -104,19 +102,15 @@ final class GameSetup {
   }
 
   private void addSelectedHeroes() {
-    MyArrayList<HeroSetupOption> availableHeroes = MyArrayList.of(
-        new HeroSetupOption("Diala Passil", "hero-diala", DialaPassil::new),
-        new HeroSetupOption("Gaarkhan", "hero-gaarkhan", Gaarkhan::new),
-        new HeroSetupOption("Fenn Signis", "hero-fenn", FennSignis::new),
-        new HeroSetupOption("Mak Eshka'rey", "hero-mak", MakEshray::new));
+    MyArrayList<Integer> availableHeroIndexes = MyArrayList.of(0, 1, 2, 3);
     MissionDefinition.HeroPlacement heroPlacement = game.missionDefinition.heroPlacement();
     MyArrayList<PlayerSeat> owners = heroSelectionOwners();
     for (int i = 0; i < owners.size(); i++) {
-      HeroSetupOption option = chooseHeroSetupOption(owners.get(i), availableHeroes);
-      Hero hero = option.constructor().apply(heroPlacement.position(i));
-      configureHero(hero, option.id(), owners.get(i));
+      int heroIndex = chooseHeroSetupOption(owners.get(i), availableHeroIndexes);
+      Hero hero = createHero(heroIndex, heroPlacement.position(i));
+      configureHero(hero, heroId(heroIndex), owners.get(i));
       game.heroes.add(hero);
-      availableHeroes.remove(option);
+      availableHeroIndexes.remove(Integer.valueOf(heroIndex));
     }
   }
 
@@ -141,12 +135,46 @@ final class GameSetup {
     return owners;
   }
 
-  private HeroSetupOption chooseHeroSetupOption(PlayerSeat owner, MyArrayList<HeroSetupOption> availableHeroes) {
-    if (game.decisionProvider == null || game.sessionConfig.rebelPlayerCount() == 0 || availableHeroes.size() == 1) {
-      return availableHeroes.get(0);
+  private int chooseHeroSetupOption(PlayerSeat owner, MyArrayList<Integer> availableHeroIndexes) {
+    if (game.decisionProvider == null || game.sessionConfig.rebelPlayerCount() == 0 || availableHeroIndexes.size() == 1) {
+      return availableHeroIndexes.get(0);
     }
-    int choice = game.promptMultipleChoice(owner, "Hero Selection", "Choose your hero", availableHeroes.toArray());
-    return availableHeroes.get(choice);
+    Object[] labels = new Object[availableHeroIndexes.size()];
+    for (int i = 0; i < availableHeroIndexes.size(); i++) {
+      labels[i] = heroLabel(availableHeroIndexes.get(i));
+    }
+    int choice = game.promptMultipleChoice(owner, "Hero Selection", "Choose your hero", labels);
+    return availableHeroIndexes.get(choice);
+  }
+
+  private Hero createHero(int heroIndex, Pos pos) {
+    return switch (heroIndex) {
+      case 0 -> new DialaPassil(pos);
+      case 1 -> new Gaarkhan(pos);
+      case 2 -> new FennSignis(pos);
+      case 3 -> new MakEshray(pos);
+      default -> new DialaPassil(pos);
+    };
+  }
+
+  private String heroId(int heroIndex) {
+    return switch (heroIndex) {
+      case 0 -> "hero-diala";
+      case 1 -> "hero-gaarkhan";
+      case 2 -> "hero-fenn";
+      case 3 -> "hero-mak";
+      default -> "hero-diala";
+    };
+  }
+
+  private String heroLabel(int heroIndex) {
+    return switch (heroIndex) {
+      case 0 -> "Diala Passil";
+      case 1 -> "Gaarkhan";
+      case 2 -> "Fenn Signis";
+      case 3 -> "Mak Eshka'rey";
+      default -> "Diala Passil";
+    };
   }
 
   private void configureHero(Hero hero, String id, PlayerSeat seat) {
@@ -172,13 +200,6 @@ final class GameSetup {
       }
       imperial.setHorizontalOrientation(horizontal);
       imperial.setPos(imperial.getPos());
-    }
-  }
-
-  private record HeroSetupOption(String label, String id, Function<Pos, Hero> constructor) {
-    @Override
-    public String toString() {
-      return label;
     }
   }
 }
