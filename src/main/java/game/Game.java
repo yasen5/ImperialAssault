@@ -40,12 +40,11 @@ public class Game {
   boolean rebelsWin = true;
   PlayerSeat actingSeat = PlayerSeat.REBEL_1;
   PlayerSeat currentTurnSeat = PlayerSeat.REBEL_1;
-  private volatile boolean advanceStatusPhaseRequested;
-  private volatile boolean statusPhaseInProgress;
-  private volatile boolean abortStatusPhasePrompts;
-  private volatile boolean restartRequested;
-  private volatile boolean playLoopActive;
-  private volatile Runnable activePromptCancelAction = () -> {
+  private boolean advanceStatusPhaseRequested;
+  private boolean statusPhaseInProgress;
+  private boolean abortStatusPhasePrompts;
+  private boolean restartRequested;
+  private Runnable activePromptCancelAction = () -> {
   };
   long bannerId;
   String bannerText;
@@ -159,29 +158,12 @@ public class Game {
   }
 
   public void playRound() {
-    synchronized (this) {
-      if (playLoopActive) {
-        return;
+    while (!gameEnd) {
+      if (restartRequested) {
+        restartFromBeginningInternal();
+        continue;
       }
-      playLoopActive = true;
-    }
-    try {
-      while (!gameEnd) {
-        if (restartRequested) {
-          restartFromBeginningInternal();
-          continue;
-        }
-        playCycle();
-      }
-    } finally {
-      boolean shouldResume;
-      synchronized (this) {
-        playLoopActive = false;
-        shouldResume = restartRequested && !gameEnd;
-      }
-      if (shouldResume) {
-        playRound();
-      }
+      playCycle();
     }
   }
 
@@ -445,13 +427,14 @@ public class Game {
   }
 
   public void requestRestartFromBeginning() {
+    boolean restartEndedGame = gameEnd;
     restartRequested = true;
     gameEnd = false;
     cancelActivePrompt();
     if (ui != null) {
       ui.resetTransientTurnState();
     }
-    if (!playLoopActive) {
+    if (restartEndedGame) {
       playRound();
     }
   }

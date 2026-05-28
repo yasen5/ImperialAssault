@@ -1168,7 +1168,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
       return;
     }
     if (!remoteMode) {
-      new Thread(game::increaseThreat, "Manual Threat").start();
+      game.increaseThreat();
       repaint();
     }
   }

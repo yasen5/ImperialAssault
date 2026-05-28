@@ -145,11 +145,10 @@ public class GameServer {
       }
       SwingUtilities.invokeLater(() -> {
         if (spectatorScreen != null) {
-          spectatorScreen.setIncreaseThreatAction(() -> new Thread(game::increaseThreat, "Manual Threat").start());
+          spectatorScreen.setIncreaseThreatAction(game::increaseThreat);
           spectatorScreen.setNextRoundAction(game::requestAdvanceStatusPhase);
-          spectatorScreen.setFinishGameAction(() -> new Thread(game::skipToEndScreen, "Finish Game").start());
-          spectatorScreen.setRestartGameAction(
-              () -> new Thread(game::requestRestartFromBeginning, "Restart Game").start());
+          spectatorScreen.setFinishGameAction(game::skipToEndScreen);
+          spectatorScreen.setRestartGameAction(game::requestRestartFromBeginning);
         }
       });
       broadcastSnapshot(game.createSnapshot());
@@ -267,7 +266,7 @@ public class GameServer {
   private void handleClientFinishGameRequest() {
     Game game = activeGame;
     if (game != null) {
-      new Thread(game::skipToEndScreen, "Finish Game").start();
+      game.skipToEndScreen();
     }
   }
 
