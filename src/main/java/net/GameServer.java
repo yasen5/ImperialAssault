@@ -14,11 +14,10 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import util.MyArrayList;
+import util.MyDLList;
 import util.MyHashMap;
 
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CancellationException;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.swing.JFrame;
@@ -578,7 +577,7 @@ public class GameServer {
     private final Socket socket;
     private final ObjectOutputStream out;
     private final ObjectInputStream in;
-    private final BlockingQueue<PromptResponse> responses = new LinkedBlockingQueue<>();
+    private final ResponseQueue responses = new ResponseQueue();
     private PlayerSeat seat;
     private volatile MissionOption mission;
 
@@ -603,7 +602,7 @@ public class GameServer {
             }
           }
         } catch (EOFException | SocketException eof) {
-        } catch (IOException | ClassNotFoundException | InterruptedException ex) {
+        } catch (IOException | ClassNotFoundException ex) {
           ex.printStackTrace(System.err);
         }
       });
@@ -630,6 +629,22 @@ public class GameServer {
         Thread.currentThread().interrupt();
         throw new CancellationException("Prompt " + promptId + " was interrupted");
       }
+    }
+  }
+
+  private static final class ResponseQueue {
+    private final MyDLList<PromptResponse> values = new MyDLList<>();
+
+    synchronized void put(PromptResponse response) {
+      values.add(response);
+      notifyAll();
+    }
+
+    synchronized PromptResponse take() throws InterruptedException {
+      while (values.isEmpty()) {
+        wait();
+      }
+      return values.remove(0);
     }
   }
 }

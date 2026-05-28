@@ -22,13 +22,11 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import util.MyArrayList;
+import util.MyHashMap;
+import util.MyHashSet;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
 import java.util.function.Consumer;
 
 import javax.swing.AbstractAction;
@@ -65,7 +63,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   private int buttonSize;
   private CompletableFuture<String> movementButtonOutput;
   private final JButton rotateMovementButton = new JButton("Rotate");
-  private final Map<JButton, String> rotationButtonTokens = new HashMap<>();
+  private final MyHashMap<JButton, String> rotationButtonTokens = new MyHashMap<>();
   private static boolean gameEnd = false;
   private Thread mainGameLoop;
   private static SelectionType currentSelectionType = SelectionType.EXPLANATION;
@@ -77,7 +75,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   private CompletableFuture<String> activePromptResponse;
   private long activePromptId = -1L;
   private PromptKind activePromptKind;
-  private final Set<Long> pendingPromptCancels = ConcurrentHashMap.newKeySet();
+  private final MyHashSet<Long> pendingPromptCancels = new MyHashSet<>();
   private final JPanel promptPanel = new JPanel(new BorderLayout(8, 8)) {
     @Override
     protected void paintComponent(Graphics g) {

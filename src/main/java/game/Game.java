@@ -6,12 +6,11 @@ import util.MyArrayList;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
-import java.util.HashSet;
-import java.util.Set;
 
 import game.Die.GraphicDefenseDieResult;
 import game.Die.GraphicOffenseDieResult;
 import game.Personnel.Actions;
+import util.MyHashSet;
 import net.structs.MatchSnapshot;
 import net.structs.GameSessionConfig;
 import net.GameDecisionProvider;
@@ -30,7 +29,7 @@ public class Game {
   private Consumer<MatchSnapshot> snapshotListener;
   CompletableFuture<Personnel> currentSelected = new CompletableFuture<>();
   MyArrayList<Personnel> availableTargets = new MyArrayList<>();
-  final Set<Personnel> specialUsedThisActivation = new HashSet<>();
+  final MyHashSet<Personnel> specialUsedThisActivation = new MyHashSet<>();
   final MyArrayList<Actions> actionsUsedThisActivation = new MyArrayList<>();
   int threatDial = 0;
   int threatLevel = 1;

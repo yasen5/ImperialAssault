@@ -6,9 +6,9 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.List;
+
+import util.MyArrayList;
 
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
@@ -56,7 +56,7 @@ public final class ProjectLauncher {
         }
 
         Files.createDirectories(OUTPUT_ROOT);
-        List<String> options = new ArrayList<>();
+        MyArrayList<String> options = new MyArrayList<>();
         options.add("-encoding");
         options.add("UTF-8");
         options.add("-d");
@@ -71,7 +71,12 @@ public final class ProjectLauncher {
                     .forEach(options::add);
         }
 
-        int result = compiler.run(null, null, null, options.toArray(String[]::new));
+        String[] optionArray = new String[options.size()];
+        for (int i = 0; i < options.size(); i++) {
+            optionArray[i] = options.get(i);
+        }
+
+        int result = compiler.run(null, null, null, optionArray);
         if (result != 0) {
             System.err.println("javac failed with exit code " + result);
         }

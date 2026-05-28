@@ -1,12 +1,10 @@
 package game;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import game.Constants.WallLine;
 import game.Personnel.Actions;
 import game.Personnel.Directions;
 import util.MyArrayList;
+import util.MyHashSet;
 
 final class GameActionController {
   private final Game game;
@@ -315,7 +313,7 @@ final class GameActionController {
     if (target == null || blastValue <= 0) {
       return;
     }
-    Set<Personnel> affected = new HashSet<>();
+    MyHashSet<Personnel> affected = new MyHashSet<>();
     for (Personnel targetSpaceOwner : allPersonnel()) {
       if (targetSpaceOwner == target) {
         continue;

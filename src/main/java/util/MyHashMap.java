@@ -86,6 +86,14 @@ public class MyHashMap<K, V> implements Serializable {
     return findExistingSlot(key) >= 0;
   }
 
+  @SuppressWarnings("unchecked")
+  public void clear() {
+    hashArray = (Entry<K, V>[]) new Entry[DEFAULT_CAPACITY];
+    size = 0;
+    usedSlots = 0;
+    keySet = new MyHashSet<>();
+  }
+
   public int size() {
     return size;
   }

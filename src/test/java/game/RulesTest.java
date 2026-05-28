@@ -9,7 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 
 import org.junit.jupiter.api.Test;
 
@@ -23,6 +22,7 @@ import net.GameDecisionProvider;
 import net.structs.GameSessionConfig;
 import net.structs.MatchSnapshot;
 import net.structs.MissionOption;
+import util.MyArrayList;
 
 class RulesTest {
     @Test
@@ -884,8 +884,8 @@ class RulesTest {
 
     private static final class VotingDecisionProvider implements GameDecisionProvider {
         private final int[] votes;
-        private final ArrayList<String> promptNames = new ArrayList<>();
-        private final ArrayList<Object[]> multipleChoiceOptions = new ArrayList<>();
+        private final MyArrayList<String> promptNames = new MyArrayList<>();
+        private final MyArrayList<Object[]> multipleChoiceOptions = new MyArrayList<>();
         private int multipleChoicePrompts;
 
         private VotingDecisionProvider(int... votes) {
