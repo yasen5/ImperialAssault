@@ -6,8 +6,9 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.ConnectException;
 import java.net.Socket;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.Optional;
 
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
@@ -74,9 +75,7 @@ public class GameClient {
       screen.setFinishGameAction(() -> {
         send(new ClientFinishGameRequest());
       });
-      if (response.lobbySnapshot() != null) {
-        screen.updateLobbySnapshot(response.lobbySnapshot());
-      }
+      Optional.ofNullable(response.lobbySnapshot()).ifPresent(screen::updateLobbySnapshot);
       JFrame frame = new JFrame("Imperial Assault Client - " + response.seat());
       UiContext.setFrame(frame);
       frame.add(screen);
@@ -137,14 +136,7 @@ public class GameClient {
             screen.promptNumericChoice(prompt.promptId(), prompt.title(), prompt.message(), prompt.minValue(),
                 prompt.maxValue()));
         case DIRECTION, TARGET -> {
-          CompletableFuture<String> selection;
-          if (screen == null) {
-            System.err.println("Screen not initialized");
-            yield "";
-          }
-          AtomicReference<CompletableFuture<String>> selectionRef = new AtomicReference<>();
-          invokeAndWaitUnchecked(() -> selectionRef.set(screen.beginRemoteBoardPrompt(prompt)));
-          selection = selectionRef.get();
+          CompletableFuture<String> selection = callOnEventThread(() -> screen.beginRemoteBoardPrompt(prompt));
           String result = selection.join();
           yield result;
         }
@@ -167,23 +159,36 @@ public class GameClient {
     }
   }
 
-  private static void invokeAndWaitUnchecked(Runnable runnable) {
+  private static <T> T callOnEventThread(Callable<T> task) {
+    if (SwingUtilities.isEventDispatchThread()) {
+      try {
+        return task.call();
+      } catch (Exception ex) {
+        throw new IllegalStateException(ex);
+      }
+    }
+    CompletableFuture<T> result = new CompletableFuture<>();
     try {
-      SwingUtilities.invokeAndWait(runnable);
+      SwingUtilities.invokeAndWait(() -> {
+        try {
+          result.complete(task.call());
+        } catch (Exception ex) {
+          result.completeExceptionally(ex);
+        }
+      });
     } catch (InterruptedException ex) {
       Thread.currentThread().interrupt();
-      ex.printStackTrace(System.err);
+      throw new java.util.concurrent.CancellationException("Interrupted while waiting for the UI");
     } catch (InvocationTargetException ex) {
       Throwable cause = ex.getCause();
       if (cause instanceof RuntimeException runtimeException) {
-        runtimeException.printStackTrace(System.err);
-        return;
+        throw runtimeException;
       }
       if (cause instanceof Error error) {
-        error.printStackTrace(System.err);
-        return;
+        throw error;
       }
-      cause.printStackTrace(System.err);
+      throw new IllegalStateException(cause);
     }
+    return result.join();
   }
 }

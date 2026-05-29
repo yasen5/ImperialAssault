@@ -3,6 +3,7 @@ package game;
 import game.Constants.WallLine;
 import game.Personnel.Actions;
 import game.Personnel.Directions;
+import java.util.Optional;
 import util.MyArrayList;
 import util.MyHashSet;
 
@@ -126,11 +127,11 @@ final class GameActionController {
   }
 
   void handleInteraction(Personnel activeFigure) {
-    getAdjacentInteractable(activeFigure).interact(activeFigure);
+    getAdjacentInteractable(activeFigure).ifPresent(interactable -> interactable.interact(activeFigure));
     game.repaint();
   }
 
-  Interactable<? extends Personnel> getAdjacentInteractable(Personnel activeFigure) {
+  Optional<Interactable<? extends Personnel>> getAdjacentInteractable(Personnel activeFigure) {
     Pos activePos = activeFigure.getPos();
     for (Directions dir : Directions.values()) {
       Pos nextPos = activePos.getNextPos(dir);
@@ -141,19 +142,19 @@ final class GameActionController {
         if (interactable.blocking()) {
           for (WallLine wallLine : interactable.getWallLines()) {
             if (wallLine.intersects(activePos.getCenterPos(), nextPos.getCenterPos(), true)) {
-              return interactable;
+              return Optional.of(interactable);
             }
           }
         } else if (nextPos.equalTo(interactable.getPos())) {
-          return interactable;
+          return Optional.of(interactable);
         }
       }
     }
-    return null;
+    return Optional.empty();
   }
 
   boolean canInteract(Personnel activeFigure) {
-    return getAdjacentInteractable(activeFigure) != null;
+    return getAdjacentInteractable(activeFigure).isPresent();
   }
 
   MyArrayList<Personnel> availableDefenders(Personnel attacker, boolean rebelAttacker) {
@@ -344,24 +345,24 @@ final class GameActionController {
 
   private String actionSelectionPrompt(MyArrayList<Actions> availableActions) {
     StringBuilder prompt = new StringBuilder("Choose an action to take");
-    boolean hasDescriptions = false;
-    for (Actions action : availableActions) {
-      if (game.missionDefinition.actionDescription(action) != null) {
-        hasDescriptions = true;
-        break;
-      }
-    }
-    if (!hasDescriptions) {
+    if (!hasActionDescriptions(availableActions)) {
       return prompt.toString();
     }
     prompt.append("\n\n");
     for (Actions action : availableActions) {
-      String description = game.missionDefinition.actionDescription(action);
-      if (description != null) {
-        prompt.append(action).append(": ").append(description).append("\n\n");
-      }
+      game.missionDefinition.actionDescription(action)
+          .ifPresent(description -> prompt.append(action).append(": ").append(description).append("\n\n"));
     }
     return prompt.toString().trim();
+  }
+
+  private boolean hasActionDescriptions(MyArrayList<Actions> availableActions) {
+    for (Actions action : availableActions) {
+      if (game.missionDefinition.actionDescription(action).isPresent()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private void applyAfterActionConditions(Personnel activeFigure, Actions action) {
@@ -445,14 +446,14 @@ final class GameActionController {
     MovementChoice choice = game.decisionProvider.chooseMovement(activeFigure.getOwnerSeat(), activeFigure,
         availableDirections, legalRotations);
     if (choice.rotateAction()) {
-      RotationMove rotationMove = choice.rotationMove() == null ? legalRotations.get(0) : choice.rotationMove();
+      RotationMove rotationMove = choice.rotationMove().orElseThrow();
       if (!containsRotation(legalRotations, rotationMove)) {
         game.triggerBanner(activeFigure.getName() + " cannot rotate there");
         return false;
       }
       activeFigure.rotateTo(rotationMove);
     } else {
-      activeFigure.move(choice.direction());
+      activeFigure.move(choice.direction().orElseThrow());
     }
     game.repaint();
     return true;

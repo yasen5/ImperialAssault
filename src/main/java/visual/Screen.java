@@ -25,8 +25,9 @@ import util.MyArrayList;
 import util.MyHashMap;
 import util.MyHashSet;
 
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 import javax.swing.AbstractAction;
@@ -55,26 +56,30 @@ import net.structs.RemotePrompt;
 import net.structs.RemotePrompt.PromptType;
 
 public class Screen extends JPanel implements ActionListener, MouseListener, KeyListener, GameUi {
+  private static final Runnable NO_ACTION = () -> {
+  };
+  private static final Consumer<MissionOption> NO_MISSION_SELECTION = mission -> {
+  };
+
   private final boolean remoteMode;
   private final boolean readOnly;
   private final Game game;
   private boolean gameStarted = false;
   private BufferedImage startScreenimage;
   private int buttonSize;
-  private CompletableFuture<String> movementButtonOutput;
+  private Optional<CompletableFuture<String>> movementButtonOutput = Optional.empty();
   private final JButton rotateMovementButton = new JButton("Rotate");
   private final MyHashMap<JButton, String> rotationButtonTokens = new MyHashMap<>();
   private static boolean gameEnd = false;
   private Thread mainGameLoop;
   private static SelectionType currentSelectionType = SelectionType.EXPLANATION;
-  private static DeploymentCard previousSelectedCard;
+  private Optional<DeploymentCard> selectedDeploymentCard = Optional.empty();
   private JEditorPane editorPane;
   private boolean rebelsWin = true;
-  private CompletableFuture<String> remoteBoardSelection;
-  private RemotePrompt activeRemotePrompt;
-  private CompletableFuture<String> activePromptResponse;
+  private Optional<RemoteBoardPrompt> activeRemoteBoardPrompt = Optional.empty();
+  private Optional<CompletableFuture<String>> activePromptResponse = Optional.empty();
   private long activePromptId = -1L;
-  private PromptKind activePromptKind;
+  private Optional<PromptKind> activePromptKind = Optional.empty();
   private final MyHashSet<Long> pendingPromptCancels = new MyHashSet<>();
   private final JPanel promptPanel = new JPanel(new BorderLayout(8, 8)) {
     @Override
@@ -105,25 +110,18 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   private final Object deploymentInfoArea = new Object();
   private int numericPromptMinValue;
   private int numericPromptMaxValue;
-  private final AtomicLong bannerToken = new AtomicLong(0L);
+  private final BannerState bannerState = new BannerState();
   private Timer bannerTimer;
   private volatile String statusText = "Turn: --";
-  private volatile String bannerText;
-  private volatile long bannerExpiresAt;
-  private volatile LobbySnapshot lobbySnapshot;
-  private MissionOption localMissionSelection;
-  private Consumer<MissionOption> missionSelectionAction = mission -> {
-  };
-  private Runnable increaseThreatAction = () -> {
-  };
-  private Runnable nextRoundAction = () -> {
-  };
-  private Runnable finishGameAction = () -> {
-  };
-  private Runnable restartGameAction = () -> {
-  };
-  private game.PlayerSeat localSeat;
-  private volatile String serverStatusText;
+  private Optional<LobbySnapshot> lobbySnapshot = Optional.empty();
+  private Optional<MissionOption> localMissionSelection = Optional.empty();
+  private Consumer<MissionOption> missionSelectionAction = NO_MISSION_SELECTION;
+  private Runnable increaseThreatAction = NO_ACTION;
+  private Runnable nextRoundAction = NO_ACTION;
+  private Runnable finishGameAction = NO_ACTION;
+  private Runnable restartGameAction = NO_ACTION;
+  private Optional<game.PlayerSeat> localSeat = Optional.empty();
+  private Optional<String> serverStatusText = Optional.empty();
   private final KeyEventDispatcher shortcutDispatcher = this::dispatchShortcutKeyEvent;
 
   private static String[] dialogChain = new String[] {
@@ -160,6 +158,26 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     NUMERIC
   }
 
+  private static record RemoteBoardPrompt(RemotePrompt prompt, CompletableFuture<String> selection) {
+    boolean matches(long promptId) {
+      return prompt.promptId() == promptId;
+    }
+
+    boolean is(PromptType type) {
+      return prompt.type() == type;
+    }
+
+    void complete(String value) {
+      selection.complete(value);
+    }
+
+    void cancelIfOpen() {
+      if (!selection.isDone()) {
+        selection.cancel(true);
+      }
+    }
+  }
+
   public Screen(Game game, boolean remoteMode) {
     this(game, remoteMode, false);
   }
@@ -187,8 +205,8 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     setBackground(new Color(0, 0, 0));
     startScreenimage = LoaderUtils.getImage("IACoverArt");
     if (!game.getHeroes().isEmpty()) {
-      previousSelectedCard = game.getHeroes().get(0).getDeploymentCard();
-      previousSelectedCard.setVisible(true);
+      selectedDeploymentCard = Optional.of(game.getHeroes().get(0).getDeploymentCard());
+      selectedDeploymentCard.ifPresent(card -> card.setVisible(true));
     }
     if (remoteMode && !readOnly) {
       initializeLobbyControls();
@@ -399,8 +417,8 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     CompletableFuture<String> future = new CompletableFuture<>();
     Runnable setup = () -> {
       activePromptId = promptId;
-      activePromptKind = kind;
-      activePromptResponse = future;
+      activePromptKind = Optional.of(kind);
+      activePromptResponse = Optional.of(future);
       promptTitleLabel.setText(name);
       promptMessageArea.setText(explanation);
       promptActionsPanel.removeAll();
@@ -418,7 +436,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
       }
     };
     future.whenComplete((value, error) -> SwingUtilities.invokeLater(() -> {
-      if (activePromptResponse == future) {
+      if (activePromptResponse.filter(active -> active == future).isPresent()) {
         clearPromptPanel();
       }
     }));
@@ -432,8 +450,8 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
 
   private void clearPromptPanel() {
     activePromptId = -1L;
-    activePromptKind = null;
-    activePromptResponse = null;
+    activePromptKind = Optional.empty();
+    activePromptResponse = Optional.empty();
     promptActionsPanel.removeAll();
     numericPromptField.setText("");
     promptPanel.setVisible(false);
@@ -442,20 +460,16 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   }
 
   private void completePrompt(String value) {
-    if (activePromptResponse != null && !activePromptResponse.isDone()) {
-      activePromptResponse.complete(value);
-    }
+    activePromptResponse
+        .filter(response -> !response.isDone())
+        .ifPresent(response -> response.complete(value));
   }
 
   private void submitNumericPrompt() {
-    if (activePromptKind != PromptKind.NUMERIC) {
+    if (!activePromptKind.equals(Optional.of(PromptKind.NUMERIC))) {
       return;
     }
-    String rawValue = numericPromptField.getText();
-    if (rawValue == null) {
-      return;
-    }
-    String trimmed = rawValue.trim();
+    String trimmed = numericPromptField.getText().trim();
     try {
       int parsed = Integer.parseInt(trimmed);
       if (parsed < numericPromptMinValue || parsed > numericPromptMaxValue) {
@@ -479,7 +493,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   }
 
   private void submitMissionSelection(MissionOption mission) {
-    localMissionSelection = mission;
+    localMissionSelection = Optional.of(mission);
     missionSelectionAction.accept(mission);
     refreshLobbyControls();
   }
@@ -490,15 +504,17 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
       missionTwoButton.setVisible(false);
       return;
     }
-    boolean showControls = lobbySnapshot != null && !gameStarted && !lobbySnapshot.allMissionsMatch();
+    boolean showControls = lobbySnapshot
+        .filter(snapshot -> !gameStarted && !snapshot.allMissionsMatch())
+        .isPresent();
     missionOneButton.setVisible(showControls);
     missionTwoButton.setVisible(showControls);
     missionOneButton.setEnabled(showControls);
     missionTwoButton.setEnabled(showControls);
-    if (localMissionSelection == MissionOption.MISSION_ONE) {
+    if (localMissionSelection.equals(Optional.of(MissionOption.MISSION_ONE))) {
       missionOneButton.setText(selectedMissionLabel(MissionOption.MISSION_ONE));
       missionTwoButton.setText(MissionOption.MISSION_TWO.displayName());
-    } else if (localMissionSelection == MissionOption.MISSION_TWO) {
+    } else if (localMissionSelection.equals(Optional.of(MissionOption.MISSION_TWO))) {
       missionOneButton.setText(MissionOption.MISSION_ONE.displayName());
       missionTwoButton.setText(selectedMissionLabel(MissionOption.MISSION_TWO));
     } else {
@@ -565,14 +581,15 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     g2.drawString("Lobby", x + padding, y + padding + g2.getFontMetrics().getAscent());
 
     g2.setFont(g2.getFont().deriveFont(Font.PLAIN, 20f));
+    Optional<LobbySnapshot> visibleLobby = lobbySnapshot;
     String header;
-    if (lobbySnapshot == null) {
+    if (visibleLobby.isEmpty()) {
       header = "Waiting for players to connect";
-    } else if (!lobbySnapshot.allSeatsFilled()) {
+    } else if (!visibleLobby.get().allSeatsFilled()) {
       header = "Waiting for all seats to fill";
-    } else if (lobbySnapshot.allMissionsMatch()) {
-      header = "All players chose " + formatMission(lobbySnapshot.selectedMission());
-    } else if (lobbySnapshot.allMissionsSelected()) {
+    } else if (visibleLobby.get().allMissionsMatch()) {
+      header = "All players chose " + formatMission(Optional.ofNullable(visibleLobby.get().selectedMission()));
+    } else if (visibleLobby.get().allMissionsSelected()) {
       header = "All seats filled. Pick the same mission to begin";
     } else {
       header = "All seats filled. Choose a mission";
@@ -581,38 +598,41 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     int textY = y + padding + g2.getFontMetrics().getHeight() * 3;
     g2.drawString(header, x + padding, textY);
 
-    if (lobbySnapshot == null) {
+    if (visibleLobby.isEmpty()) {
       g2.drawString("Connecting...", x + padding, textY + rowStep);
       return;
     }
 
+    LobbySnapshot snapshot = visibleLobby.get();
     int rowY = textY + rowStep;
-    for (game.PlayerSeat seat : lobbySnapshot.config().requiredSeats()) {
-      boolean occupied = lobbySnapshot.occupiedSeats().contains(seat);
+    for (game.PlayerSeat seat : snapshot.config().requiredSeats()) {
+      boolean occupied = snapshot.occupiedSeats().contains(seat);
       String label = formatSeat(seat);
-      MissionOption mission = lobbySnapshot.missionSelections().get(seat);
-      String state = occupied ? (mission == null ? "joined" : formatMission(mission)) : "open";
+      Optional<MissionOption> mission = Optional.ofNullable(snapshot.missionSelections().get(seat));
+      String state = occupied ? formatMission(mission) : "open";
       g2.drawString(label, x + padding, rowY);
       int stateWidth = g2.getFontMetrics().stringWidth(state);
       g2.drawString(state, x + panelWidth - stateWidth - padding, rowY);
       rowY += rowStep;
     }
 
-    if (serverStatusText != null) {
+    if (serverStatusText.isPresent()) {
       g2.setFont(g2.getFont().deriveFont(Font.BOLD, 18f));
-      g2.drawString(serverStatusText, x + padding, y + panelHeight - padding);
+      g2.drawString(serverStatusText.get(), x + padding, y + panelHeight - padding);
     }
   }
 
   private void drawServerStatus(Graphics g) {
-    if (serverStatusText == null || serverStatusText.isBlank()) {
+    Optional<String> visibleStatus = serverStatusText.filter(status -> !status.isBlank());
+    if (visibleStatus.isEmpty()) {
       return;
     }
+    String status = visibleStatus.get();
     java.awt.Graphics2D g2 = (java.awt.Graphics2D) g;
     g2.setFont(g2.getFont().deriveFont(Font.BOLD, 18f));
     int paddingX = layoutHandler.getInlinePadding();
     int paddingY = layoutHandler.getSmallPadding();
-    int textWidth = g2.getFontMetrics().stringWidth(serverStatusText);
+    int textWidth = g2.getFontMetrics().stringWidth(status);
     Rectangle statusBounds = layoutHandler.getServerStatusBounds(textWidth);
     Composite original = g2.getComposite();
     g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.82f));
@@ -621,7 +641,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     g2.setComposite(original);
     g2.setColor(new Color(255, 255, 255));
     g2.drawRoundRect(statusBounds.x, statusBounds.y, statusBounds.width, statusBounds.height, paddingX, paddingX);
-    g2.drawString(serverStatusText, statusBounds.x + paddingX,
+    g2.drawString(status, statusBounds.x + paddingX,
         statusBounds.y + paddingY + g2.getFontMetrics().getAscent());
   }
 
@@ -635,8 +655,9 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     g.drawRoundRect(hudBounds.x, hudBounds.y, hudBounds.width, hudBounds.height, padding, padding);
     g.drawString(statusText, hudBounds.x + padding, hudBounds.y + padding + g.getFontMetrics().getAscent());
 
-    long remaining = bannerExpiresAt - System.currentTimeMillis();
-    if (bannerText == null || remaining <= 0) {
+    Optional<String> bannerText = bannerState.text();
+    long remaining = bannerState.remainingMs();
+    if (bannerText.isEmpty() || remaining <= 0) {
       return;
     }
     float alpha = Math.max(0f, Math.min(1f, remaining / 1400f));
@@ -648,7 +669,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     g2.fillRoundRect(bannerBounds.x, bannerBounds.y, bannerBounds.width, bannerBounds.height, padding, padding);
     g2.setColor(new Color(255, 255, 255));
     g2.drawRoundRect(bannerBounds.x, bannerBounds.y, bannerBounds.width, bannerBounds.height, padding, padding);
-    g2.drawString(bannerText, bannerBounds.x + padding,
+    g2.drawString(bannerText.get(), bannerBounds.x + padding,
         bannerBounds.y + padding + g2.getFontMetrics().getAscent());
     g2.setComposite(original);
   }
@@ -663,8 +684,8 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     };
   }
 
-  private String formatMission(MissionOption mission) {
-    return mission == null ? "a mission" : mission.displayName();
+  private String formatMission(Optional<MissionOption> mission) {
+    return mission.map(MissionOption::displayName).orElse("a mission");
   }
 
   @Override
@@ -675,23 +696,24 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     Object source = e.getSource();
     for (Directions direction : Directions.values()) {
       if (source.equals(movementButtons.get(direction))) {
-        if (remoteMode && remoteBoardSelection != null && activeRemotePrompt != null
-            && activeRemotePrompt.type() == PromptType.DIRECTION) {
-          remoteBoardSelection.complete(direction.name());
-        } else if (movementButtonOutput != null) {
-          movementButtonOutput.complete(direction.name());
+        if (!completeRemoteDirectionPrompt(direction.name())) {
+          movementButtonOutput.ifPresent(output -> output.complete(direction.name()));
         }
         continue;
       }
     }
     if (rotationButtonTokens.containsKey(source)) {
-      if (remoteMode && remoteBoardSelection != null && activeRemotePrompt != null
-          && activeRemotePrompt.type() == PromptType.DIRECTION) {
-        remoteBoardSelection.complete(rotationButtonTokens.get(source));
-      } else if (movementButtonOutput != null) {
-        movementButtonOutput.complete(rotationButtonTokens.get(source));
+      if (!completeRemoteDirectionPrompt(rotationButtonTokens.get(source))) {
+        movementButtonOutput.ifPresent(output -> output.complete(rotationButtonTokens.get(source)));
       }
     }
+  }
+
+  private boolean completeRemoteDirectionPrompt(String value) {
+    Optional<RemoteBoardPrompt> directionPrompt = activeRemoteBoardPrompt
+        .filter(prompt -> remoteMode && prompt.is(PromptType.DIRECTION));
+    directionPrompt.ifPresent(prompt -> prompt.complete(value));
+    return directionPrompt.isPresent();
   }
 
   @Override
@@ -710,37 +732,33 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
       mainGameLoop.start();
       return;
     }
-    if (remoteMode && activeRemotePrompt != null && remoteBoardSelection != null) {
-      if (activeRemotePrompt.type() == PromptType.TARGET) {
-        Personnel personnel = game
-            .getPersonnelAtPos(new Pos(e.getX() / Constants.tileSize, e.getY() / Constants.tileSize));
-        if (personnel != null && activeRemotePrompt.allowedValues().contains(personnel.getId())) {
-          remoteBoardSelection.complete(personnel.getId());
-          return;
-        }
+    if (remoteMode && activeRemoteBoardPrompt.filter(prompt -> prompt.is(PromptType.TARGET)).isPresent()) {
+      RemoteBoardPrompt boardPrompt = activeRemoteBoardPrompt.orElseThrow();
+      Optional<Personnel> personnel = game
+          .getPersonnelAtPos(new Pos(e.getX() / Constants.tileSize, e.getY() / Constants.tileSize));
+      Optional<String> selectedId = personnel
+          .map(Personnel::getId)
+          .filter(boardPrompt.prompt().allowedValues()::contains);
+      if (selectedId.isPresent()) {
+        boardPrompt.complete(selectedId.orElseThrow());
+        return;
       }
     }
     switch (currentSelectionType) {
       case COMBAT:
       case SPECIAL:
-        Personnel personnel = game
+        Optional<Personnel> personnel = game
             .getPersonnelAtPos(new Pos(e.getX() / Constants.tileSize, e.getY() / Constants.tileSize));
-        if (!remoteMode && personnel != null && game.trySetTarget(personnel)) {
+        if (!remoteMode && personnel.filter(game::trySetTarget).isPresent()) {
           currentSelectionType = SelectionType.EXPLANATION;
         }
         break;
       case EXPLANATION:
-        if (previousSelectedCard != null) {
-          previousSelectedCard.setVisible(false);
-        }
-        DeploymentCard newDeploymentCard = game
+        selectedDeploymentCard.ifPresent(card -> card.setVisible(false));
+        Optional<DeploymentCard> newDeploymentCard = game
             .getDeploymentCard(new Pos(e.getX() / Constants.tileSize, e.getY() / Constants.tileSize));
-        if (newDeploymentCard != null) {
-          previousSelectedCard = newDeploymentCard;
-        }
-        if (previousSelectedCard != null) {
-          previousSelectedCard.setVisible(true);
-        }
+        selectedDeploymentCard = newDeploymentCard;
+        selectedDeploymentCard.ifPresent(card -> card.setVisible(true));
     }
     repaint();
   }
@@ -808,7 +826,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   }
 
   public void setMovementButtonOutput(CompletableFuture<String> output) {
-    movementButtonOutput = output;
+    movementButtonOutput = Optional.of(output);
   }
 
   public int promptMultipleChoice(String name, String explanation, Object[] options) {
@@ -942,17 +960,18 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     if (readOnly) {
       return CompletableFuture.completedFuture(null);
     }
-    activeRemotePrompt = prompt;
     activePromptId = prompt.promptId();
-    remoteBoardSelection = new CompletableFuture<>();
-    remoteBoardSelection.whenComplete((value, error) -> SwingUtilities.invokeLater(() -> {
-      if (activeRemotePrompt != null && activeRemotePrompt.promptId() == prompt.promptId()) {
+    CompletableFuture<String> selection = new CompletableFuture<>();
+    RemoteBoardPrompt boardPrompt = new RemoteBoardPrompt(prompt, selection);
+    activeRemoteBoardPrompt = Optional.of(boardPrompt);
+    selection.whenComplete((value, error) -> SwingUtilities.invokeLater(() -> {
+      if (activeRemoteBoardPrompt.filter(active -> active.matches(prompt.promptId())).isPresent()) {
         clearRemotePrompt();
       }
     }));
     if (pendingPromptCancels.remove(prompt.promptId())) {
-      remoteBoardSelection.cancel(true);
-      return remoteBoardSelection;
+      selection.cancel(true);
+      return selection;
     }
     if (prompt.selectionType() != null) {
       setSelectionType(prompt.selectionType());
@@ -961,14 +980,15 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
       showRemoteDirectionPrompt(prompt);
     }
     repaint();
-    return remoteBoardSelection;
+    return selection;
   }
 
   private void showRemoteDirectionPrompt(RemotePrompt prompt) {
-    Personnel activeFigure = game.getPersonnelById(prompt.subjectId());
-    if (activeFigure == null) {
+    Optional<Personnel> selectedFigure = game.getPersonnelById(prompt.subjectId());
+    if (selectedFigure.isEmpty()) {
       return;
     }
+    Personnel activeFigure = selectedFigure.orElseThrow();
     deactivateRotateButton();
     double[] angleRads = { Math.PI / 4.0 };
     MyArrayList<String> allowedValues = prompt.allowedValues();
@@ -992,8 +1012,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   }
 
   public void clearRemotePrompt() {
-    activeRemotePrompt = null;
-    remoteBoardSelection = null;
+    activeRemoteBoardPrompt = Optional.empty();
     activePromptId = -1L;
     deactiveateMovementButtons();
     setSelectionType(SelectionType.EXPLANATION);
@@ -1005,24 +1024,22 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
       pendingPromptCancels.add(promptId);
       return;
     }
-    if (activePromptResponse != null && !activePromptResponse.isDone()) {
-      activePromptResponse.cancel(true);
-    }
-    if (remoteBoardSelection != null && !remoteBoardSelection.isDone()) {
-      remoteBoardSelection.cancel(true);
-    }
+    activePromptResponse
+        .filter(response -> !response.isDone())
+        .ifPresent(response -> response.cancel(true));
+    activeRemoteBoardPrompt.ifPresent(RemoteBoardPrompt::cancelIfOpen);
     clearRemotePrompt();
   }
 
   @Override
   public void resetTransientTurnState() {
     Runnable reset = () -> {
-      if (activePromptResponse != null && !activePromptResponse.isDone()) {
-        activePromptResponse.cancel(true);
-      }
-      if (remoteBoardSelection != null && !remoteBoardSelection.isDone()) {
-        remoteBoardSelection.cancel(true);
-      }
+      activePromptResponse
+          .filter(response -> !response.isDone())
+          .ifPresent(response -> response.cancel(true));
+      activeRemoteBoardPrompt.ifPresent(RemoteBoardPrompt::cancelIfOpen);
+      activeRemoteBoardPrompt = Optional.empty();
+      activePromptId = -1L;
       deactiveateMovementButtons();
       setSelectionType(SelectionType.EXPLANATION);
       repaint();
@@ -1045,7 +1062,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   }
 
   public void setServerStatusText(String serverStatusText) {
-    this.serverStatusText = serverStatusText;
+    this.serverStatusText = Optional.ofNullable(serverStatusText);
     repaint();
   }
 
@@ -1054,37 +1071,39 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   }
 
   public void showBanner(String text, long durationMs) {
-    long token = bannerToken.incrementAndGet();
-    bannerText = text;
-    bannerExpiresAt = System.currentTimeMillis() + Math.max(1L, durationMs);
-    repaint();
-    SwingUtilities.invokeLater(() -> startBannerTimer(token));
+    runOnUiThread(() -> {
+      long token = bannerState.show(text, durationMs);
+      repaint();
+      startBannerTimer(token);
+    });
   }
 
   public void showBannerFromSnapshot(String text, long remainingMs) {
-    if (text == null || remainingMs <= 0) {
-      return;
-    }
-    showBanner(text, remainingMs);
+    Optional.ofNullable(text)
+        .filter(value -> remainingMs > 0)
+        .ifPresent(value -> showBanner(value, remainingMs));
   }
 
   public void updateLobbySnapshot(LobbySnapshot lobbySnapshot) {
-    this.lobbySnapshot = lobbySnapshot;
-    if (localSeat != null && lobbySnapshot != null) {
-      localMissionSelection = lobbySnapshot.missionSelections().get(localSeat);
-    }
+    this.lobbySnapshot = Optional.ofNullable(lobbySnapshot);
+    updateLocalMissionSelection();
     refreshLobbyControls();
     repaint();
   }
 
   public void setMissionSelectionAction(Consumer<MissionOption> missionSelectionAction) {
-    this.missionSelectionAction = missionSelectionAction == null ? mission -> {
-    } : missionSelectionAction;
+    this.missionSelectionAction = Objects.requireNonNullElse(missionSelectionAction, NO_MISSION_SELECTION);
   }
 
   public void setLocalSeat(game.PlayerSeat localSeat) {
-    this.localSeat = localSeat;
+    this.localSeat = Optional.ofNullable(localSeat);
+    updateLocalMissionSelection();
     refreshLobbyControls();
+  }
+
+  private void updateLocalMissionSelection() {
+    localMissionSelection = lobbySnapshot.flatMap(snapshot -> localSeat
+        .flatMap(seat -> Optional.ofNullable(snapshot.missionSelections().get(seat))));
   }
 
   public void markGameStarted() {
@@ -1123,12 +1142,13 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   }
 
   private void layoutSelectedDeploymentCard() {
-    if (previousSelectedCard == null) {
+    if (selectedDeploymentCard.isEmpty()) {
       return;
     }
-    Rectangle cardBounds = layoutHandler.getDeploymentCardBounds(previousSelectedCard.getBaseImageWidth(),
-        previousSelectedCard.getBaseImageHeight());
-    previousSelectedCard.setLayoutBounds(cardBounds, layoutHandler.getSidebarDetailBounds(cardBounds));
+    DeploymentCard card = selectedDeploymentCard.orElseThrow();
+    Rectangle cardBounds = layoutHandler.getDeploymentCardBounds(card.getBaseImageWidth(),
+        card.getBaseImageHeight());
+    card.setLayoutBounds(cardBounds, layoutHandler.getSidebarDetailBounds(cardBounds));
   }
 
   public int getSidebarDiceX() {
@@ -1218,23 +1238,19 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   }
 
   public void setIncreaseThreatAction(Runnable increaseThreatAction) {
-    this.increaseThreatAction = increaseThreatAction == null ? () -> {
-    } : increaseThreatAction;
+    this.increaseThreatAction = Objects.requireNonNullElse(increaseThreatAction, NO_ACTION);
   }
 
   public void setNextRoundAction(Runnable nextRoundAction) {
-    this.nextRoundAction = nextRoundAction == null ? () -> {
-    } : nextRoundAction;
+    this.nextRoundAction = Objects.requireNonNullElse(nextRoundAction, NO_ACTION);
   }
 
   public void setFinishGameAction(Runnable finishGameAction) {
-    this.finishGameAction = finishGameAction == null ? () -> {
-    } : finishGameAction;
+    this.finishGameAction = Objects.requireNonNullElse(finishGameAction, NO_ACTION);
   }
 
   public void setRestartGameAction(Runnable restartGameAction) {
-    this.restartGameAction = restartGameAction == null ? () -> {
-    } : restartGameAction;
+    this.restartGameAction = Objects.requireNonNullElse(restartGameAction, NO_ACTION);
   }
 
   private void startBannerTimer(long token) {
@@ -1242,12 +1258,12 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
       bannerTimer.stop();
     }
     bannerTimer = new Timer(1000, e -> {
-      if (bannerToken.get() != token) {
+      if (!bannerState.matches(token)) {
         ((Timer) e.getSource()).stop();
         return;
       }
-      if (System.currentTimeMillis() >= bannerExpiresAt) {
-        bannerText = null;
+      if (bannerState.expired()) {
+        bannerState.clear();
         repaint();
         ((Timer) e.getSource()).stop();
         return;
@@ -1256,5 +1272,47 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     });
     bannerTimer.setRepeats(true);
     bannerTimer.start();
+  }
+
+  private void runOnUiThread(Runnable action) {
+    if (SwingUtilities.isEventDispatchThread()) {
+      action.run();
+    } else {
+      SwingUtilities.invokeLater(action);
+    }
+  }
+
+  private static final class BannerState {
+    private long token;
+    private Optional<String> text = Optional.empty();
+    private long expiresAt;
+
+    long show(String text, long durationMs) {
+      token++;
+      this.text = Optional.of(text);
+      expiresAt = System.currentTimeMillis() + Math.max(1L, durationMs);
+      return token;
+    }
+
+    Optional<String> text() {
+      return text;
+    }
+
+    long remainingMs() {
+      return expiresAt - System.currentTimeMillis();
+    }
+
+    boolean matches(long token) {
+      return this.token == token;
+    }
+
+    boolean expired() {
+      return remainingMs() <= 0;
+    }
+
+    void clear() {
+      text = Optional.empty();
+      expiresAt = 0L;
+    }
   }
 }

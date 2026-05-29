@@ -1,5 +1,7 @@
 package game;
 
+import java.util.Optional;
+
 import net.structs.MissionOption;
 import game.Personnel.Actions;
 
@@ -66,16 +68,13 @@ public record MissionDefinition(
     }
   }
 
-  public String actionDescription(Actions action) {
-    if (actionDescriptions == null) {
-      return null;
-    }
+  public Optional<String> actionDescription(Actions action) {
     for (ActionDescription actionDescription : actionDescriptions) {
       if (actionDescription.action() == action) {
-        return actionDescription.description();
+        return Optional.of(actionDescription.description());
       }
     }
-    return null;
+    return Optional.empty();
   }
 
   public static MissionDefinition forOption(MissionOption option) {

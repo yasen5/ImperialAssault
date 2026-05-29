@@ -523,7 +523,7 @@ public abstract class Personnel {
   }
 
   public MyArrayList<Personnel> getSpecialTargets() {
-    return null;
+    return new MyArrayList<>();
   }
 
   public boolean specialRequiresSelection() {

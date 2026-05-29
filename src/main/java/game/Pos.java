@@ -5,6 +5,7 @@ import game.Constants.EndpointTouchPolicy;
 import game.Pathfinder.FullPos;
 import game.Personnel.Directions;
 import java.util.Objects;
+import java.util.Optional;
 
 public class Pos {
   private int x, y;
@@ -137,12 +138,11 @@ public class Pos {
     }
   }
 
-  // Unsafe because it might return null if you can't move there
-  public Pos getNextPosUnsafe(Directions dir, boolean respectFigures, boolean respectSoftBarriers, Game game) {
+  public Optional<Pos> nextPosIfLegal(Directions dir, boolean respectFigures, boolean respectSoftBarriers, Game game) {
     if (!canMove(dir, respectFigures, respectSoftBarriers, game)) {
-      return null;
+      return Optional.empty();
     }
-    return getNextPos(dir);
+    return Optional.of(getNextPos(dir));
   }
 
   // Safe pos, but watch out because it doesn't monitor the validity of the next

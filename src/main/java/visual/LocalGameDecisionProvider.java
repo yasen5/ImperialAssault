@@ -40,7 +40,7 @@ public class LocalGameDecisionProvider implements GameDecisionProvider {
 
   @Override
   public Directions chooseDirection(PlayerSeat seat, Personnel activeFigure, MyArrayList<Directions> allowedDirections) {
-    return chooseMovement(seat, activeFigure, allowedDirections, new MyArrayList<>()).direction();
+    return chooseMovement(seat, activeFigure, allowedDirections, new MyArrayList<>()).direction().orElseThrow();
   }
 
   @Override

@@ -1,5 +1,6 @@
 package game;
 
+import java.util.Optional;
 import util.MyArrayList;
 
 import game.Pathfinder;
@@ -160,8 +161,8 @@ public class Constants {
 
   private static boolean endpointTouchCanBeCrossedNormally(WallLine[] lines, WallLine touchedLine, FullPos p1,
       FullPos p2, boolean includeSoft) {
-    FullPos endpoint = touchedEndpoint(touchedLine, p1, p2);
-    if (endpoint == null) {
+    Optional<FullPos> endpoint = touchedEndpoint(touchedLine, p1, p2);
+    if (endpoint.isEmpty()) {
       return false;
     }
 
@@ -170,10 +171,8 @@ public class Constants {
       if (!includeSoft && wallLine.softBarrier()) {
         continue;
       }
-      DirectionVector incidentDirection = incidentDirectionFromEndpoint(wallLine, endpoint);
-      if (incidentDirection != null) {
-        incidentDirections.add(incidentDirection);
-      }
+      incidentDirectionFromEndpoint(wallLine, endpoint.orElseThrow())
+          .ifPresent(incidentDirections::add);
     }
     if (incidentDirections.size() != 2) {
       return false;
@@ -193,24 +192,24 @@ public class Constants {
         && (movementX != -blockedX || movementY != -blockedY);
   }
 
-  private static FullPos touchedEndpoint(WallLine wallLine, FullPos p1, FullPos p2) {
+  private static Optional<FullPos> touchedEndpoint(WallLine wallLine, FullPos p1, FullPos p2) {
     if (wallLine.pointOnMovementSegment(p1, wallLine.startPoint(), p2)) {
-      return wallLine.startPoint();
+      return Optional.of(wallLine.startPoint());
     }
     if (wallLine.pointOnMovementSegment(p1, wallLine.endPoint(), p2)) {
-      return wallLine.endPoint();
+      return Optional.of(wallLine.endPoint());
     }
-    return null;
+    return Optional.empty();
   }
 
-  private static DirectionVector incidentDirectionFromEndpoint(WallLine wallLine, FullPos endpoint) {
+  private static Optional<DirectionVector> incidentDirectionFromEndpoint(WallLine wallLine, FullPos endpoint) {
     if (samePoint(endpoint, wallLine.startPoint())) {
-      return directionBetween(wallLine.startPoint(), wallLine.endPoint());
+      return Optional.of(directionBetween(wallLine.startPoint(), wallLine.endPoint()));
     }
     if (samePoint(endpoint, wallLine.endPoint())) {
-      return directionBetween(wallLine.endPoint(), wallLine.startPoint());
+      return Optional.of(directionBetween(wallLine.endPoint(), wallLine.startPoint()));
     }
-    return null;
+    return Optional.empty();
   }
 
   private static DirectionVector directionBetween(FullPos from, FullPos to) {

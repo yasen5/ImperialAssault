@@ -43,8 +43,11 @@ public class StormTrooper extends Imperial {
     // Checks if there are adjacent troopers
     public boolean trooperNear() {
         for (Directions dir : Directions.values()) {
-            Personnel adjacentPersonnel = game.getPersonnelAtPos(getPos().getNextPos(dir));
-            if (adjacentPersonnel instanceof Imperial && ((Imperial) (adjacentPersonnel)).getType() == getType()) {
+            java.util.Optional<Personnel> adjacentPersonnel = game.getPersonnelAtPos(getPos().getNextPos(dir));
+            if (adjacentPersonnel.filter(Imperial.class::isInstance)
+                    .map(Imperial.class::cast)
+                    .filter(imperial -> imperial.getType() == getType())
+                    .isPresent()) {
                 return true;
             }
         }

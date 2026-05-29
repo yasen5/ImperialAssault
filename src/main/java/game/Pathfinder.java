@@ -1,6 +1,7 @@
 package game;
 
 import java.util.Objects;
+import java.util.Optional;
 
 import util.MyArrayList;
 import util.MyDLList;
@@ -84,9 +85,10 @@ public class Pathfinder {
                 return reachableUnderMax;
             } else {
                 for (Directions dir : validDirections) {
-                    Pos nextPos = currentPoint.pos().getNextPosUnsafe(dir, respectFigures, respectSoftBarriers, game);
-                    if (nextPos != null && !visited[nextPos.getY()][nextPos.getX()]) {
-                        queue.add(new Point(nextPos, currentPoint));
+                    Optional<Pos> nextPos = currentPoint.pos().nextPosIfLegal(dir, respectFigures, respectSoftBarriers,
+                            game);
+                    if (nextPos.isPresent() && !visited[nextPos.get().getY()][nextPos.get().getX()]) {
+                        queue.add(new Point(nextPos.get(), currentPoint));
                     }
                 }
             }

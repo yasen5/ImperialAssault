@@ -56,8 +56,9 @@ class RulesTest {
         MissionDefinition tutorialMission = MissionDefinition.forOption(MissionOption.MISSION_ONE);
 
         for (Actions action : Actions.values()) {
-            String description = tutorialMission.actionDescription(action);
-            assertTrue(description != null && !description.isBlank(), "Missing description for " + action);
+            assertTrue(tutorialMission.actionDescription(action)
+                    .filter(description -> !description.isBlank())
+                    .isPresent(), "Missing description for " + action);
         }
     }
 
@@ -66,7 +67,7 @@ class RulesTest {
         MissionDefinition realMission = MissionDefinition.forOption(MissionOption.MISSION_TWO);
 
         for (Actions action : Actions.values()) {
-            assertEquals(null, realMission.actionDescription(action));
+            assertTrue(realMission.actionDescription(action).isEmpty());
         }
     }
 
@@ -276,7 +277,7 @@ class RulesTest {
         assertTrue(eWeb.isLargeFigure());
         assertTrue(eWeb.occupiesSpace(new Pos(6, 10)));
         assertTrue(eWeb.occupiesSpace(new Pos(6, 11)));
-        assertEquals(eWeb, game.getPersonnelAtPos(new Pos(6, 11)));
+        assertEquals(eWeb, game.getPersonnelAtPos(new Pos(6, 11)).orElseThrow());
     }
 
     @Test
@@ -692,7 +693,7 @@ class RulesTest {
                 decisionProvider, true);
         decisionProvider.resetPromptCount();
 
-        assertEquals(PlayerSeat.REBEL_3, invokeChooseNextActivationSeat(game));
+        assertEquals(PlayerSeat.REBEL_3, invokeChooseNextActivationSeat(game).orElseThrow());
         assertEquals(4, decisionProvider.multipleChoicePrompts);
         Object[] initiativeOptions = decisionProvider.multipleChoiceOptions.get(0);
         assertEquals("Fenn Signis", initiativeOptions[0].toString());
@@ -702,7 +703,7 @@ class RulesTest {
 
         setCurrentTurnSeat(game, PlayerSeat.IMPERIAL);
 
-        assertEquals(PlayerSeat.IMPERIAL, invokeChooseNextActivationSeat(game));
+        assertEquals(PlayerSeat.IMPERIAL, invokeChooseNextActivationSeat(game).orElseThrow());
     }
 
     @Test
@@ -864,10 +865,11 @@ class RulesTest {
         return false;
     }
 
-    private PlayerSeat invokeChooseNextActivationSeat(Game game) throws Exception {
+    @SuppressWarnings("unchecked")
+    private java.util.Optional<PlayerSeat> invokeChooseNextActivationSeat(Game game) throws Exception {
         Method method = Game.class.getDeclaredMethod("chooseNextActivationSeat");
         method.setAccessible(true);
-        return (PlayerSeat) method.invoke(game);
+        return (java.util.Optional<PlayerSeat>) method.invoke(game);
     }
 
     private void setCurrentTurnSeat(Game game, PlayerSeat seat) throws Exception {

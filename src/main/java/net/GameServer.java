@@ -13,12 +13,12 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.util.Optional;
 import util.MyArrayList;
 import util.MyDLList;
 import util.MyHashMap;
 
 import java.util.concurrent.CancellationException;
-import java.util.concurrent.atomic.AtomicLong;
 
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
@@ -56,7 +56,7 @@ public class GameServer {
   private final Object saveLock = new Object();
   private final MyHashMap<PlayerSeat, ClientConnection> clients = new MyHashMap<>(PlayerSeat.class);
   private final MyArrayList<PlayerSeat> rebelJoinOrder = new MyArrayList<>();
-  private final AtomicLong promptIds = new AtomicLong(1);
+  private long nextPromptId = 1;
   private final Object lobbyLock = new Object();
   private volatile Game spectatorGame;
   private volatile Game activeGame;
@@ -99,28 +99,24 @@ public class GameServer {
         Socket socket = serverSocket.accept();
         connection = new ClientConnection(socket);
         JoinRequest request = (JoinRequest) connection.in.readObject();
-        PlayerSeat assignedSeat = assignSeat(request.requestedSeat());
-        if (assignedSeat == null) {
+        Optional<PlayerSeat> assignedSeat = assignSeat(request.requestedSeat());
+        if (assignedSeat.isEmpty()) {
           JoinResponse response = new JoinResponse(false, "Seat unavailable", request.requestedSeat(), config,
               createLobbySnapshot());
-          connection.out.writeObject(
-              response);
-          connection.out.flush();
+          connection.send(response);
           socket.close();
           continue;
         }
+        PlayerSeat seat = assignedSeat.get();
         synchronized (lobbyLock) {
-          clients.put(assignedSeat, connection);
-          connection.seat = assignedSeat;
-          connection.mission = null;
-          if (assignedSeat.isRebel()) {
-            rebelJoinOrder.add(assignedSeat);
+          clients.put(seat, connection);
+          connection.seat = seat;
+          if (seat.isRebel()) {
+            rebelJoinOrder.add(seat);
           }
         }
         LobbySnapshot lobbySnapshot = config.rebelPlayerCount() == 0 ? null : createLobbySnapshot();
-        connection.out.writeObject(
-            new JoinResponse(true, "Joined", assignedSeat, config, lobbySnapshot));
-        connection.out.flush();
+        connection.send(new JoinResponse(true, "Joined", seat, config, lobbySnapshot));
         connection.startReader();
         if (config.rebelPlayerCount() > 0) {
           broadcastLobbyState();
@@ -137,10 +133,10 @@ public class GameServer {
       savePath = savePathForMission(mission);
       Game game = createGameForMission(mission);
       activeGame = game;
-      MatchSnapshot loadedSnapshot = loadPreviousGame ? tryLoadSavedSnapshot(mission) : null;
+      Optional<MatchSnapshot> loadedSnapshot = loadPreviousGame ? tryLoadSavedSnapshot(mission) : Optional.empty();
       game.setSnapshotListener(this::broadcastSnapshot);
-      if (loadedSnapshot != null) {
-        game.loadSnapshot(loadedSnapshot);
+      if (loadedSnapshot.isPresent()) {
+        game.loadSnapshot(loadedSnapshot.get());
       } else {
         game.setup();
       }
@@ -165,19 +161,19 @@ public class GameServer {
     }
   }
 
-  private PlayerSeat assignSeat(PlayerSeat requestedSeat) {
+  private Optional<PlayerSeat> assignSeat(PlayerSeat requestedSeat) {
     synchronized (lobbyLock) {
       if (requestedSeat != null) {
         return config.requiredSeats().contains(requestedSeat) && !clients.containsKey(requestedSeat)
-            ? requestedSeat
-            : null;
+            ? Optional.of(requestedSeat)
+            : Optional.empty();
       }
       for (PlayerSeat seat : config.requiredSeats()) {
         if (!clients.containsKey(seat)) {
-          return seat;
+          return Optional.of(seat);
         }
       }
-      return null;
+      return Optional.empty();
     }
   }
 
@@ -202,12 +198,13 @@ public class GameServer {
     MissionOption mission = null;
     for (PlayerSeat seat : config.requiredSeats()) {
       ClientConnection connection = clients.get(seat);
-      if (connection == null || connection.mission == null) {
+      Optional<MissionOption> connectionMission = connection == null ? Optional.empty() : connection.selectedMission();
+      if (connectionMission.isEmpty()) {
         return false;
       }
       if (mission == null) {
-        mission = connection.mission;
-      } else if (mission != connection.mission) {
+        mission = connectionMission.get();
+      } else if (mission != connectionMission.get()) {
         return false;
       }
     }
@@ -221,12 +218,12 @@ public class GameServer {
       MissionOption selectedMission = null;
       boolean allMissionSelections = true;
       for (MyHashMap.Entry<PlayerSeat, ClientConnection> entry : clients.entrySet()) {
-        MissionOption mission = entry.getValue().mission;
-        if (mission != null) {
-          missionSelections.put(entry.getKey(), mission);
+        Optional<MissionOption> mission = entry.getValue().selectedMission();
+        if (mission.isPresent()) {
+          missionSelections.put(entry.getKey(), mission.get());
           if (selectedMission == null) {
-            selectedMission = mission;
-          } else if (selectedMission != mission) {
+            selectedMission = mission.get();
+          } else if (selectedMission != mission.get()) {
             allMissionSelections = false;
           }
         } else {
@@ -258,17 +255,14 @@ public class GameServer {
 
   private void handleClientMissionSelection(ClientConnection connection, ClientMissionSelection missionSelection) {
     synchronized (lobbyLock) {
-      connection.mission = missionSelection.mission();
+      connection.selectMission(missionSelection.mission());
       lobbyLock.notifyAll();
     }
     broadcastLobbyState();
   }
 
   private void handleClientFinishGameRequest() {
-    Game game = activeGame;
-    if (game != null) {
-      game.skipToEndScreen();
-    }
+    Optional.ofNullable(activeGame).ifPresent(Game::skipToEndScreen);
   }
 
   private Game createGameForMission(MissionOption mission) {
@@ -287,8 +281,9 @@ public class GameServer {
     synchronized (lobbyLock) {
       for (PlayerSeat seat : config.requiredSeats()) {
         ClientConnection connection = clients.get(seat);
-        if (connection != null && connection.mission != null) {
-          return connection.mission;
+        Optional<MissionOption> mission = connection == null ? Optional.empty() : connection.selectedMission();
+        if (mission.isPresent()) {
+          return mission.get();
         }
       }
     }
@@ -329,54 +324,48 @@ public class GameServer {
   }
 
   private void updateSpectatorLobbySnapshot(LobbySnapshot snapshot) {
-    Screen screen = spectatorScreen;
-    if (screen == null || snapshot == null) {
-      return;
-    }
-    SwingUtilities.invokeLater(() -> {
-      if (spectatorScreen != null) {
-        spectatorScreen.updateLobbySnapshot(snapshot);
-      }
-    });
+    Optional.ofNullable(spectatorScreen)
+        .ifPresent(screen -> SwingUtilities.invokeLater(() -> screen.updateLobbySnapshot(snapshot)));
   }
 
   private void updateSpectatorSnapshot(MatchSnapshot snapshot) {
-    if (spectatorGame == null) {
+    Game game = spectatorGame;
+    if (game == null) {
       return;
     }
     SwingUtilities.invokeLater(() -> {
       if (spectatorScreen != null) {
         spectatorScreen.markGameStarted();
       }
-      spectatorGame.loadSnapshot(snapshot);
+      game.loadSnapshot(snapshot);
     });
   }
 
-  private MatchSnapshot tryLoadSavedSnapshot(MissionOption mission) {
+  private Optional<MatchSnapshot> tryLoadSavedSnapshot(MissionOption mission) {
     if (!Files.exists(savePath)) {
-      return null;
+      return Optional.empty();
     }
     try (ObjectInputStream in = new ObjectInputStream(Files.newInputStream(savePath))) {
       Object object = in.readObject();
       if (!(object instanceof MatchSnapshot snapshot)) {
         System.err.println("Ignoring saved game state because it is not a match snapshot: " + savePath);
-        return null;
+        return Optional.empty();
       }
       if (!snapshot.config().equals(config)) {
         System.err.println("Ignoring saved game state because it was created for " +
             snapshot.config().rebelPlayerCount() + " rebel player(s), not " + config.rebelPlayerCount() + ".");
-        return null;
+        return Optional.empty();
       }
       MissionOption snapshotMission = snapshot.mission() == null ? MissionOption.MISSION_ONE : snapshot.mission();
       if (snapshotMission != mission) {
         System.err.println("Ignoring saved game state because it was created for " +
             snapshotMission.displayName() + ", not " + mission.displayName() + ".");
-        return null;
+        return Optional.empty();
       }
-      return snapshot;
+      return Optional.of(snapshot);
     } catch (IOException | ClassNotFoundException ex) {
       System.err.println("Unable to load saved game state from " + savePath + ": " + ex.getMessage());
-      return null;
+      return Optional.empty();
     }
   }
 
@@ -423,7 +412,7 @@ public class GameServer {
       for (Object option : options) {
         labels.add(String.valueOf(option));
       }
-      RemotePrompt prompt = new RemotePrompt(promptIds.getAndIncrement(), seat, RemotePrompt.PromptType.MULTIPLE_CHOICE,
+      RemotePrompt prompt = new RemotePrompt(nextPromptId(), seat, RemotePrompt.PromptType.MULTIPLE_CHOICE,
           name, explanation, labels, 0, labels.size() - 1, labels, null, null);
       return parseBoundedIntResponse(requestResponse(prompt), 0, options.length - 1, prompt);
     }
@@ -434,7 +423,7 @@ public class GameServer {
 
     @Override
     public boolean chooseYesNo(PlayerSeat seat, String name, String explanation) {
-      RemotePrompt prompt = new RemotePrompt(promptIds.getAndIncrement(), seat, RemotePrompt.PromptType.YES_NO,
+      RemotePrompt prompt = new RemotePrompt(nextPromptId(), seat, RemotePrompt.PromptType.YES_NO,
           name, explanation, MyArrayList.of("No", "Yes"), 0, 1, MyArrayList.of("false", "true"), null, null);
       return Boolean.parseBoolean(requestResponse(prompt));
     }
@@ -444,7 +433,7 @@ public class GameServer {
       if (minValue == maxValue) {
         return minValue;
       }
-      RemotePrompt prompt = new RemotePrompt(promptIds.getAndIncrement(), seat, RemotePrompt.PromptType.NUMERIC,
+      RemotePrompt prompt = new RemotePrompt(nextPromptId(), seat, RemotePrompt.PromptType.NUMERIC,
           name, name + " (" + minValue + " to " + maxValue + ")", MyArrayList.of(), minValue, maxValue,
           MyArrayList.of(),
           null, null);
@@ -454,7 +443,7 @@ public class GameServer {
     @Override
     public Directions chooseDirection(PlayerSeat seat, Personnel activeFigure,
         MyArrayList<Directions> allowedDirections) {
-      return chooseMovement(seat, activeFigure, allowedDirections, new MyArrayList<>()).direction();
+      return chooseMovement(seat, activeFigure, allowedDirections, new MyArrayList<>()).direction().orElseThrow();
     }
 
     @Override
@@ -473,7 +462,7 @@ public class GameServer {
       for (RotationMove rotationMove : legalRotations) {
         values.add(rotationMove.token());
       }
-      RemotePrompt prompt = new RemotePrompt(promptIds.getAndIncrement(), seat, RemotePrompt.PromptType.DIRECTION,
+      RemotePrompt prompt = new RemotePrompt(nextPromptId(), seat, RemotePrompt.PromptType.DIRECTION,
           "Movement", "Choose a direction", values, 0, 0, values, activeFigure.getId(), null);
       String response = requestResponse(prompt);
       if ("ROTATE".equals(response)) {
@@ -507,19 +496,18 @@ public class GameServer {
         values.add(target.getId());
         labels.add(target.getName());
       }
-      RemotePrompt prompt = new RemotePrompt(promptIds.getAndIncrement(), seat, RemotePrompt.PromptType.TARGET,
+      RemotePrompt prompt = new RemotePrompt(nextPromptId(), seat, RemotePrompt.PromptType.TARGET,
           "Target Selection", "Choose a target", labels, 0, 0, values, null, selectionType);
       String response = requestResponse(prompt);
       if (response == null || response.isBlank()) {
         System.err.println("Prompt " + prompt.promptId() + " returned no target; using first available target.");
         return availableTargets.get(0);
       }
-      Personnel target = game.getPersonnelById(response);
-      if (target == null) {
-        System.err.println("Unknown target id " + response + "; using first available target.");
-        return availableTargets.get(0);
-      }
-      return target;
+      return game.getPersonnelById(response)
+          .orElseGet(() -> {
+            System.err.println("Unknown target id " + response + "; using first available target.");
+            return availableTargets.get(0);
+          });
     }
 
     private MovementChoice firstMovementChoice(MyArrayList<Directions> allowedDirections,
@@ -550,10 +538,8 @@ public class GameServer {
     }
 
     private String requestResponse(RemotePrompt prompt) {
-      ClientConnection connection = clients.get(prompt.seat());
-      if (connection == null) {
-        throw new CancellationException("No client connected for " + prompt.seat());
-      }
+      ClientConnection connection = Optional.ofNullable(clients.get(prompt.seat()))
+          .orElseThrow(() -> new CancellationException("No client connected for " + prompt.seat()));
       Thread waitingThread = Thread.currentThread();
       game.setActivePromptCancelAction(() -> {
         connection.send(new RemotePromptCancel(prompt.promptId()));
@@ -579,7 +565,7 @@ public class GameServer {
     private final ObjectInputStream in;
     private final ResponseQueue responses = new ResponseQueue();
     private PlayerSeat seat;
-    private volatile MissionOption mission;
+    private MissionOption selectedMission;
 
     private ClientConnection(Socket socket) throws IOException {
       this.socket = socket;
@@ -616,10 +602,21 @@ public class GameServer {
           out.writeObject(object);
           out.flush();
           out.reset();
+        } catch (SocketException ex) {
+          // The headless smoke bots and closed clients may disconnect after they
+          // have received enough state. Treat that as a normal send outcome.
         } catch (IOException ex) {
           ex.printStackTrace(System.err);
         }
       }
+    }
+
+    private Optional<MissionOption> selectedMission() {
+      return Optional.ofNullable(selectedMission);
+    }
+
+    private void selectMission(MissionOption mission) {
+      selectedMission = mission;
     }
 
     private PromptResponse takeResponse(long promptId) {
@@ -630,6 +627,10 @@ public class GameServer {
         throw new CancellationException("Prompt " + promptId + " was interrupted");
       }
     }
+  }
+
+  private long nextPromptId() {
+    return nextPromptId++;
   }
 
   private static final class ResponseQueue {

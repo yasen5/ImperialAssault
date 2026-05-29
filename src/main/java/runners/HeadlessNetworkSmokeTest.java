@@ -7,7 +7,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 import game.PlayerSeat;
 import net.GameServer;
@@ -24,32 +23,33 @@ public class HeadlessNetworkSmokeTest {
         int rebelPlayers = args.length > 0 ? Integer.parseInt(args[0]) : 4;
         int port = findOpenPort();
         CountDownLatch imperialTurnReached = new CountDownLatch(1);
-        CountDownLatch rebel4DeploymentPromptReached = new CountDownLatch(rebelPlayers >= 4 ? 1 : 0);
-        AtomicReference<Throwable> failure = new AtomicReference<>();
+        CountDownLatch makDeploymentPromptReached = new CountDownLatch(rebelPlayers >= 4 ? 1 : 0);
+        SmokeTestStatus status = new SmokeTestStatus();
 
         Thread serverThread = new Thread(() -> {
             try {
                 new GameServer(port, rebelPlayers, false, false).run();
             } catch (Throwable ex) {
-                failure.compareAndSet(null, ex);
+                status.recordFailure(ex);
             }
         }, "headless-smoke-server");
         serverThread.setDaemon(true);
         serverThread.start();
 
         Thread.sleep(250L);
-        startBot(port, PlayerSeat.IMPERIAL, imperialTurnReached, rebel4DeploymentPromptReached, failure);
+        startBot(port, PlayerSeat.IMPERIAL, imperialTurnReached, makDeploymentPromptReached, status);
         for (int i = 0; i < rebelPlayers; i++) {
             startBot(port, PlayerSeat.values()[PlayerSeat.REBEL_1.ordinal() + i], imperialTurnReached,
-                    rebel4DeploymentPromptReached, failure);
+                    makDeploymentPromptReached, status);
         }
 
         boolean reached = imperialTurnReached.await(20, TimeUnit.SECONDS);
-        if (!reached || rebel4DeploymentPromptReached.getCount() > 0 || failure.get() != null) {
-            Throwable ex = failure.get();
+        if (!reached || makDeploymentPromptReached.getCount() > 0 || status.failure().isPresent()) {
+            Throwable ex = status.failure().orElse(null);
             if (ex != null) {
                 ex.printStackTrace(System.err);
             }
+            status.printPromptTrace();
             System.err.println("Headless network smoke test did not reach the Imperial turn after Mak moved");
             System.exit(1);
             return;
@@ -65,7 +65,7 @@ public class HeadlessNetworkSmokeTest {
     }
 
     private static void startBot(int port, PlayerSeat seat, CountDownLatch imperialTurnReached,
-            CountDownLatch rebel4DeploymentPromptReached, AtomicReference<Throwable> failure) {
+            CountDownLatch makDeploymentPromptReached, SmokeTestStatus status) {
         Thread thread = new Thread(() -> {
             try (Socket socket = new Socket("127.0.0.1", port)) {
                 ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
@@ -81,24 +81,23 @@ public class HeadlessNetworkSmokeTest {
                 }
                 out.writeObject(new ClientMissionSelection(MissionOption.MISSION_ONE));
                 out.flush();
-                SmokeBot bot = new SmokeBot(seat);
+                SmokeBot bot = new SmokeBot();
                 while (imperialTurnReached.getCount() > 0) {
                     Object message = in.readObject();
                     if (message instanceof RemotePrompt prompt) {
-                        if (prompt.seat() == PlayerSeat.REBEL_4 && "Deployment Selection".equals(prompt.title())) {
-                            rebel4DeploymentPromptReached.countDown();
-                        }
+                        status.recordPrompt(prompt);
                         if (prompt.seat() == PlayerSeat.IMPERIAL && "Deployment Selection".equals(prompt.title())) {
                             imperialTurnReached.countDown();
                         }
-                        out.writeObject(new PromptResponse(prompt.promptId(), bot.responseFor(prompt)));
+                        out.writeObject(new PromptResponse(prompt.promptId(), bot.responseFor(prompt,
+                                makDeploymentPromptReached)));
                         out.flush();
                     } else if (message instanceof MatchSnapshot) {
                         // Snapshot delivery proves the bot can deserialize real game state.
                     }
                 }
             } catch (Throwable ex) {
-                failure.compareAndSet(null, ex);
+                status.recordFailure(ex);
                 imperialTurnReached.countDown();
             }
         }, "headless-smoke-" + seat);
@@ -116,15 +115,15 @@ public class HeadlessNetworkSmokeTest {
     }
 
     private static final class SmokeBot {
-        private final PlayerSeat seat;
+        private boolean controlsMak;
         private int makActionPrompts;
         private int makNumericPrompts;
 
-        private SmokeBot(PlayerSeat seat) {
-            this.seat = seat;
+        private SmokeBot() {
         }
 
-        private String responseFor(RemotePrompt prompt) {
+        private String responseFor(RemotePrompt prompt, CountDownLatch makDeploymentPromptReached) {
+            rememberMakController(prompt, makDeploymentPromptReached);
             return switch (prompt.type()) {
                 case MULTIPLE_CHOICE -> String.valueOf(multipleChoiceResponse(prompt));
                 case YES_NO -> "false";
@@ -134,14 +133,21 @@ public class HeadlessNetworkSmokeTest {
             };
         }
 
+        private void rememberMakController(RemotePrompt prompt, CountDownLatch makDeploymentPromptReached) {
+            if ("Deployment Selection".equals(prompt.title()) && prompt.optionLabels().contains("MakEshray")) {
+                controlsMak = true;
+                makDeploymentPromptReached.countDown();
+            }
+        }
+
         private int multipleChoiceResponse(RemotePrompt prompt) {
             if ("Rebel Initiative".equals(prompt.title())) {
-                return indexFor(prompt, "Rebel 4", 0);
+                return indexFor(prompt, "Mak Eshka'rey", 0);
             }
             if ("Hero Selection".equals(prompt.title())) {
                 return 0;
             }
-            if (seat == PlayerSeat.REBEL_4 && "Action Selection".equals(prompt.title())) {
+            if (controlsMak && "Action Selection".equals(prompt.title())) {
                 makActionPrompts++;
                 return makActionPrompts == 1 ? indexFor(prompt, "MOVE", 0) : indexFor(prompt, "INTERACT", 0);
             }
@@ -149,7 +155,7 @@ public class HeadlessNetworkSmokeTest {
         }
 
         private int numericResponse(RemotePrompt prompt) {
-            if (seat == PlayerSeat.REBEL_4) {
+            if (controlsMak) {
                 makNumericPrompts++;
                 if (makNumericPrompts <= 2 && prompt.minValue() <= 2 && prompt.maxValue() >= 2) {
                     return 2;
@@ -159,10 +165,43 @@ public class HeadlessNetworkSmokeTest {
         }
 
         private String directionResponse(RemotePrompt prompt) {
-            if (seat == PlayerSeat.REBEL_4 && prompt.allowedValues().contains("DOWN")) {
+            if (controlsMak && prompt.allowedValues().contains("DOWN")) {
                 return "DOWN";
             }
             return prompt.allowedValues().isEmpty() ? "" : prompt.allowedValues().get(0);
+        }
+    }
+
+    private static final class SmokeTestStatus {
+        private Throwable failure;
+        private final StringBuilder promptTrace = new StringBuilder();
+
+        synchronized void recordFailure(Throwable ex) {
+            if (failure == null) {
+                failure = ex;
+            }
+        }
+
+        synchronized java.util.Optional<Throwable> failure() {
+            return java.util.Optional.ofNullable(failure);
+        }
+
+        synchronized void recordPrompt(RemotePrompt prompt) {
+            promptTrace.append(prompt.seat())
+                    .append(" | ")
+                    .append(prompt.title())
+                    .append(" | ")
+                    .append(prompt.type())
+                    .append(" | ")
+                    .append(prompt.optionLabels())
+                    .append(System.lineSeparator());
+        }
+
+        synchronized void printPromptTrace() {
+            if (promptTrace.length() > 0) {
+                System.err.println("Prompt trace:");
+                System.err.print(promptTrace);
+            }
         }
     }
 }
