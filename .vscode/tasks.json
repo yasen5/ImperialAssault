@@ -2,91 +2,23 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "gradle: runServer",
+      "label": "javac: compile",
       "type": "shell",
-      "command": "./gradlew",
-      "args": [
-        "runServer",
-        "-Pargs=${input:serverArgs}"
-      ],
+      "command": "javac *.java",
       "group": "build",
       "problemMatcher": []
     },
     {
-      "label": "gradle: compileJava",
+      "label": "java: runServer",
       "type": "shell",
-      "command": "./gradlew",
-      "args": [
-        "compileJava"
-      ],
+      "command": "java Server ${input:serverArgs}",
       "group": "build",
       "problemMatcher": []
     },
     {
-      "label": "gradle: runClient",
+      "label": "java: runClient",
       "type": "shell",
-      "command": "./gradlew",
-      "args": [
-        "runClient",
-        "-Pargs=${input:clientSeat}"
-      ],
-      "group": "build",
-      "problemMatcher": []
-    },
-    {
-      "label": "gradle: debugServer",
-      "type": "shell",
-      "command": "./gradlew",
-      "args": [
-        "runServer",
-        "--debug-jvm",
-        "-Pargs=${input:serverArgs}"
-      ],
-      "group": "build",
-      "isBackground": true,
-      "problemMatcher": {
-        "owner": "java-debug",
-        "pattern": {
-          "regexp": "^$"
-        },
-        "background": {
-          "activeOnStart": true,
-          "beginsPattern": ".",
-          "endsPattern": "Listening for transport dt_socket at address: 5005"
-        }
-      }
-    },
-    {
-      "label": "gradle: debugClient",
-      "type": "shell",
-      "command": "./gradlew",
-      "args": [
-        "runClient",
-        "--debug-jvm",
-        "-Pargs=${input:clientSeat}"
-      ],
-      "group": "build",
-      "isBackground": true,
-      "problemMatcher": {
-        "owner": "java-debug",
-        "pattern": {
-          "regexp": "^$"
-        },
-        "background": {
-          "activeOnStart": true,
-          "beginsPattern": ".",
-          "endsPattern": "Listening for transport dt_socket at address: 5005"
-        }
-      }
-    },
-    {
-      "label": "gradle: smokeTutorialNetwork",
-      "type": "shell",
-      "command": "./gradlew",
-      "args": [
-        "smokeTutorialNetwork",
-        "-Pargs=${input:smokeArgs}"
-      ],
+      "command": "java Client ${input:clientSeat}",
       "group": "test",
       "problemMatcher": []
     }
@@ -129,18 +61,6 @@
         "REBEL_3",
         "REBEL_4",
         "IMPERIAL"
-      ]
-    },
-    {
-      "id": "smokeArgs",
-      "type": "pickString",
-      "description": "Smoke test options",
-      "default": "",
-      "options": [
-        "",
-        "--fresh",
-        "--no-ui",
-        "--fresh --no-ui"
       ]
     }
   ]

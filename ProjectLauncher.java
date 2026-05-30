@@ -6,9 +6,9 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
-
-import util.MyArrayList;
+import java.util.List;
 
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
@@ -56,7 +56,7 @@ public final class ProjectLauncher {
         }
 
         Files.createDirectories(OUTPUT_ROOT);
-        MyArrayList<String> options = new MyArrayList<>();
+        List<String> options = new ArrayList<>();
         options.add("-encoding");
         options.add("UTF-8");
         options.add("-d");

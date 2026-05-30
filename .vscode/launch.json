@@ -2,24 +2,17 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Run Server (Gradle)",
+      "name": "Run Server",
       "type": "node-terminal",
       "request": "launch",
-      "command": "zsh -lc './gradlew runServer -Pargs=\"${input:serverArgs}\"; status=$?; echo; echo \"Process exited with status $status. Press Enter to close.\"; read _; exit $status'",
+      "command": "zsh -lc 'javac *.java && java Server ${input:serverArgs}; status=$?; echo; echo \"Process exited with status $status. Press Enter to close.\"; read _; exit $status'",
       "cwd": "${workspaceFolder}"
     },
     {
-      "name": "Run Client (Gradle)",
+      "name": "Run Client",
       "type": "node-terminal",
       "request": "launch",
-      "command": "zsh -lc './gradlew runClient -Pargs=\"${input:clientSeat}\"; status=$?; echo; echo \"Process exited with status $status. Press Enter to close.\"; read _; exit $status'",
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "name": "Run Smoke Tutorial Network (Gradle)",
-      "type": "node-terminal",
-      "request": "launch",
-      "command": "zsh -lc './gradlew smokeTutorialNetwork -Pargs=\"${input:smokeArgs}\"; status=$?; echo; echo \"Process exited with status $status. Press Enter to close.\"; read _; exit $status'",
+      "command": "zsh -lc 'javac *.java && java Client ${input:clientSeat}; status=$?; echo; echo \"Process exited with status $status. Press Enter to close.\"; read _; exit $status'",
       "cwd": "${workspaceFolder}"
     },
     {
@@ -34,11 +27,10 @@
         "${workspaceFolder}/src/main/java"
       ],
       "classPaths": [
-        "${workspaceFolder}/build/classes/java/main",
-        "${workspaceFolder}/build/resources/main",
-        "${workspaceFolder}/bin/main"
+        "${workspaceFolder}/build/javac-main/classes",
+        "${workspaceFolder}/src/main/resources"
       ],
-      "preLaunchTask": "gradle: compileJava"
+      "preLaunchTask": "javac: compile"
     },
     {
       "name": "Debug Client (Java Launch)",
@@ -52,35 +44,10 @@
         "${workspaceFolder}/src/main/java"
       ],
       "classPaths": [
-        "${workspaceFolder}/build/classes/java/main",
-        "${workspaceFolder}/build/resources/main",
-        "${workspaceFolder}/bin/main"
+        "${workspaceFolder}/build/javac-main/classes",
+        "${workspaceFolder}/src/main/resources"
       ],
-      "preLaunchTask": "gradle: compileJava"
-    },
-    {
-      "name": "Debug Server (Gradle Attach)",
-      "type": "java",
-      "request": "attach",
-      "hostName": "localhost",
-      "port": 5005,
-      "projectName": "Quarter4Project",
-      "sourcePaths": [
-        "${workspaceFolder}/src/main/java"
-      ],
-      "preLaunchTask": "gradle: debugServer"
-    },
-    {
-      "name": "Debug Client (Gradle Attach)",
-      "type": "java",
-      "request": "attach",
-      "hostName": "localhost",
-      "port": 5005,
-      "projectName": "Quarter4Project",
-      "sourcePaths": [
-        "${workspaceFolder}/src/main/java"
-      ],
-      "preLaunchTask": "gradle: debugClient"
+      "preLaunchTask": "javac: compile"
     }
   ],
   "inputs": [
@@ -121,18 +88,6 @@
         "REBEL_3",
         "REBEL_4",
         "IMPERIAL"
-      ]
-    },
-    {
-      "id": "smokeArgs",
-      "type": "pickString",
-      "description": "Smoke test options",
-      "default": "",
-      "options": [
-        "",
-        "--fresh",
-        "--no-ui",
-        "--fresh --no-ui"
       ]
     }
   ]
