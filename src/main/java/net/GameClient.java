@@ -24,6 +24,7 @@ import net.structs.JoinResponse;
 import net.structs.MatchSnapshot;
 import net.structs.RemotePrompt;
 import net.structs.RemotePromptCancel;
+import net.structs.RemoteBanner;
 import net.structs.PromptResponse;
 import net.structs.ClientMissionSelection;
 import net.structs.ClientFinishGameRequest;
@@ -106,6 +107,8 @@ public class GameClient {
         new Thread(() -> handlePrompt(prompt), "Remote Prompt").start();
       } else if (message instanceof RemotePromptCancel cancel) {
         SwingUtilities.invokeLater(() -> screen.cancelPrompt(cancel.promptId()));
+      } else if (message instanceof RemoteBanner banner) {
+        SwingUtilities.invokeLater(() -> screen.showBanner(banner.text()));
       }
     }
   }

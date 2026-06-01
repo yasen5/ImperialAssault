@@ -43,6 +43,7 @@ import net.structs.JoinResponse;
 import net.structs.LobbySnapshot;
 import net.structs.MatchSnapshot;
 import net.structs.PromptResponse;
+import net.structs.RemoteBanner;
 import net.structs.RemotePromptCancel;
 import net.structs.RemotePrompt;
 import visual.Screen;
@@ -306,6 +307,29 @@ public class GameServer {
     }
   }
 
+  private void sendPromptBannerToOtherClients(RemotePrompt prompt) {
+    RemoteBanner banner = new RemoteBanner(formatSeat(prompt.seat()) + " has been prompted");
+    MyArrayList<ClientConnection> connections;
+    synchronized (lobbyLock) {
+      connections = new MyArrayList<>(clients.values());
+    }
+    for (ClientConnection connection : connections) {
+      if (connection.seat != prompt.seat()) {
+        connection.send(banner);
+      }
+    }
+  }
+
+  private String formatSeat(PlayerSeat seat) {
+    return switch (seat) {
+      case IMPERIAL -> "Imperial";
+      case REBEL_1 -> "Rebel 1";
+      case REBEL_2 -> "Rebel 2";
+      case REBEL_3 -> "Rebel 3";
+      case REBEL_4 -> "Rebel 4";
+    };
+  }
+
   private void startSpectatorDisplay() throws InterruptedException, InvocationTargetException {
     spectatorGame = new Game(null, config, null, false);
     spectatorGame.setDebugWallLines(debugWallLines);
@@ -547,6 +571,7 @@ public class GameServer {
       });
       try {
         sendSnapshotToClients(game.createSnapshot());
+        sendPromptBannerToOtherClients(prompt);
         connection.send(prompt);
         PromptResponse response;
         do {
