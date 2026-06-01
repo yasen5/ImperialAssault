@@ -8,6 +8,7 @@ import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.KeyboardFocusManager;
@@ -20,7 +21,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.net.URISyntaxException;
+import java.net.URI;
 import util.MyArrayList;
 import util.MyHashMap;
 import util.MyHashSet;
@@ -35,7 +36,6 @@ import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComponent;
-import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -74,7 +74,6 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   private Thread mainGameLoop;
   private static SelectionType currentSelectionType = SelectionType.EXPLANATION;
   private Optional<DeploymentCard> selectedDeploymentCard = Optional.empty();
-  private JEditorPane editorPane;
   private boolean rebelsWin = true;
   private Optional<RemoteBoardPrompt> activeRemoteBoardPrompt = Optional.empty();
   private Optional<CompletableFuture<String>> activePromptResponse = Optional.empty();
@@ -122,33 +121,19 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
   private Runnable restartGameAction = NO_ACTION;
   private Optional<game.PlayerSeat> localSeat = Optional.empty();
   private Optional<String> serverStatusText = Optional.empty();
+  private Optional<Rectangle> completeGameGuideLinkBounds = Optional.empty();
   private final KeyEventDispatcher shortcutDispatcher = this::dispatchShortcutKeyEvent;
 
-  private static String[] dialogChain = new String[] {
-      "<html><body style='width: 300px; padding: 10px;'>" +
-          "<h3>Welcome to the Tutorial Mission</h3>" +
-          "<p>This mission introduces the main controls and campaign rules. If you are new to Imperial Assault, read pages 4-8 of this guide for the tabletop basics:</p>"
-          +
-          "<p><a href='https://images-cdn.fantasyflightgames.com/filer_public/89/06/8906c720-5ed5-4b22-aa1b-b58b4528956c/swi01_learn_to_play_v17.pdf'>Complete Game Guide</a></p>"
-          +
-          "<p>Select any text above to copy it, or click the links to open them in your browser.</p>" +
-          "</body></html>",
-      "<html><body style='width: 300px; padding: 10px;'>" +
-          "<h3>What You Can Do</h3>" +
-          "<p>On your turn, follow the prompts to activate a figure or group. The active figure is highlighted in green. Prompts will ask you to move, attack, interact, rest, or choose another available action.</p>"
-          +
-          "</body></html>",
-      "<html><body style='width: 300px; padding: 10px;'>" +
-          "<h3>Movement and Attacks</h3>" +
-          "<p>When you move, choose how many movement points to spend, then use the arrow buttons to step around the map. When you attack, valid targets are highlighted and unavailable targets are grayed out.</p>"
-          +
-          "</body></html>",
-      "<html><body style='width: 300px; padding: 10px;'>" +
-          "<h3>Inspecting and Interacting</h3>" +
-          "<p>Click a figure when no prompt is blocking the board, or while selecting a combat target, to inspect health, strain, conditions, and abilities. Crates, doors, terminals, wounded heroes, threat, and the status phase use campaign mission rules.</p>"
-          +
-          "</body></html>"
+  private static final String[] START_SCREEN_INSTRUCTIONS = new String[] {
+      "Welcome to the Tutorial Mission",
+      "This mission introduces the main controls and campaign rules. If you are new to Imperial Assault, read pages 4-8 of the Complete Game Guide.",
+      "On your turn, follow the prompts to activate a figure or group. The active figure is highlighted in green. Prompts will ask you to move, attack, interact, rest, or choose another available action.",
+      "When you move, choose how many movement points to spend, then use the arrow buttons to step around the map. When you attack, valid targets are highlighted and unavailable targets are grayed out.",
+      "Click a figure when no prompt is blocking the board, or while selecting a combat target, to inspect health, strain, conditions, and abilities. Crates, doors, terminals, wounded heroes, threat, and the status phase use campaign mission rules.",
+      "To vote for the mission, click one of the mission names at the bottom."
   };
+  private static final String COMPLETE_GAME_GUIDE_URL =
+      "https://images-cdn.fantasyflightgames.com/filer_public/89/06/8906c720-5ed5-4b22-aa1b-b58b4528956c/swi01_learn_to_play_v17.pdf";
 
   public static BiMap<Directions, JButton> movementButtons = new BiMap<>();
 
@@ -190,9 +175,6 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     setFocusable(true);
     setLayout(null);
     promptPanel.setOpaque(false);
-    if (!remoteMode && !readOnly) {
-      showInstructionsChain();
-    }
     updateLayoutState();
     initializeButtons();
     initializePromptPanel();
@@ -391,28 +373,6 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     System.out.println("INITIALIZED BUTTONS");
   }
 
-  public void showInstructionsChain() {
-    for (int i = 0; i < dialogChain.length; i++) {
-      editorPane = new JEditorPane("text/html", dialogChain[i]);
-      editorPane.setEditable(false);
-      editorPane.setOpaque(false);
-      if (i == 0) {
-        editorPane.addHyperlinkListener(e -> {
-          if (e.getEventType() == javax.swing.event.HyperlinkEvent.EventType.ACTIVATED) {
-            try {
-              Desktop.getDesktop().browse(e.getURL().toURI());
-            } catch (IOException | URISyntaxException ex) {
-              JOptionPane.showMessageDialog(null, "Could not open link: " + e.getURL(), "Error",
-                  JOptionPane.ERROR_MESSAGE);
-            }
-          }
-        });
-      }
-      JOptionPane.showConfirmDialog(null, editorPane, "Instructions", JOptionPane.OK_CANCEL_OPTION,
-          JOptionPane.INFORMATION_MESSAGE);
-    }
-  }
-
   private CompletableFuture<String> beginPrompt(long promptId, PromptKind kind, String name, String explanation) {
     CompletableFuture<String> future = new CompletableFuture<>();
     Runnable setup = () -> {
@@ -557,9 +517,84 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
       g.drawImage(startScreenimage, startBounds.x, startBounds.y, startBounds.x + startBounds.width,
           startBounds.y + startBounds.height, 0, 0,
           startScreenimage.getWidth(null), startScreenimage.getHeight(null), null);
+      drawStartScreenInstructions(g);
       drawLobbyOverlay(g);
     }
     drawServerStatus(g);
+  }
+
+  private void drawStartScreenInstructions(Graphics g) {
+    java.awt.Graphics2D g2 = (java.awt.Graphics2D) g;
+    Composite original = g2.getComposite();
+    int padding = layoutHandler.getInlinePadding();
+    int smallPadding = layoutHandler.getSmallPadding();
+    int panelWidth = Math.min(getScreenWidth() - padding * 2, Math.max(360, getScreenWidth() / 4));
+    int panelX = padding;
+    int panelY = padding;
+    int panelHeight = Math.min(getScreenHeight() - padding * 2, Math.max(420, getScreenHeight() - padding * 2));
+
+    g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.82f));
+    g2.setColor(new Color(10, 10, 10));
+    g2.fillRoundRect(panelX, panelY, panelWidth, panelHeight, padding, padding);
+    g2.setComposite(original);
+    g2.setColor(Color.WHITE);
+    g2.drawRoundRect(panelX, panelY, panelWidth, panelHeight, padding, padding);
+
+    int textX = panelX + padding;
+    int textY = panelY + padding;
+    int textWidth = panelWidth - padding * 2;
+    Font baseFont = g2.getFont();
+    g2.setFont(baseFont.deriveFont(Font.BOLD, 28f));
+    textY = drawWrappedText(g2, START_SCREEN_INSTRUCTIONS[0], textX, textY, textWidth, panelY + panelHeight - padding);
+    textY += smallPadding;
+
+    g2.setFont(baseFont.deriveFont(Font.PLAIN, 18f));
+    for (int i = 1; i < START_SCREEN_INSTRUCTIONS.length; i++) {
+      textY = drawWrappedText(g2, START_SCREEN_INSTRUCTIONS[i], textX, textY, textWidth,
+          panelY + panelHeight - padding);
+      textY += smallPadding;
+    }
+    g2.setColor(new Color(95, 185, 255));
+    int guideLinkY = textY;
+    int guideLinkWidth = g2.getFontMetrics().stringWidth("Complete Game Guide");
+    textY = drawWrappedText(g2, "Complete Game Guide", textX, textY, textWidth, panelY + panelHeight - padding);
+    g2.drawLine(textX, guideLinkY + g2.getFontMetrics().getAscent() + 2,
+        textX + Math.min(textWidth, guideLinkWidth), guideLinkY + g2.getFontMetrics().getAscent() + 2);
+    completeGameGuideLinkBounds = Optional.of(new Rectangle(textX, guideLinkY,
+        Math.min(textWidth, guideLinkWidth), Math.max(1, textY - guideLinkY)));
+    g2.setColor(Color.WHITE);
+    if (!remoteMode) {
+      textY += smallPadding;
+      g2.setFont(baseFont.deriveFont(Font.BOLD, 18f));
+      drawWrappedText(g2, "Click anywhere to start.", textX, textY, textWidth, panelY + panelHeight - padding);
+    }
+  }
+
+  private int drawWrappedText(java.awt.Graphics2D g2, String text, int x, int y, int width, int maxY) {
+    FontMetrics metrics = g2.getFontMetrics();
+    int lineHeight = metrics.getHeight();
+    int currentY = y + metrics.getAscent();
+    StringBuilder line = new StringBuilder();
+    for (String word : text.split(" ")) {
+      String candidate = line.length() == 0 ? word : line + " " + word;
+      if (metrics.stringWidth(candidate) <= width) {
+        line = new StringBuilder(candidate);
+        continue;
+      }
+      if (currentY > maxY) {
+        return currentY;
+      }
+      if (line.length() > 0) {
+        g2.drawString(line.toString(), x, currentY);
+        currentY += lineHeight;
+      }
+      line = new StringBuilder(word);
+    }
+    if (line.length() > 0 && currentY <= maxY) {
+      g2.drawString(line.toString(), x, currentY);
+      currentY += lineHeight;
+    }
+    return currentY;
   }
 
   private void drawLobbyOverlay(Graphics g) {
@@ -590,9 +625,9 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     } else if (visibleLobby.get().allMissionsMatch()) {
       header = "All players chose " + formatMission(Optional.ofNullable(visibleLobby.get().selectedMission()));
     } else if (visibleLobby.get().allMissionsSelected()) {
-      header = "All seats filled. Pick the same mission to begin";
+      header = "All seats filled. Click a mission name at the bottom to vote";
     } else {
-      header = "All seats filled. Choose a mission";
+      header = "All seats filled. Vote by clicking a mission name at the bottom";
     }
     int rowStep = Math.max(g2.getFontMetrics().getHeight() + smallPadding, panelHeight / 10);
     int textY = y + padding + g2.getFontMetrics().getHeight() * 3;
@@ -725,6 +760,10 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
     if (readOnly) {
       return;
     }
+    if (!gameStarted && completeGameGuideLinkBounds.filter(bounds -> bounds.contains(e.getPoint())).isPresent()) {
+      openCompleteGameGuide();
+      return;
+    }
     if (!gameStarted && !remoteMode) {
       gameStarted = true;
       repaint();
@@ -761,6 +800,20 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
         selectedDeploymentCard.ifPresent(card -> card.setVisible(true));
     }
     repaint();
+  }
+
+  private void openCompleteGameGuide() {
+    if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+      JOptionPane.showMessageDialog(this, "Could not open link: " + COMPLETE_GAME_GUIDE_URL, "Error",
+          JOptionPane.ERROR_MESSAGE);
+      return;
+    }
+    try {
+      Desktop.getDesktop().browse(URI.create(COMPLETE_GAME_GUIDE_URL));
+    } catch (IOException | IllegalArgumentException ex) {
+      JOptionPane.showMessageDialog(this, "Could not open link: " + COMPLETE_GAME_GUIDE_URL, "Error",
+          JOptionPane.ERROR_MESSAGE);
+    }
   }
 
   @Override
