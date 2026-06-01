@@ -131,6 +131,7 @@ public class Screen extends JPanel implements ActionListener, MouseListener, Key
       "When you move, choose how many movement points to spend, then use the arrow buttons to step around the map. When you attack, valid targets are highlighted and unavailable targets are grayed out.",
       "Click a figure when no prompt is blocking the board, or while selecting a combat target, to inspect health, strain, conditions, and abilities. Crates, doors, terminals, wounded heroes, threat, and the status phase use campaign mission rules.",
       "To vote for the mission, click one of the mission names at the bottom."
+      "Note: The U key can be pressed by any client to end the game. The restart button is only available to the server's screen and will start a fresh mission"
   };
   private static final String COMPLETE_GAME_GUIDE_URL =
       "https://images-cdn.fantasyflightgames.com/filer_public/89/06/8906c720-5ed5-4b22-aa1b-b58b4528956c/swi01_learn_to_play_v17.pdf";
