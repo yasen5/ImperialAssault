@@ -5,14 +5,14 @@
       "name": "Run Server",
       "type": "node-terminal",
       "request": "launch",
-      "command": "zsh -lc 'javac *.java && java Server ${input:serverArgs}; status=$?; echo; echo \"Process exited with status $status. Press Enter to close.\"; read _; exit $status'",
+      "command": "zsh -lc 'mkdir -p build/javac-main/classes && javac -encoding UTF-8 -d build/javac-main/classes $(find src/main/java -name '\\''*.java'\\'' -print) && javac *.java && java Server ${input:serverArgs}; status=$?; echo; echo \"Process exited with status $status. Press Enter to close.\"; read _; exit $status'",
       "cwd": "${workspaceFolder}"
     },
     {
       "name": "Run Client",
       "type": "node-terminal",
       "request": "launch",
-      "command": "zsh -lc 'javac *.java && java Client ${input:clientSeat}; status=$?; echo; echo \"Process exited with status $status. Press Enter to close.\"; read _; exit $status'",
+      "command": "zsh -lc 'mkdir -p build/javac-main/classes && javac -encoding UTF-8 -d build/javac-main/classes $(find src/main/java -name '\\''*.java'\\'' -print) && javac *.java && java Client ${input:clientSeat}; status=$?; echo; echo \"Process exited with status $status. Press Enter to close.\"; read _; exit $status'",
       "cwd": "${workspaceFolder}"
     },
     {

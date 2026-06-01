@@ -47,12 +47,10 @@ public final class ProjectLauncher {
     private static void compileProjectSources() throws IOException {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         if (compiler == null) {
-            System.err.println("A JDK is required. Run these commands with a JDK, not a JRE.");
-            return;
+            throw new IllegalStateException("A JDK is required. Run these commands with a JDK, not a JRE.");
         }
         if (!Files.isDirectory(SOURCE_ROOT)) {
-            System.err.println("Missing source directory: " + SOURCE_ROOT.toAbsolutePath());
-            return;
+            throw new IOException("Missing source directory: " + SOURCE_ROOT.toAbsolutePath());
         }
 
         Files.createDirectories(OUTPUT_ROOT);
@@ -78,7 +76,7 @@ public final class ProjectLauncher {
 
         int result = compiler.run(null, null, null, optionArray);
         if (result != 0) {
-            System.err.println("javac failed with exit code " + result);
+            throw new IOException("javac failed with exit code " + result);
         }
     }
 }

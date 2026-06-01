@@ -4,7 +4,7 @@
     {
       "label": "javac: compile",
       "type": "shell",
-      "command": "javac *.java",
+      "command": "mkdir -p build/javac-main/classes && javac -encoding UTF-8 -d build/javac-main/classes $(find src/main/java -name '*.java' -print) && javac *.java",
       "group": "build",
       "problemMatcher": []
     },
